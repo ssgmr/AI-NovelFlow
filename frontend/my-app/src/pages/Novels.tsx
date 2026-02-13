@@ -207,18 +207,18 @@ export default function Novels() {
                     <button
                       onClick={() => parseCharacters(novel.id)}
                       disabled={parsingNovelId === novel.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm font-medium"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm font-medium whitespace-nowrap"
                       title="AI解析角色"
                     >
                       {parsingNovelId === novel.id ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          解析中...
+                          <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                          <span>解析中...</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-4 w-4" />
-                          AI解析角色
+                          <Sparkles className="h-4 w-4 flex-shrink-0" />
+                          <span>AI解析角色</span>
                         </>
                       )}
                     </button>
