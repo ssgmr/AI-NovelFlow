@@ -45,6 +45,8 @@ async def list_tasks(
                 "errorMessage": t.error_message,
                 "workflowId": t.workflow_id,
                 "workflowName": t.workflow_name,
+                "hasWorkflowJson": t.workflow_json is not None,
+                "hasPromptText": t.prompt_text is not None,
                 "novelId": t.novel_id,
                 "chapterId": t.chapter_id,
                 "characterId": t.character_id,
@@ -78,6 +80,8 @@ async def get_task(task_id: str, db: Session = Depends(get_db)):
             "errorMessage": task.error_message,
             "workflowId": task.workflow_id,
             "workflowName": task.workflow_name,
+            "workflowJson": task.workflow_json,
+            "promptText": task.prompt_text,
             "novelId": task.novel_id,
             "chapterId": task.chapter_id,
             "characterId": task.character_id,
@@ -221,6 +225,39 @@ async def retry_task(
     }
 
 
+@router.get("/{task_id}/workflow", response_model=dict)
+async def get_task_workflow(task_id: str, db: Session = Depends(get_db)):
+    """获取任务提交给ComfyUI的工作流JSON"""
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    if not task.workflow_json:
+        return {
+            "success": False,
+            "message": "该任务没有保存工作流JSON"
+        }
+    
+    try:
+        import json
+        workflow_obj = json.loads(task.workflow_json)
+        return {
+            "success": True,
+            "data": {
+                "workflow": workflow_obj,
+                "prompt": task.prompt_text
+            }
+        }
+    except Exception as e:
+        return {
+            "success": True,
+            "data": {
+                "workflow": task.workflow_json,
+                "prompt": task.prompt_text
+            }
+        }
+
+
 async def generate_portrait_task(
     task_id: str,
     character_id: str,
@@ -279,11 +316,29 @@ async def generate_portrait_task(
         # 构建提示词
         prompt = build_character_prompt(name, appearance, description, template.template if template else None)
         task.current_step = f"使用模板: {template.name if template else '默认'}, 提示词: {prompt[:80]}..."
+        
+        # 保存提示词和构建的工作流JSON到任务记录
+        task.prompt_text = prompt
+        workflow_json_str = workflow.workflow_json if workflow else None
+        if workflow_json_str:
+            try:
+                import json
+                workflow_obj = json.loads(workflow_json_str)
+                # 替换工作流中的占位符
+                for node_id, node in workflow_obj.items():
+                    if isinstance(node, dict) and "inputs" in node:
+                        inputs = node.get("inputs", {})
+                        if "text" in inputs and isinstance(inputs["text"], str):
+                            if "{CHARACTER_PROMPT}" in inputs["text"]:
+                                inputs["text"] = prompt
+                task.workflow_json = json.dumps(workflow_obj, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"[Task] Failed to process workflow JSON: {e}")
+                task.workflow_json = workflow_json_str
         db.commit()
         
         # 调用 ComfyUI 生成图片（使用指定的工作流）
-        workflow_json = workflow.workflow_json if workflow else None
-        result = await comfyui_service.generate_character_image(prompt, workflow_json=workflow_json)
+        result = await comfyui_service.generate_character_image(prompt, workflow_json=workflow_json_str)
         
         if result.get("success"):
             image_url = result.get("image_url")

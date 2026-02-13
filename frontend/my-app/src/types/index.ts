@@ -80,6 +80,8 @@ export interface Task {
   errorMessage?: string;
   workflowId?: string;
   workflowName?: string;
+  hasWorkflowJson?: boolean;
+  hasPromptText?: boolean;
   novelId?: string;
   chapterId?: string;
   characterId?: string;

@@ -14,9 +14,12 @@ import {
   Play,
   ChevronDown,
   ChevronUp,
-  Terminal
+  Terminal,
+  Code,
+  X
 } from 'lucide-react';
 import ComfyUIStatus from '../components/ComfyUIStatus';
+import JSONEditor from '../components/JSONEditor';
 import type { Task } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
@@ -27,6 +30,9 @@ export default function Tasks() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'running' | 'completed' | 'failed'>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+  const [viewingWorkflow, setViewingWorkflow] = useState<Task | null>(null);
+  const [workflowData, setWorkflowData] = useState<{workflow: any, prompt: string} | null>(null);
+  const [loadingWorkflow, setLoadingWorkflow] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -77,6 +83,33 @@ export default function Tasks() {
       }
       return newSet;
     });
+  };
+
+  const handleViewWorkflow = async (task: Task) => {
+    if (!task.hasWorkflowJson && !task.hasPromptText) {
+      alert('该任务没有保存工作流信息');
+      return;
+    }
+    
+    setViewingWorkflow(task);
+    setLoadingWorkflow(true);
+    
+    try {
+      const res = await fetch(`${API_BASE}/tasks/${task.id}/workflow`);
+      const data = await res.json();
+      if (data.success) {
+        setWorkflowData(data.data);
+      } else {
+        alert(data.message || '获取工作流失败');
+        setViewingWorkflow(null);
+      }
+    } catch (error) {
+      console.error('获取工作流失败:', error);
+      alert('获取工作流失败');
+      setViewingWorkflow(null);
+    } finally {
+      setLoadingWorkflow(false);
+    }
   };
 
   const handleRetry = async (taskId: string) => {
@@ -363,6 +396,16 @@ export default function Tasks() {
                       </button>
                     )}
                     
+                    {(task.hasWorkflowJson || task.hasPromptText) && (
+                      <button
+                        onClick={() => handleViewWorkflow(task)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="查看提交的工作流"
+                      >
+                        <Code className="h-4 w-4" />
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => handleDelete(task.id)}
                       className="p-2 text-gray-400 hover:text-red-600 transition-colors"
@@ -377,6 +420,82 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      {/* Workflow View Modal */}
+      {viewingWorkflow && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                任务工作流详情
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  {viewingWorkflow.name}
+                </span>
+              </h3>
+              <button
+                onClick={() => {
+                  setViewingWorkflow(null);
+                  setWorkflowData(null);
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {loadingWorkflow ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              </div>
+            ) : workflowData ? (
+              <div className="space-y-4">
+                {/* Prompt Section */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">生成提示词</h4>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-600 font-mono whitespace-pre-wrap break-all">
+                      {workflowData.prompt}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Workflow JSON Section */}
+                {workflowData.workflow && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">提交给ComfyUI的工作流JSON</h4>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <JSONEditor
+                        value={typeof workflowData.workflow === 'string' 
+                          ? workflowData.workflow 
+                          : JSON.stringify(workflowData.workflow, null, 2)}
+                        onChange={() => {}}
+                        readOnly={true}
+                        height="50vh"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => {
+                      setViewingWorkflow(null);
+                      setWorkflowData(null);
+                    }}
+                    className="btn-secondary"
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                无法加载工作流数据
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

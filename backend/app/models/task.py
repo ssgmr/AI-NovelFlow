@@ -39,6 +39,8 @@ class Task(Base):
     # 工作流信息（记录执行时使用的 workflow）
     workflow_id = Column(String, nullable=True)  # 执行时使用的 workflow ID
     workflow_name = Column(String, nullable=True)  # 执行时使用的 workflow 名称
+    workflow_json = Column(Text, nullable=True)  # 执行时提交给ComfyUI的完整工作流JSON
+    prompt_text = Column(Text, nullable=True)  # 执行时使用的提示词
     
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now())
