@@ -4,18 +4,17 @@ import {
   Search, 
   Trash2, 
   Edit2, 
-  Image as ImageIcon,
   Loader2,
   User,
   Wand2,
-  X,
-  Check,
-  ChevronDown,
   Sparkles,
   RefreshCw
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Character, Novel } from '../types';
+
+// API 基础 URL
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 interface CharacterWithNovel extends Character {
   novelName?: string;
@@ -50,8 +49,8 @@ export default function Characters() {
     setIsLoading(true);
     try {
       const url = selectedNovel !== 'all' 
-        ? `/api/characters?novel_id=${selectedNovel}` 
-        : '/api/characters';
+        ? `${API_BASE}/characters?novel_id=${selectedNovel}` 
+        : `${API_BASE}/characters`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -66,7 +65,7 @@ export default function Characters() {
 
   const fetchNovels = async () => {
     try {
-      const res = await fetch('/api/novels');
+      const res = await fetch(`${API_BASE}/novels`);
       const data = await res.json();
       if (data.success) {
         setNovels(data.data || []);
@@ -79,7 +78,7 @@ export default function Characters() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/characters', {
+      const res = await fetch(`${API_BASE}/characters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -100,7 +99,7 @@ export default function Characters() {
     if (!editingCharacter) return;
     
     try {
-      const res = await fetch(`/api/characters/${editingCharacter.id}`, {
+      const res = await fetch(`${API_BASE}/characters/${editingCharacter.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingCharacter),
@@ -119,7 +118,7 @@ export default function Characters() {
     if (!confirm('确定要删除这个角色吗？')) return;
     
     try {
-      await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/characters/${id}`, { method: 'DELETE' });
       setCharacters(characters.filter(c => c.id !== id));
     } catch (error) {
       console.error('删除角色失败:', error);
@@ -134,7 +133,7 @@ export default function Characters() {
     
     setGeneratingAppearanceId(character.id);
     try {
-      const res = await fetch(`/api/characters/${character.id}/generate-appearance`, {
+      const res = await fetch(`${API_BASE}/characters/${character.id}/generate-appearance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -159,14 +158,14 @@ export default function Characters() {
   const generatePortrait = async (character: Character) => {
     setGeneratingId(character.id);
     try {
-      const res = await fetch(`/api/characters/${character.id}/generate-portrait`, {
+      const res = await fetch(`${API_BASE}/characters/${character.id}/generate-portrait`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await res.json();
       if (data.success) {
         // 轮询检查生成结果
-        pollGenerationStatus(character.id);
+        pollGenerationStatus(character.id, data.data.taskId);
       }
     } catch (error) {
       console.error('生成人设图失败:', error);
@@ -174,10 +173,10 @@ export default function Characters() {
     }
   };
 
-  const pollGenerationStatus = async (characterId: string) => {
+  const pollGenerationStatus = async (characterId: string, taskId: string) => {
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/characters/${characterId}/portrait-status`);
+        const res = await fetch(`${API_BASE}/characters/${characterId}/portrait-status?task_id=${taskId}`);
         const data = await res.json();
         if (data.success) {
           if (data.data.status === 'completed') {

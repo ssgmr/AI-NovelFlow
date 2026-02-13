@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { Novel, Chapter } from '../types';
 
+// API 基础 URL
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+
 interface NovelState {
   novels: Novel[];
   currentNovel: Novel | null;
@@ -25,7 +28,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
   fetchNovels: async () => {
     set({ isLoading: true });
     try {
-      const res = await fetch('/api/novels');
+      const res = await fetch(`${API_BASE}/novels`);
       const data = await res.json();
       if (data.success) {
         set({ novels: data.data, isLoading: false });
@@ -38,7 +41,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
   fetchNovel: async (id) => {
     set({ isLoading: true });
     try {
-      const res = await fetch(`/api/novels/${id}`);
+      const res = await fetch(`${API_BASE}/novels/${id}`);
       const data = await res.json();
       if (data.success) {
         set({ currentNovel: data.data, isLoading: false });
@@ -50,7 +53,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
 
   fetchChapters: async (novelId) => {
     try {
-      const res = await fetch(`/api/novels/${novelId}/chapters`);
+      const res = await fetch(`${API_BASE}/novels/${novelId}/chapters`);
       const data = await res.json();
       if (data.success) {
         set({ chapters: data.data });
@@ -62,7 +65,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
 
   createNovel: async (novelData) => {
     try {
-      const res = await fetch('/api/novels', {
+      const res = await fetch(`${API_BASE}/novels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novelData),
@@ -78,7 +81,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
 
   deleteNovel: async (id) => {
     try {
-      await fetch(`/api/novels/${id}`, { method: 'DELETE' });
+      await fetch(`${API_BASE}/novels/${id}`, { method: 'DELETE' });
       set((state) => ({
         novels: state.novels.filter((n) => n.id !== id),
       }));
@@ -91,7 +94,7 @@ export const useNovelStore = create<NovelState>((set, get) => ({
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/novels/import', {
+      const res = await fetch(`${API_BASE}/novels/import`, {
         method: 'POST',
         body: formData,
       });

@@ -15,6 +15,9 @@ import { Link } from 'react-router-dom';
 import { useNovelStore } from '../stores/novelStore';
 import type { Novel } from '../types';
 
+// API 基础 URL
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+
 export default function Novels() {
   const { novels, isLoading, fetchNovels, createNovel, deleteNovel, importNovel } = useNovelStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,7 +57,7 @@ export default function Novels() {
     
     setParsingNovelId(novelId);
     try {
-      const res = await fetch(`/api/novels/${novelId}/parse-characters`, {
+      const res = await fetch(`${API_BASE}/novels/${novelId}/parse-characters`, {
         method: 'POST',
       });
       const data = await res.json();

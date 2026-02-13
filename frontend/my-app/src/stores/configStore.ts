@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SystemConfig } from '../types';
 
+// API 基础 URL
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+
 interface ConfigState extends SystemConfig {
   isLoading: boolean;
   error: string | null;
@@ -30,11 +33,11 @@ export const useConfigStore = create<ConfigState>()(
         set({ isLoading: true, error: null });
         try {
           // 检查 DeepSeek API
-          const deepseekRes = await fetch('/api/health/deepseek');
+          const deepseekRes = await fetch(`${API_BASE}/health/deepseek`);
           const deepseek = deepseekRes.ok;
           
           // 检查 ComfyUI
-          const comfyRes = await fetch('/api/health/comfyui');
+          const comfyRes = await fetch(`${API_BASE}/health/comfyui`);
           const comfyui = comfyRes.ok;
           
           set({ isLoading: false });
