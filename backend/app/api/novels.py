@@ -176,6 +176,7 @@ async def list_novel_characters(novel_id: str, db: Session = Depends(get_db)):
                 "description": c.description,
                 "appearance": c.appearance,
                 "imageUrl": c.image_url,
+                "generatingStatus": c.generating_status,
                 "createdAt": c.created_at.isoformat() if c.created_at else None,
             }
             for c in characters

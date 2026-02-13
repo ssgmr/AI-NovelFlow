@@ -60,7 +60,7 @@ class Character(Base):
     image_url = Column(String, nullable=True)
     
     # 生成状态追踪
-    portrait_status = Column(String, default="pending")  # pending, generating, completed, failed
+    generating_status = Column(String, nullable=True)  # pending, running, completed, failed
     portrait_task_id = Column(String, nullable=True)  # 关联的任务ID
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
