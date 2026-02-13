@@ -6,7 +6,8 @@ import {
   ListTodo,
   AlertCircle,
   Loader2,
-  Activity
+  Thermometer,
+  MemoryStick
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
@@ -17,8 +18,13 @@ interface ComfyUIStats {
   vramUsed: number;
   vramTotal: number;
   queueSize: number;
-  deviceName?: string;
-  raw?: any;  // 调试信息
+  deviceName: string;
+  // 新增字段
+  cpuUsage?: number;
+  ramUsed?: number;
+  ramTotal?: number;
+  temperature?: number;
+  hddUsage?: number;
 }
 
 export default function ComfyUIStatus() {
@@ -28,6 +34,7 @@ export default function ComfyUIStatus() {
     vramUsed: 0,
     vramTotal: 16,
     queueSize: 0,
+    deviceName: 'Unknown',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +42,10 @@ export default function ComfyUIStatus() {
 
   const fetchStatus = async () => {
     try {
-      // 获取系统状态
       const res = await fetch(`${API_BASE}/health/comfyui`);
       
       if (res.ok) {
         const data = await res.json();
-        console.log('[ComfyUI Status] API Response:', data);
         
         if (data.status === 'ok' && data.data) {
           const systemStats = data.data;
@@ -54,7 +59,7 @@ export default function ComfyUIStatus() {
               queueSize = queueData.queue_size || 0;
             }
           } catch (e) {
-            console.log('[ComfyUI Status] Queue fetch failed:', e);
+            // 忽略队列错误
           }
           
           setStats({
@@ -64,7 +69,12 @@ export default function ComfyUIStatus() {
             vramTotal: systemStats.vram_total || 16,
             queueSize: queueSize,
             deviceName: systemStats.device_name || 'NVIDIA GPU',
-            raw: data.raw,  // 保存原始数据用于调试
+            // 新增字段
+            cpuUsage: systemStats.cpu_usage,
+            ramUsed: systemStats.ram_used,
+            ramTotal: systemStats.ram_total,
+            temperature: systemStats.temperature,
+            hddUsage: systemStats.hdd_usage,
           });
           setDebugInfo(data.raw);
           setError(null);
@@ -74,12 +84,10 @@ export default function ComfyUIStatus() {
         }
       } else {
         const errorData = await res.json().catch(() => ({}));
-        console.error('[ComfyUI Status] API Error:', errorData);
         setStats(prev => ({ ...prev, status: 'offline' }));
         setError(errorData.detail || '无法连接到 ComfyUI');
       }
     } catch (err: any) {
-      console.error('[ComfyUI Status] Fetch Error:', err);
       setStats(prev => ({ ...prev, status: 'offline' }));
       setError(err.message || '网络连接失败');
     } finally {
@@ -89,10 +97,15 @@ export default function ComfyUIStatus() {
 
   useEffect(() => {
     fetchStatus();
-    // 每5秒刷新一次
-    const interval = setInterval(fetchStatus, 5000);
+    // 每0.5秒刷新一次
+    const interval = setInterval(fetchStatus, 500);
     return () => clearInterval(interval);
   }, []);
+
+  const formatNumber = (num: number | undefined, decimals: number = 1) => {
+    if (num === undefined || num === null) return '--';
+    return num.toFixed(decimals);
+  };
 
   const formatVRAM = (gb: number) => `${gb.toFixed(1)} GB`;
 
@@ -105,63 +118,129 @@ export default function ComfyUIStatus() {
     );
   }
 
+  // 计算要显示的项目数量
+  const hasExtraStats = stats.cpuUsage !== undefined || stats.ramUsed !== undefined || 
+                        stats.temperature !== undefined || stats.hddUsage !== undefined;
+  
+  // 动态网格列数
+  const gridCols = hasExtraStats ? 'grid-cols-8' : 'grid-cols-4';
+
   return (
     <div className="bg-slate-800 rounded-xl p-4 text-white">
-      <div className="grid grid-cols-4 gap-4 items-center">
+      <div className={`grid ${gridCols} gap-3 items-center`}>
         {/* ComfyUI状态 */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="p-2 bg-slate-700 rounded-lg">
-            <Server className="h-5 w-5 text-slate-300" />
+            <Server className="h-4 w-4 text-slate-300" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-slate-400">ComfyUI状态</p>
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${stats.status === 'online' ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              <span className={`font-medium ${stats.status === 'online' ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className="flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${stats.status === 'online' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <span className={`text-sm font-medium ${stats.status === 'online' ? 'text-emerald-400' : 'text-red-400'}`}>
                 {stats.status === 'online' ? '在线' : '离线'}
               </span>
             </div>
-            {stats.deviceName && stats.status === 'online' && (
-              <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[120px]">{stats.deviceName}</p>
-            )}
           </div>
         </div>
 
         {/* GPU使用率 */}
-        <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
+        <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
           <div className="p-2 bg-slate-700 rounded-lg">
-            <Cpu className="h-5 w-5 text-slate-300" />
+            <Cpu className="h-4 w-4 text-slate-300" />
           </div>
           <div>
             <p className="text-xs text-slate-400">GPU使用率</p>
-            <p className="font-medium text-lg">{stats.gpuUsage}%</p>
+            <p className="text-sm font-medium">{formatNumber(stats.gpuUsage, 0)}%</p>
           </div>
         </div>
 
         {/* 显存占用 */}
-        <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
+        <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
           <div className="p-2 bg-slate-700 rounded-lg">
-            <HardDrive className="h-5 w-5 text-slate-300" />
+            <HardDrive className="h-4 w-4 text-slate-300" />
           </div>
           <div>
             <p className="text-xs text-slate-400">显存占用</p>
-            <p className="font-medium text-lg">
-              {formatVRAM(stats.vramUsed)} / {formatVRAM(stats.vramTotal)}
+            <p className="text-sm font-medium">
+              {formatNumber(stats.vramUsed, 1)} / {formatNumber(stats.vramTotal, 1)} GB
             </p>
           </div>
         </div>
 
         {/* 队列任务 */}
-        <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
+        <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
           <div className="p-2 bg-slate-700 rounded-lg">
-            <ListTodo className="h-5 w-5 text-slate-300" />
+            <ListTodo className="h-4 w-4 text-slate-300" />
           </div>
           <div>
             <p className="text-xs text-slate-400">队列任务</p>
-            <p className="font-medium text-lg">{stats.queueSize}</p>
+            <p className="text-sm font-medium">{stats.queueSize}</p>
           </div>
         </div>
+
+        {/* CPU使用率 - 如果有数据 */}
+        {stats.cpuUsage !== undefined && (
+          <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
+            <div className="p-2 bg-slate-700 rounded-lg">
+              <Cpu className="h-4 w-4 text-blue-300" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">CPU</p>
+              <p className="text-sm font-medium">{formatNumber(stats.cpuUsage, 0)}%</p>
+            </div>
+          </div>
+        )}
+
+        {/* RAM使用率 - 如果有数据 */}
+        {stats.ramUsed !== undefined && stats.ramTotal !== undefined && (
+          <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
+            <div className="p-2 bg-slate-700 rounded-lg">
+              <MemoryStick className="h-4 w-4 text-green-300" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">RAM</p>
+              <p className="text-sm font-medium">
+                {formatNumber(stats.ramUsed, 1)} / {formatNumber(stats.ramTotal, 1)} GB
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 温度 - 如果有数据 */}
+        {stats.temperature !== undefined && (
+          <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
+            <div className="p-2 bg-slate-700 rounded-lg">
+              <Thermometer className="h-4 w-4 text-orange-300" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">温度</p>
+              <p className="text-sm font-medium">{formatNumber(stats.temperature, 0)}°C</p>
+            </div>
+          </div>
+        )}
+
+        {/* HDD使用率 - 如果有数据 */}
+        {stats.hddUsage !== undefined && (
+          <div className="flex items-center gap-2 border-l border-slate-600 pl-3">
+            <div className="p-2 bg-slate-700 rounded-lg">
+              <HardDrive className="h-4 w-4 text-purple-300" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">HDD</p>
+              <p className="text-sm font-medium">{formatNumber(stats.hddUsage, 0)}%</p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* 显卡名称 - 单独一行显示完整 */}
+      {stats.status === 'online' && stats.deviceName && (
+        <div className="mt-3 pt-3 border-t border-slate-700">
+          <p className="text-xs text-slate-400">显卡信息</p>
+          <p className="text-sm font-medium text-emerald-400 truncate">{stats.deviceName}</p>
+        </div>
+      )}
 
       {/* 错误信息 */}
       {error && (
@@ -171,11 +250,11 @@ export default function ComfyUIStatus() {
         </div>
       )}
 
-      {/* 调试信息 (仅在开发环境显示) */}
-      {process.env.NODE_ENV === 'development' && debugInfo && (
+      {/* 调试信息 */}
+      {debugInfo && (
         <details className="mt-2 text-xs text-slate-500">
           <summary className="cursor-pointer hover:text-slate-400">调试信息</summary>
-          <pre className="mt-1 p-2 bg-slate-900 rounded overflow-auto max-h-40">
+          <pre className="mt-1 p-2 bg-slate-900 rounded overflow-auto max-h-32 text-[10px]">
             {JSON.stringify(debugInfo, null, 2)}
           </pre>
         </details>

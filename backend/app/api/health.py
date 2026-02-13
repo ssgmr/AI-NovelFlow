@@ -48,24 +48,45 @@ async def check_comfyui():
                 data = response.json()
                 print(f"[ComfyUI] 原始数据: {data}")
                 
-                # 提取设备信息
+                system_info = {}
+                
+                # 提取系统信息 (system 部分)
+                system_data = data.get("system", {})
+                if system_data:
+                    # RAM信息 (字节转GB)
+                    ram_total = system_data.get("ram_total", 0)
+                    ram_free = system_data.get("ram_free", 0)
+                    if ram_total > 0:
+                        system_info["ram_total"] = round(ram_total / (1024**3), 1)
+                        system_info["ram_used"] = round((ram_total - ram_free) / (1024**3), 1)
+                
+                # 提取设备信息 (devices 部分)
                 devices = data.get("devices", [])
                 if devices and len(devices) > 0:
                     device = devices[0]
-                    system_info = {
-                        "device_name": device.get("name", "Unknown GPU"),
-                        "vram_total": round(device.get("vram_total", 0) / (1024**3), 1),  # 转换为GB
-                        "vram_used": round(device.get("vram_used", 0) / (1024**3), 1),
-                        "gpu_usage": device.get("gpu_usage", 0),
-                    }
+                    # GPU信息
+                    system_info["device_name"] = device.get("name", "Unknown GPU")
+                    vram_total = device.get("vram_total", 0)
+                    vram_free = device.get("vram_free", device.get("vram_total", 0))
+                    if vram_total > 0:
+                        system_info["vram_total"] = round(vram_total / (1024**3), 1)
+                        system_info["vram_used"] = round((vram_total - vram_free) / (1024**3), 1)
+                    
+                    # GPU使用率 (某些ComfyUI版本可能提供)
+                    system_info["gpu_usage"] = device.get("gpu_usage", 0)
+                    
+                    # 温度信息 (某些ComfyUI版本可能提供)
+                    if "temperature" in device:
+                        system_info["temperature"] = device.get("temperature")
                 else:
-                    # 如果没有设备信息，返回默认值
-                    system_info = {
-                        "device_name": "Unknown GPU",
-                        "vram_total": 16.0,
-                        "vram_used": 0.0,
-                        "gpu_usage": 0,
-                    }
+                    # 如果没有设备信息，设置默认值
+                    system_info["device_name"] = "Unknown GPU"
+                    system_info["vram_total"] = 16.0
+                    system_info["vram_used"] = 0.0
+                    system_info["gpu_usage"] = 0
+                
+                # 尝试获取CPU和HDD信息 (ComfyUI可能不直接提供，这里预留)
+                # 如果需要，可以通过其他系统监控工具获取
                 
                 print(f"[ComfyUI] 解析后的信息: {system_info}")
                 return {
