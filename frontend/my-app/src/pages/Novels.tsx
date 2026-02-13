@@ -240,6 +240,7 @@ export default function Novels() {
                     <Link
                       to={`/novels/${novel.id}`}
                       className="btn-primary text-sm py-2 px-3 ml-1"
+                    >
                       <Play className="h-3 w-3 mr-1" />
                       管理章节
                     </Link>
