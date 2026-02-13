@@ -156,6 +156,12 @@ export default function Characters() {
   };
 
   const generatePortrait = async (character: Character) => {
+    // 检查是否已经在生成中
+    if (character.portraitStatus === 'generating') {
+      alert('该角色正在生成形象中，请稍后再试');
+      return;
+    }
+    
     setGeneratingId(character.id);
     try {
       // 调用任务API创建设定图生成任务
@@ -165,6 +171,10 @@ export default function Characters() {
       });
       const data = await res.json();
       if (data.success) {
+        // 更新本地状态为生成中
+        setCharacters(prev => prev.map(c => 
+          c.id === character.id ? { ...c, portraitStatus: 'generating' } : c
+        ));
         alert('人设图生成任务已创建，请前往任务队列查看进度');
         // 跳转到任务队列
         window.location.href = '/tasks';
@@ -273,11 +283,25 @@ export default function Characters() {
                   </div>
                 )}
                 
+                {/* Status Badge */}
+                {character.portraitStatus === 'generating' && (
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs rounded-full flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    生成中
+                  </div>
+                )}
+                {character.portraitStatus === 'failed' && (
+                  <div className="absolute top-2 left-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full">
+                    生成失败
+                  </div>
+                )}
+                
                 {/* Generate Button Overlay */}
-                {!character.imageUrl && !generatingId && (
+                {!character.imageUrl && character.portraitStatus !== 'generating' && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => generatePortrait(character)}
+                      disabled={generatingId === character.id}
                       className="btn-primary"
                     >
                       <Wand2 className="mr-2 h-4 w-4" />
@@ -286,6 +310,7 @@ export default function Characters() {
                   </div>
                 )}
                 
+                {/* Loading Overlay - when local state shows generating */}
                 {generatingId === character.id && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                     <div className="text-center">

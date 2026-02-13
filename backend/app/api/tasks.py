@@ -116,6 +116,13 @@ async def generate_character_portrait(
             }
         }
     
+    # 检查是否已有进行中的生成任务
+    if character.portrait_status == "generating":
+        return {
+            "success": False,
+            "message": "该角色正在生成形象中，请稍后再试"
+        }
+    
     # 创建任务
     task = Task(
         type="character_portrait",
@@ -128,6 +135,11 @@ async def generate_character_portrait(
     db.add(task)
     db.commit()
     db.refresh(task)
+    
+    # 更新角色生成状态
+    character.portrait_status = "generating"
+    character.portrait_task_id = task.id
+    db.commit()
     
     # 后台执行生成
     background_tasks.add_task(
@@ -289,14 +301,20 @@ async def generate_portrait_task(
             task.progress = 100
             task.completed_at = datetime.utcnow()
             
-            # 更新角色图片（使用本地URL）
+            # 更新角色图片和状态
             character = db.query(Character).filter(Character.id == character_id).first()
             if character:
                 character.image_url = task.result_url
+                character.portrait_status = "completed"
         else:
             task.status = "failed"
             task.error_message = result.get("message", "生成失败")
             task.current_step = "生成失败"
+            
+            # 更新角色状态为失败
+            character = db.query(Character).filter(Character.id == character_id).first()
+            if character:
+                character.portrait_status = "failed"
         
         db.commit()
         
@@ -304,6 +322,15 @@ async def generate_portrait_task(
         task.status = "failed"
         task.error_message = str(e)
         task.current_step = "任务异常"
+        
+        # 更新角色状态为失败
+        try:
+            character = db.query(Character).filter(Character.id == character_id).first()
+            if character:
+                character.portrait_status = "failed"
+        except:
+            pass
+        
         db.commit()
     finally:
         db.close()

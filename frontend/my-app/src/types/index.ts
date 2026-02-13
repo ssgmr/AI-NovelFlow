@@ -45,6 +45,10 @@ export interface Character {
   description: string;
   appearance: string;
   imageUrl?: string;
+  portraitStatus?: 'pending' | 'generating' | 'completed' | 'failed';
+  portraitTaskId?: string;
+  novelId: string;
+  novelName?: string;
 }
 
 export interface Scene {

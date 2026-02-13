@@ -58,6 +58,11 @@ class Character(Base):
     description = Column(Text, default="")
     appearance = Column(Text, default="")
     image_url = Column(String, nullable=True)
+    
+    # 生成状态追踪
+    portrait_status = Column(String, default="pending")  # pending, generating, completed, failed
+    portrait_task_id = Column(String, nullable=True)  # 关联的任务ID
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
