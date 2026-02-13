@@ -310,17 +310,28 @@ export default function Tasks() {
                     {task.status === 'completed' && task.resultUrl && (
                       <div className="mt-2">
                         {task.type === 'character_portrait' || task.type === 'shot_image' ? (
-                          <img 
-                            src={task.resultUrl} 
-                            alt="生成结果" 
-                            className="h-20 w-20 object-cover rounded-lg"
-                          />
+                          <div className="relative group">
+                            <img 
+                              src={task.resultUrl} 
+                              alt="生成结果" 
+                              className="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+                              onClick={() => window.open(task.resultUrl, '_blank')}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '';
+                                (e.target as HTMLImageElement).className = 'hidden';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
+                                 onClick={() => window.open(task.resultUrl, '_blank')}>
+                              <span className="text-white text-xs font-medium">查看原图</span>
+                            </div>
+                          </div>
                         ) : (
                           <a 
                             href={task.resultUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm underline"
+                            className="text-sm underline inline-flex items-center gap-1"
                           >
                             查看结果
                           </a>

@@ -218,6 +218,7 @@ async def generate_portrait_task(
     """后台任务：生成角色人设图"""
     from app.core.database import SessionLocal
     from app.models.workflow import Workflow
+    from app.services.file_storage import file_storage
     
     db = SessionLocal()
     try:
@@ -255,16 +256,43 @@ async def generate_portrait_task(
         result = await comfyui_service.generate_character_image(prompt, workflow_json=workflow_json)
         
         if result.get("success"):
+            image_url = result.get("image_url")
+            
+            # 下载图片到本地存储
+            task.current_step = "下载图片到服务器..."
+            db.commit()
+            
+            try:
+                local_path = await file_storage.download_image(
+                    url=image_url,
+                    novel_id=task.novel_id or "default",
+                    character_name=name,
+                    image_type="character"
+                )
+                
+                if local_path:
+                    # 构建本地可访问的URL (通过静态文件服务)
+                    relative_path = local_path.replace(str(file_storage.base_dir), "")
+                    local_url = f"/api/files/{relative_path.lstrip('/')}"
+                    task.result_url = local_url
+                    task.current_step = "生成完成，图片已保存"
+                else:
+                    # 下载失败，使用原始URL
+                    task.result_url = image_url
+                    task.current_step = "生成完成，使用远程图片"
+            except Exception as e:
+                print(f"[Task] Failed to download image: {e}")
+                task.result_url = image_url
+                task.current_step = "生成完成，使用远程图片"
+            
             task.status = "completed"
             task.progress = 100
-            task.result_url = result.get("image_url")
-            task.current_step = "生成完成"
             task.completed_at = datetime.utcnow()
             
-            # 更新角色图片
+            # 更新角色图片（使用本地URL）
             character = db.query(Character).filter(Character.id == character_id).first()
             if character:
-                character.image_url = result.get("image_url")
+                character.image_url = task.result_url
         else:
             task.status = "failed"
             task.error_message = result.get("message", "生成失败")
