@@ -1,21 +1,533 @@
-import { Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  Plus, 
+  Search, 
+  Trash2, 
+  Edit2, 
+  Image as ImageIcon,
+  Loader2,
+  User,
+  Wand2,
+  X,
+  Check,
+  ChevronDown,
+  Sparkles,
+  RefreshCw
+} from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { Character, Novel } from '../types';
+
+interface CharacterWithNovel extends Character {
+  novelName?: string;
+}
 
 export default function Characters() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [characters, setCharacters] = useState<CharacterWithNovel[]>([]);
+  const [novels, setNovels] = useState<Novel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedNovel, setSelectedNovel] = useState<string>(searchParams.get('novel') || 'all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [generatingAppearanceId, setGeneratingAppearanceId] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    appearance: '',
+    novelId: '',
+  });
+
+  // 加载角色和小说数据
+  useEffect(() => {
+    fetchCharacters();
+    fetchNovels();
+  }, [selectedNovel]);
+
+  const fetchCharacters = async () => {
+    setIsLoading(true);
+    try {
+      const url = selectedNovel !== 'all' 
+        ? `/api/characters?novel_id=${selectedNovel}` 
+        : '/api/characters';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        setCharacters(data.data || []);
+      }
+    } catch (error) {
+      console.error('获取角色失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchNovels = async () => {
+    try {
+      const res = await fetch('/api/novels');
+      const data = await res.json();
+      if (data.success) {
+        setNovels(data.data || []);
+      }
+    } catch (error) {
+      console.error('获取小说失败:', error);
+    }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/characters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCharacters([data.data, ...characters]);
+        setShowCreateModal(false);
+        setFormData({ name: '', description: '', appearance: '', novelId: '' });
+      }
+    } catch (error) {
+      console.error('创建角色失败:', error);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCharacter) return;
+    
+    try {
+      const res = await fetch(`/api/characters/${editingCharacter.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingCharacter),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCharacters(characters.map(c => c.id === data.data.id ? data.data : c));
+        setEditingCharacter(null);
+      }
+    } catch (error) {
+      console.error('更新角色失败:', error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('确定要删除这个角色吗？')) return;
+    
+    try {
+      await fetch(`/api/characters/${id}`, { method: 'DELETE' });
+      setCharacters(characters.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('删除角色失败:', error);
+    }
+  };
+
+  const generateAppearance = async (character: Character) => {
+    if (!character.description) {
+      alert('请先在编辑中添加角色描述，才能智能生成外貌');
+      return;
+    }
+    
+    setGeneratingAppearanceId(character.id);
+    try {
+      const res = await fetch(`/api/characters/${character.id}/generate-appearance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // 更新角色数据
+        setCharacters(prev => prev.map(c => 
+          c.id === character.id ? { ...c, appearance: data.data.appearance } : c
+        ));
+        alert('外貌描述生成成功！');
+      } else {
+        alert('生成失败: ' + data.message);
+      }
+    } catch (error) {
+      console.error('生成外貌描述失败:', error);
+      alert('生成失败');
+    } finally {
+      setGeneratingAppearanceId(null);
+    }
+  };
+
+  const generatePortrait = async (character: Character) => {
+    setGeneratingId(character.id);
+    try {
+      const res = await fetch(`/api/characters/${character.id}/generate-portrait`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success) {
+        // 轮询检查生成结果
+        pollGenerationStatus(character.id);
+      }
+    } catch (error) {
+      console.error('生成人设图失败:', error);
+      setGeneratingId(null);
+    }
+  };
+
+  const pollGenerationStatus = async (characterId: string) => {
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/characters/${characterId}/portrait-status`);
+        const data = await res.json();
+        if (data.success) {
+          if (data.data.status === 'completed') {
+            // 更新角色图片
+            setCharacters(prev => prev.map(c => 
+              c.id === characterId ? { ...c, imageUrl: data.data.imageUrl } : c
+            ));
+            setGeneratingId(null);
+          } else if (data.data.status === 'failed') {
+            alert('生成失败: ' + data.data.message);
+            setGeneratingId(null);
+          } else {
+            // 继续轮询
+            setTimeout(checkStatus, 2000);
+          }
+        }
+      } catch (error) {
+        console.error('检查状态失败:', error);
+        setGeneratingId(null);
+      }
+    };
+    checkStatus();
+  };
+
+  const filteredCharacters = characters.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getNovelName = (novelId: string) => {
+    const novel = novels.find(n => n.id === novelId);
+    return novel?.title || '未知小说';
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">角色库</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          管理小说角色的人设图
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">角色库</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            管理小说角色的详细信息和形象设定
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="btn-primary"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          新建角色
+        </button>
       </div>
-      <div className="card text-center py-12">
-        <Users className="mx-auto h-12 w-12 text-gray-300" />
-        <h3 className="mt-4 text-lg font-medium text-gray-900">功能开发中</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          角色库功能即将上线
-        </p>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="搜索角色..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field pl-10"
+          />
+        </div>
+        <select
+          value={selectedNovel}
+          onChange={(e) => {
+            setSelectedNovel(e.target.value);
+            if (e.target.value !== 'all') {
+              setSearchParams({ novel: e.target.value });
+            } else {
+              setSearchParams({});
+            }
+          }}
+          className="input-field sm:w-48"
+        >
+          <option value="all">所有小说</option>
+          {novels.map(novel => (
+            <option key={novel.id} value={novel.id}>{novel.title}</option>
+          ))}
+        </select>
       </div>
+
+      {/* Characters Grid */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      ) : filteredCharacters.length === 0 ? (
+        <div className="card text-center py-12">
+          <User className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-4 text-lg font-medium text-gray-900">暂无角色</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            点击"新建角色"创建你的第一个角色
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredCharacters.map((character) => (
+            <div
+              key={character.id}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+            >
+              {/* Character Image */}
+              <div className="aspect-square bg-gray-100 relative">
+                {character.imageUrl ? (
+                  <img
+                    src={character.imageUrl}
+                    alt={character.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <User className="h-20 w-20 text-gray-300" />
+                  </div>
+                )}
+                
+                {/* Generate Button Overlay */}
+                {!character.imageUrl && !generatingId && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => generatePortrait(character)}
+                      className="btn-primary"
+                    >
+                      <Wand2 className="mr-2 h-4 w-4" />
+                      生成形象
+                    </button>
+                  </div>
+                )}
+                
+                {generatingId === character.id && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-white mx-auto" />
+                      <p className="text-white text-sm mt-2">生成中...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Character Info */}
+              <div className="p-4">
+                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                  {character.name}
+                </h3>
+                <p className="text-xs text-primary-600 mt-1">
+                  {getNovelName(character.novelId)}
+                </p>
+                <p className="text-sm text-gray-600 mt-2 line-clamp-2 h-10">
+                  {character.description || '暂无描述'}
+                </p>
+                
+                {character.appearance ? (
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-500 line-clamp-2">
+                    <strong>外貌:</strong> {character.appearance}
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => generateAppearance(character)}
+                      disabled={generatingAppearanceId === character.id || !character.description}
+                      className="text-xs inline-flex items-center text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                    >
+                      {generatingAppearanceId === character.id ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          生成中...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          AI生成外貌描述
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex gap-2">
+                    {character.imageUrl && (
+                      <button
+                        onClick={() => generatePortrait(character)}
+                        disabled={generatingId === character.id}
+                        className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                        title="重新生成"
+                      >
+                        <Wand2 className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setEditingCharacter(character)}
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="编辑"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(character.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    title="删除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">新建角色</h2>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  所属小说
+                </label>
+                <select
+                  required
+                  value={formData.novelId}
+                  onChange={(e) => setFormData({ ...formData, novelId: e.target.value })}
+                  className="input-field mt-1"
+                >
+                  <option value="">请选择小说</option>
+                  {novels.map(novel => (
+                    <option key={novel.id} value={novel.id}>{novel.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  角色名称 *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input-field mt-1"
+                  placeholder="如：萧炎"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  角色描述
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="input-field mt-1"
+                  placeholder="角色的背景故事、性格特点等"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  外貌特征
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.appearance}
+                  onChange={(e) => setFormData({ ...formData, appearance: e.target.value })}
+                  className="input-field mt-1"
+                  placeholder="用于生成人设图的描述，如：黑发，红衣，手持长剑..."
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  详细的外貌描述有助于生成更准确的角色形象
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="btn-secondary"
+                >
+                  取消
+                </button>
+                <button type="submit" className="btn-primary">
+                  创建角色
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingCharacter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">编辑角色</h2>
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  角色名称 *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingCharacter.name}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, name: e.target.value })}
+                  className="input-field mt-1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  角色描述
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingCharacter.description}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, description: e.target.value })}
+                  className="input-field mt-1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  外貌特征
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingCharacter.appearance}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, appearance: e.target.value })}
+                  className="input-field mt-1"
+                  placeholder="用于生成人设图的描述..."
+                />
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setEditingCharacter(null)}
+                  className="btn-secondary"
+                >
+                  取消
+                </button>
+                <button type="submit" className="btn-primary">
+                  保存修改
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

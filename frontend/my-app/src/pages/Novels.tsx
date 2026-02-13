@@ -7,7 +7,9 @@ import {
   Trash2,
   Play,
   BookOpen,
-  Loader2
+  Loader2,
+  Users,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNovelStore } from '../stores/novelStore';
@@ -19,6 +21,7 @@ export default function Novels() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newNovel, setNewNovel] = useState({ title: '', author: '', description: '' });
   const [importing, setImporting] = useState(false);
+  const [parsingNovelId, setParsingNovelId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNovels();
@@ -44,6 +47,28 @@ export default function Novels() {
     setImporting(true);
     await importNovel(file);
     setImporting(false);
+  };
+
+  const parseCharacters = async (novelId: string) => {
+    if (!confirm('将使用 AI 分析小说内容并自动提取角色信息，是否继续？')) return;
+    
+    setParsingNovelId(novelId);
+    try {
+      const res = await fetch(`/api/novels/${novelId}/parse-characters`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('角色解析任务已启动，请稍后到角色库查看结果');
+      } else {
+        alert('启动失败: ' + data.message);
+      }
+    } catch (error) {
+      console.error('解析角色失败:', error);
+      alert('解析失败');
+    } finally {
+      setParsingNovelId(null);
+    }
   };
 
   const getStatusColor = (status: Novel['status']) => {
@@ -165,10 +190,30 @@ export default function Novels() {
                   <span className="text-sm text-gray-500">
                     {novel.chapterCount} 章节
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => parseCharacters(novel.id)}
+                      disabled={parsingNovelId === novel.id}
+                      className="p-2 text-gray-400 hover:text-purple-600 transition-colors disabled:opacity-50"
+                      title="AI解析角色"
+                    >
+                      {parsingNovelId === novel.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                    </button>
+                    <Link
+                      to={`/characters?novel=${novel.id}`}
+                      className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                      title="查看角色"
+                    >
+                      <Users className="h-4 w-4" />
+                    </Link>
                     <button
                       onClick={() => deleteNovel(novel.id)}
                       className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      title="删除"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

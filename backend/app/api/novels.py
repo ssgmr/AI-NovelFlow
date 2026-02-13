@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
-from app.models.novel import Novel, Chapter
+from app.models.novel import Novel, Chapter, Character
 from app.schemas.novel import NovelCreate, NovelResponse, ChapterCreate, ChapterResponse
+from app.services.deepseek import DeepSeekService
+from app.services.comfyui import ComfyUIService
+
+deepseek_service = DeepSeekService()
+comfyui_service = ComfyUIService()
 
 router = APIRouter()
 
@@ -117,6 +122,120 @@ async def import_novel(file: UploadFile = File(...), db: Session = Depends(get_d
             "chapterCount": 0,
         }
     }
+
+
+@router.get("/{novel_id}/characters", response_model=dict)
+async def list_novel_characters(novel_id: str, db: Session = Depends(get_db)):
+    """获取小说的所有角色"""
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    characters = db.query(Character).filter(Character.novel_id == novel_id).all()
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": c.id,
+                "novelId": c.novel_id,
+                "name": c.name,
+                "description": c.description,
+                "appearance": c.appearance,
+                "imageUrl": c.image_url,
+                "createdAt": c.created_at.isoformat() if c.created_at else None,
+            }
+            for c in characters
+        ]
+    }
+
+
+@router.post("/{novel_id}/parse-characters", response_model=dict)
+async def parse_characters_from_text(
+    novel_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    使用 DeepSeek API 解析小说文本，自动提取角色信息
+    """
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    # 获取所有章节内容
+    chapters = db.query(Chapter).filter(Chapter.novel_id == novel_id).all()
+    if not chapters:
+        return {
+            "success": False,
+            "message": "小说没有章节内容，无法解析角色"
+        }
+    
+    # 合并章节文本（限制长度）
+    full_text = "\n\n".join([c.content for c in chapters if c.content])[:10000]
+    
+    if not full_text:
+        return {
+            "success": False,
+            "message": "章节内容为空，无法解析"
+        }
+    
+    # 后台任务解析角色
+    background_tasks.add_task(
+        parse_characters_task,
+        novel_id,
+        full_text
+    )
+    
+    return {
+        "success": True,
+        "message": "角色解析任务已启动，请稍后查看"
+    }
+
+
+async def parse_characters_task(novel_id: str, text: str):
+    """后台任务：解析小说文本提取角色"""
+    from app.core.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        # 调用 DeepSeek 解析文本
+        result = await deepseek_service.parse_novel_text(text)
+        
+        if "error" in result:
+            print(f"解析失败: {result['error']}")
+            return
+        
+        characters_data = result.get("characters", [])
+        
+        # 创建角色
+        for char_data in characters_data:
+            # 检查是否已存在
+            existing = db.query(Character).filter(
+                Character.novel_id == novel_id,
+                Character.name == char_data.get("name")
+            ).first()
+            
+            if existing:
+                # 更新现有角色
+                existing.description = char_data.get("description", existing.description)
+                existing.appearance = char_data.get("appearance", existing.appearance)
+            else:
+                # 创建新角色
+                character = Character(
+                    novel_id=novel_id,
+                    name=char_data.get("name", "未命名"),
+                    description=char_data.get("description", ""),
+                    appearance=char_data.get("appearance", ""),
+                )
+                db.add(character)
+        
+        db.commit()
+        print(f"成功解析并创建 {len(characters_data)} 个角色")
+        
+    except Exception as e:
+        print(f"解析角色任务失败: {e}")
+    finally:
+        db.close()
 
 
 @router.get("/{novel_id}/chapters", response_model=dict)
