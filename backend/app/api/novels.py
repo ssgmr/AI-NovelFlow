@@ -187,10 +187,14 @@ async def list_novel_characters(novel_id: str, db: Session = Depends(get_db)):
 async def parse_characters_from_text(
     novel_id: str,
     background_tasks: BackgroundTasks,
+    sync: bool = False,  # 添加同步模式参数
     db: Session = Depends(get_db)
 ):
     """
     使用 DeepSeek API 解析小说文本，自动提取角色信息
+    
+    参数:
+    - sync: 是否同步执行（立即返回结果）
     """
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
@@ -213,61 +217,102 @@ async def parse_characters_from_text(
             "message": "章节内容为空，无法解析"
         }
     
-    # 后台任务解析角色
-    background_tasks.add_task(
-        parse_characters_task,
-        novel_id,
-        full_text
-    )
-    
-    return {
-        "success": True,
-        "message": "角色解析任务已启动，请稍后查看"
-    }
+    if sync:
+        # 同步模式：立即执行并返回结果
+        await parse_characters_task(novel_id, full_text)
+        
+        # 获取解析后的角色列表
+        characters = db.query(Character).filter(Character.novel_id == novel_id).all()
+        return {
+            "success": True,
+            "message": f"成功解析 {len(characters)} 个角色",
+            "data": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "description": c.description,
+                    "appearance": c.appearance,
+                }
+                for c in characters
+            ]
+        }
+    else:
+        # 异步模式：后台执行
+        background_tasks.add_task(
+            parse_characters_task,
+            novel_id,
+            full_text
+        )
+        
+        return {
+            "success": True,
+            "message": "角色解析任务已启动，请稍后查看"
+        }
 
 
 async def parse_characters_task(novel_id: str, text: str):
     """后台任务：解析小说文本提取角色"""
     from app.core.database import SessionLocal
+    import json
     
     db = SessionLocal()
     try:
+        print(f"[解析任务] 开始解析小说 {novel_id} 的角色，文本长度: {len(text)}")
+        
         # 调用 DeepSeek 解析文本
         result = await deepseek_service.parse_novel_text(text)
         
+        print(f"[解析任务] DeepSeek 返回结果: {json.dumps(result, ensure_ascii=False)[:500]}...")
+        
         if "error" in result:
-            print(f"解析失败: {result['error']}")
+            print(f"[解析任务] 解析失败: {result['error']}")
             return
         
         characters_data = result.get("characters", [])
         
+        if not characters_data:
+            print(f"[解析任务] 未识别到任何角色")
+            return
+        
+        print(f"[解析任务] 识别到 {len(characters_data)} 个角色")
+        
         # 创建角色
+        created_count = 0
         for char_data in characters_data:
+            name = char_data.get("name", "").strip()
+            if not name:
+                continue
+                
             # 检查是否已存在
             existing = db.query(Character).filter(
                 Character.novel_id == novel_id,
-                Character.name == char_data.get("name")
+                Character.name == name
             ).first()
             
             if existing:
                 # 更新现有角色
                 existing.description = char_data.get("description", existing.description)
                 existing.appearance = char_data.get("appearance", existing.appearance)
+                print(f"[解析任务] 更新角色: {name}")
             else:
                 # 创建新角色
                 character = Character(
                     novel_id=novel_id,
-                    name=char_data.get("name", "未命名"),
+                    name=name,
                     description=char_data.get("description", ""),
                     appearance=char_data.get("appearance", ""),
                 )
                 db.add(character)
+                created_count += 1
+                print(f"[解析任务] 创建角色: {name}")
         
         db.commit()
-        print(f"成功解析并创建 {len(characters_data)} 个角色")
+        print(f"[解析任务] 成功！新建 {created_count} 个角色，更新 {len(characters_data) - created_count} 个角色")
         
     except Exception as e:
-        print(f"解析角色任务失败: {e}")
+        print(f"[解析任务] 异常: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
 

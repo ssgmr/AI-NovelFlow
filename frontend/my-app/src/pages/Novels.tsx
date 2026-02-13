@@ -55,22 +55,30 @@ export default function Novels() {
   };
 
   const parseCharacters = async (novelId: string) => {
-    if (!confirm('将使用 AI 分析小说内容并自动提取角色信息，是否继续？')) return;
+    if (!confirm('将使用 AI 分析小说内容并自动提取角色信息，是否继续？\n\n提示：解析可能需要 10-30 秒，请耐心等待。')) return;
     
     setParsingNovelId(novelId);
     try {
-      const res = await fetch(`${API_BASE}/novels/${novelId}/parse-characters`, {
+      // 使用同步模式，立即获取结果
+      const res = await fetch(`${API_BASE}/novels/${novelId}/parse-characters?sync=true`, {
         method: 'POST',
       });
       const data = await res.json();
       if (data.success) {
-        alert('角色解析任务已启动，请稍后到角色库查看结果');
+        const characters = data.data || [];
+        if (characters.length > 0) {
+          alert(`✅ 解析成功！\n\n识别到 ${characters.length} 个角色:\n${characters.map((c: any) => `• ${c.name}`).join('\n')}\n\n点击确定查看角色库`);
+          // 跳转到角色库
+          window.location.href = `/characters?novel=${novelId}`;
+        } else {
+          alert('未识别到角色，请确保章节内容足够丰富');
+        }
       } else {
-        alert('启动失败: ' + data.message);
+        alert('解析失败: ' + data.message);
       }
     } catch (error) {
       console.error('解析角色失败:', error);
-      alert('解析失败');
+      alert('解析失败，请检查网络连接');
     } finally {
       setParsingNovelId(null);
     }
