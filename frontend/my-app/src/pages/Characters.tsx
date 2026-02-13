@@ -31,6 +31,7 @@ export default function Characters() {
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [generatingAppearanceId, setGeneratingAppearanceId] = useState<string | null>(null);
+  const [characterPrompts, setCharacterPrompts] = useState<Record<string, { prompt: string; templateName: string }>>({});
   
   const [formData, setFormData] = useState({
     name: '',
@@ -55,11 +56,34 @@ export default function Characters() {
       const data = await res.json();
       if (data.success) {
         setCharacters(data.data || []);
+        // 加载每个角色的提示词
+        const chars = data.data || [];
+        for (const char of chars) {
+          fetchCharacterPrompt(char.id);
+        }
       }
     } catch (error) {
       console.error('获取角色失败:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCharacterPrompt = async (characterId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/characters/${characterId}/prompt`);
+      const data = await res.json();
+      if (data.success) {
+        setCharacterPrompts(prev => ({
+          ...prev,
+          [characterId]: {
+            prompt: data.data.prompt,
+            templateName: data.data.templateName
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('获取角色提示词失败:', error);
     }
   };
 
@@ -399,6 +423,19 @@ export default function Characters() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
+
+                {/* 生成提示词 */}
+                {characterPrompts[character.id] && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-gray-400">生成提示词</p>
+                      <span className="text-xs text-gray-400">{characterPrompts[character.id].templateName}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 max-h-20 overflow-y-auto scrollbar-thin font-mono">
+                      {characterPrompts[character.id].prompt}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

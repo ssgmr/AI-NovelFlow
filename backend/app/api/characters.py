@@ -7,6 +7,7 @@ import uuid
 from app.core.database import get_db
 from app.core.config import get_settings
 from app.models.novel import Character, Novel
+from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
 from app.services.deepseek import DeepSeekService
 
@@ -239,6 +240,49 @@ async def get_portrait_status(character_id: str, task_id: str = None, db: Sessio
     }
 
 
+@router.get("/{character_id}/prompt", response_model=dict)
+async def get_character_prompt(character_id: str, db: Session = Depends(get_db)):
+    """获取角色生成时使用的拼接后提示词"""
+    character = db.query(Character).filter(Character.id == character_id).first()
+    if not character:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    
+    # 获取角色所属小说
+    novel = db.query(Novel).filter(Novel.id == character.novel_id).first()
+    
+    # 获取提示词模板
+    template = None
+    if novel and novel.prompt_template_id:
+        template = db.query(PromptTemplate).filter(
+            PromptTemplate.id == novel.prompt_template_id
+        ).first()
+    
+    # 如果没有指定模板，使用默认系统模板
+    if not template:
+        template = db.query(PromptTemplate).filter(
+            PromptTemplate.is_system == True
+        ).order_by(PromptTemplate.created_at.asc()).first()
+    
+    # 构建提示词
+    prompt = build_character_prompt(
+        name=character.name,
+        appearance=character.appearance,
+        description=character.description,
+        template=template.template if template else None
+    )
+    
+    return {
+        "success": True,
+        "data": {
+            "prompt": prompt,
+            "templateName": template.name if template else "默认模板",
+            "template": template.template if template else None,
+            "appearance": character.appearance,
+            "description": character.description
+        }
+    }
+
+
 async def generate_character_portrait_task(
     task_id: str,
     character_id: str,
@@ -318,15 +362,30 @@ async def generate_appearance(
         }
 
 
-def build_character_prompt(name: str, appearance: str, description: str) -> str:
-    """构建角色人设图提示词"""
+def build_character_prompt(name: str, appearance: str, description: str, template: str = None) -> str:
+    """构建角色人设图提示词
+    
+    Args:
+        name: 角色名称
+        appearance: 外貌描述
+        description: 角色描述
+        template: 提示词模板，包含 {appearance} 和 {description} 占位符
+    """
+    if template:
+        # 使用模板构建提示词
+        prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "")
+        # 清理多余的逗号和空格
+        prompt = " ".join(prompt.split())
+        prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
+        return prompt
+    
+    # 默认提示词
     base_prompt = "character portrait, high quality, detailed, "
     
     if appearance:
         base_prompt += appearance + ", "
     
     if description:
-        # 提取描述中的关键外貌特征
         base_prompt += description + ", "
     
     base_prompt += "single character, centered, clean background, professional artwork"
