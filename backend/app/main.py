@@ -4,6 +4,9 @@ from contextlib import asynccontextmanager
 
 from app.api import novels, characters, tasks, config, health
 from app.core.database import engine, Base
+# 导入所有模型以确保创建表
+from app.models.novel import Novel, Chapter, Character
+from app.models.task import Task
 
 
 @asynccontextmanager

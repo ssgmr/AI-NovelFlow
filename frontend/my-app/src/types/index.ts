@@ -65,15 +65,20 @@ export interface Shot {
 
 export interface Task {
   id: string;
-  type: 'parse' | 'generate_characters' | 'generate_shots' | 'generate_videos' | 'composite';
-  novelId: string;
-  chapterId?: string;
-  step: string;
+  type: 'character_portrait' | 'shot_image' | 'shot_video' | 'chapter_video';
+  name: string;
+  description?: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
   progress: number;
-  message?: string;
+  currentStep?: string;
+  resultUrl?: string;
+  errorMessage?: string;
+  novelId?: string;
+  chapterId?: string;
+  characterId?: string;
   createdAt: string;
-  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export interface ApiResponse<T> {

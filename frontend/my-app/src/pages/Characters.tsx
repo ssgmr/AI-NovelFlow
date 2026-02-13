@@ -158,47 +158,25 @@ export default function Characters() {
   const generatePortrait = async (character: Character) => {
     setGeneratingId(character.id);
     try {
-      const res = await fetch(`${API_BASE}/characters/${character.id}/generate-portrait`, {
+      // 调用任务API创建设定图生成任务
+      const res = await fetch(`${API_BASE}/tasks/character/${character.id}/generate-portrait`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
       const data = await res.json();
       if (data.success) {
-        // 轮询检查生成结果
-        pollGenerationStatus(character.id, data.data.taskId);
+        alert('人设图生成任务已创建，请前往任务队列查看进度');
+        // 跳转到任务队列
+        window.location.href = '/tasks';
+      } else {
+        alert(data.message || '创建任务失败');
+        setGeneratingId(null);
       }
     } catch (error) {
       console.error('生成人设图失败:', error);
+      alert('创建任务失败');
       setGeneratingId(null);
     }
-  };
-
-  const pollGenerationStatus = async (characterId: string, taskId: string) => {
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/characters/${characterId}/portrait-status?task_id=${taskId}`);
-        const data = await res.json();
-        if (data.success) {
-          if (data.data.status === 'completed') {
-            // 更新角色图片
-            setCharacters(prev => prev.map(c => 
-              c.id === characterId ? { ...c, imageUrl: data.data.imageUrl } : c
-            ));
-            setGeneratingId(null);
-          } else if (data.data.status === 'failed') {
-            alert('生成失败: ' + data.data.message);
-            setGeneratingId(null);
-          } else {
-            // 继续轮询
-            setTimeout(checkStatus, 2000);
-          }
-        }
-      } catch (error) {
-        console.error('检查状态失败:', error);
-        setGeneratingId(null);
-      }
-    };
-    checkStatus();
   };
 
   const filteredCharacters = characters.filter(c => 
