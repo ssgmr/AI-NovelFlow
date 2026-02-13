@@ -371,9 +371,15 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
         description: 角色描述
         template: 提示词模板，包含 {appearance} 和 {description} 占位符
     """
+    # 根据角色名称检测动物类型，添加英文强调词
+    animal_keyword = detect_animal_type(name, appearance)
+    
     if template:
         # 使用模板构建提示词
         prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "")
+        # 在开头添加动物类型强调
+        if animal_keyword:
+            prompt = f"{animal_keyword} character, " + prompt
         # 清理多余的逗号和空格
         prompt = " ".join(prompt.split())
         prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
@@ -381,6 +387,9 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
     
     # 默认提示词
     base_prompt = "character portrait, high quality, detailed, "
+    
+    if animal_keyword:
+        base_prompt = f"{animal_keyword} character, " + base_prompt
     
     if appearance:
         base_prompt += appearance + ", "
@@ -391,3 +400,41 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
     base_prompt += "single character, centered, clean background, professional artwork"
     
     return base_prompt
+
+
+def detect_animal_type(name: str, appearance: str) -> str:
+    """检测角色动物类型，返回英文关键词"""
+    name_lower = (name or "").lower()
+    appearance_lower = (appearance or "").lower()
+    
+    # 动物关键词映射
+    animal_map = {
+        "horse": ["马", "horse", "pony", "stallion", "mare"],
+        "cow": ["牛", "cow", "bull", "ox", "cattle", "buffalo", "bison"],
+        "squirrel": ["松鼠", "squirrel", "chipmunk"],
+        "fox": ["狐狸", "fox"],
+        "dog": ["狗", "dog", "puppy", "canine"],
+        "cat": ["猫", "cat", "kitten", "feline"],
+        "rabbit": ["兔", "rabbit", "bunny", "hare"],
+        "bear": ["熊", "bear"],
+        "wolf": ["狼", "wolf"],
+        "tiger": ["虎", "tiger"],
+        "lion": ["狮", "lion"],
+        "elephant": ["象", "elephant"],
+        "pig": ["猪", "pig", "boar", "hog"],
+        "sheep": ["羊", "sheep", "lamb", "goat"],
+        "chicken": ["鸡", "chicken", "hen", "rooster"],
+        "duck": ["鸭", "duck"],
+        "mouse": ["鼠", "mouse", "rat"],
+        "deer": ["鹿", "deer"],
+        "monkey": ["猴", "monkey", "ape"],
+    }
+    
+    combined_text = name_lower + " " + appearance_lower
+    
+    for animal_type, keywords in animal_map.items():
+        for keyword in keywords:
+            if keyword in combined_text:
+                return animal_type
+    
+    return None
