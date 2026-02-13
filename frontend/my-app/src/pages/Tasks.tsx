@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Play
 } from 'lucide-react';
+import ComfyUIStatus from '../components/ComfyUIStatus';
 import type { Task } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
@@ -166,6 +167,9 @@ export default function Tasks() {
           刷新
         </button>
       </div>
+
+      {/* ComfyUI Status */}
+      <ComfyUIStatus />
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4">
