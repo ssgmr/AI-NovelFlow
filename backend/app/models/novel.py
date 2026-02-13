@@ -1,0 +1,63 @@
+from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import uuid
+
+from app.core.database import Base
+
+
+def generate_uuid():
+    return str(uuid.uuid4())
+
+
+class Novel(Base):
+    __tablename__ = "novels"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    title = Column(String, nullable=False)
+    author = Column(String, default="")
+    description = Column(Text, default="")
+    cover = Column(String, nullable=True)
+    status = Column(String, default="pending")  # pending, processing, completed
+    chapter_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    chapters = relationship("Chapter", back_populates="novel", cascade="all, delete-orphan")
+    characters = relationship("Character", back_populates="novel", cascade="all, delete-orphan")
+
+
+class Chapter(Base):
+    __tablename__ = "chapters"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    novel_id = Column(String, ForeignKey("novels.id"), nullable=False)
+    number = Column(Integer, nullable=False)
+    title = Column(String, nullable=False)
+    content = Column(Text, default="")
+    status = Column(String, default="pending")
+    progress = Column(Integer, default=0)
+    parsed_data = Column(Text, nullable=True)  # JSON string
+    character_images = Column(Text, nullable=True)  # JSON array
+    shot_images = Column(Text, nullable=True)  # JSON array
+    shot_videos = Column(Text, nullable=True)  # JSON array
+    final_video = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    novel = relationship("Novel", back_populates="chapters")
+
+
+class Character(Base):
+    __tablename__ = "characters"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    novel_id = Column(String, ForeignKey("novels.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, default="")
+    appearance = Column(Text, default="")
+    image_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    novel = relationship("Novel", back_populates="characters")
