@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
