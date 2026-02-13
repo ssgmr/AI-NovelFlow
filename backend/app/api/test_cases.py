@@ -238,12 +238,19 @@ async def init_preset_test_cases(db: Session):
     
     # 创建小马过河小说
     from app.api.novels import parse_characters_task
+    from app.models.prompt_template import PromptTemplate
+    
+    # 获取默认提示词模板
+    default_template = db.query(PromptTemplate).filter(
+        PromptTemplate.is_system == True
+    ).order_by(PromptTemplate.created_at.asc()).first()
     
     novel = Novel(
         title="小马过河（章节版）",
         author="AI测试用例",
         description="经典童话故事，用于测试AI角色解析和分镜生成功能",
         is_preset=True,
+        prompt_template_id=default_template.id if default_template else None,
     )
     db.add(novel)
     db.commit()
@@ -335,6 +342,42 @@ async def init_preset_test_cases(db: Session):
     # 更新章节数
     novel.chapter_count = len(chapters_data)
     db.commit()
+    
+    # 直接创建预设角色（避免调用 DeepSeek API）
+    preset_characters = [
+        {
+            "name": "小马",
+            "description": "故事主角，一匹年轻的棕色小马，勇敢善良，热爱学习",
+            "appearance": "棕色小马，年轻活泼，有着油亮的皮毛和有力的四肢，大大的眼睛充满好奇"
+        },
+        {
+            "name": "马妈妈",
+            "description": "小马的妈妈，温柔慈爱，教导有方，善于引导孩子独立思考",
+            "appearance": "成年棕色母马，温柔的眼神，优雅的体态，充满母性光辉"
+        },
+        {
+            "name": "老牛",
+            "description": "河边的老牛，沉稳可靠，经验丰富但体型高大",
+            "appearance": "年迈的水牛，体型高大健壮，灰白色的毛发，温和慈祥的表情"
+        },
+        {
+            "name": "小松鼠",
+            "description": "树上的小松鼠，热心但体型娇小，容易紧张",
+            "appearance": "活泼的小松鼠，红色毛发，大大的尾巴，灵动的眼睛，体型娇小"
+        }
+    ]
+    
+    for char_data in preset_characters:
+        character = Character(
+            novel_id=novel.id,
+            name=char_data["name"],
+            description=char_data["description"],
+            appearance=char_data["appearance"],
+        )
+        db.add(character)
+    
+    db.commit()
+    print(f"[初始化] 已创建 {len(preset_characters)} 个预设角色")
     
     # 创建测试用例
     test_case = TestCase(

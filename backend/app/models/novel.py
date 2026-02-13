@@ -21,6 +21,7 @@ class Novel(Base):
     status = Column(String, default="pending")  # pending, processing, completed
     chapter_count = Column(Integer, default=0)
     is_preset = Column(Boolean, default=False)  # 是否预设测试用例小说
+    prompt_template_id = Column(String, nullable=True)  # 关联的人设提示词模板ID
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

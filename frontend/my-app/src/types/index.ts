@@ -14,6 +14,7 @@ export interface Novel {
   cover?: string;
   chapterCount: number;
   status: 'pending' | 'processing' | 'completed';
+  promptTemplateId?: string;
   createdAt: string;
   updatedAt: string;
 }

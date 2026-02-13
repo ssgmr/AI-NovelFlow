@@ -4,6 +4,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.models.novel import Novel, Chapter, Character
+from app.models.prompt_template import PromptTemplate
 from app.schemas.novel import NovelCreate, NovelResponse, ChapterCreate, ChapterResponse
 from app.services.deepseek import DeepSeekService
 from app.services.comfyui import ComfyUIService
@@ -29,6 +30,7 @@ async def list_novels(db: Session = Depends(get_db)):
                 "cover": n.cover,
                 "status": n.status,
                 "chapterCount": n.chapter_count,
+                "promptTemplateId": n.prompt_template_id,
                 "createdAt": n.created_at.isoformat() if n.created_at else None,
                 "updatedAt": n.updated_at.isoformat() if n.updated_at else None,
             }
@@ -40,10 +42,20 @@ async def list_novels(db: Session = Depends(get_db)):
 @router.post("/", response_model=dict)
 async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
     """创建新小说"""
+    # 如果没有指定提示词模板，使用默认系统模板
+    prompt_template_id = novel.prompt_template_id
+    if not prompt_template_id:
+        default_template = db.query(PromptTemplate).filter(
+            PromptTemplate.is_system == True
+        ).order_by(PromptTemplate.created_at.asc()).first()
+        if default_template:
+            prompt_template_id = default_template.id
+    
     db_novel = Novel(
         title=novel.title,
         author=novel.author,
         description=novel.description,
+        prompt_template_id=prompt_template_id,
     )
     db.add(db_novel)
     db.commit()
@@ -58,6 +70,7 @@ async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
             "cover": db_novel.cover,
             "status": db_novel.status,
             "chapterCount": db_novel.chapter_count,
+            "promptTemplateId": db_novel.prompt_template_id,
             "createdAt": db_novel.created_at.isoformat() if db_novel.created_at else None,
         }
     }
@@ -79,6 +92,7 @@ async def get_novel(novel_id: str, db: Session = Depends(get_db)):
             "cover": novel.cover,
             "status": novel.status,
             "chapterCount": novel.chapter_count,
+            "promptTemplateId": novel.prompt_template_id,
             "createdAt": novel.created_at.isoformat() if novel.created_at else None,
         }
     }
@@ -98,6 +112,8 @@ async def update_novel(novel_id: str, data: dict, db: Session = Depends(get_db))
         novel.author = data["author"]
     if "description" in data:
         novel.description = data["description"]
+    if "promptTemplateId" in data:
+        novel.prompt_template_id = data["promptTemplateId"]
     
     db.commit()
     db.refresh(novel)
@@ -112,6 +128,7 @@ async def update_novel(novel_id: str, data: dict, db: Session = Depends(get_db))
             "cover": novel.cover,
             "status": novel.status,
             "chapterCount": novel.chapter_count,
+            "promptTemplateId": novel.prompt_template_id,
             "createdAt": novel.created_at.isoformat() if novel.created_at else None,
             "updatedAt": novel.updated_at.isoformat() if novel.updated_at else None,
         }

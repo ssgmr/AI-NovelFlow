@@ -7,6 +7,7 @@ class NovelBase(BaseModel):
     title: str
     author: str = ""
     description: str = ""
+    prompt_template_id: Optional[str] = None
 
 
 class NovelCreate(NovelBase):
@@ -22,6 +23,7 @@ class NovelResponse(NovelBase):
     cover: Optional[str] = None
     status: str
     chapter_count: int
+    prompt_template_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

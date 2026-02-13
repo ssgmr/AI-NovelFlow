@@ -2,12 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api import novels, characters, tasks, config, health, test_cases, workflows, files
+from app.api import novels, characters, tasks, config, health, test_cases, workflows, files, prompt_templates
 from app.core.database import engine, Base
 # 导入所有模型以确保创建表
 from app.models.novel import Novel, Chapter, Character
 from app.models.task import Task
 from app.models.test_case import TestCase
+from app.models.prompt_template import PromptTemplate
 
 
 @asynccontextmanager
@@ -15,11 +16,13 @@ async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
     
-    # 初始化预设测试用例
+    # 初始化预设数据
     from app.api.test_cases import init_preset_test_cases
+    from app.api.prompt_templates import init_system_prompt_templates
     from app.core.database import SessionLocal
     db = SessionLocal()
     try:
+        init_system_prompt_templates(db)
         await init_preset_test_cases(db)
     finally:
         db.close()
@@ -53,6 +56,7 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(test_cases.router, prefix="/api/test-cases", tags=["test-cases"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
+app.include_router(prompt_templates.router, prefix="/api/prompt-templates", tags=["prompt-templates"])
 
 
 @app.get("/")

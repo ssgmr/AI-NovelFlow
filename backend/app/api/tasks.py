@@ -5,7 +5,8 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.models.task import Task
-from app.models.novel import Character, Chapter
+from app.models.novel import Character, Chapter, Novel
+from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
 
 router = APIRouter()
@@ -258,9 +259,26 @@ async def generate_portrait_task(
         task.started_at = datetime.utcnow()
         db.commit()
         
+        # 获取角色所属小说
+        character = db.query(Character).filter(Character.id == character_id).first()
+        novel = db.query(Novel).filter(Novel.id == character.novel_id).first() if character else None
+        
+        # 获取提示词模板
+        template = None
+        if novel and novel.prompt_template_id:
+            template = db.query(PromptTemplate).filter(
+                PromptTemplate.id == novel.prompt_template_id
+            ).first()
+        
+        # 如果没有指定模板，使用默认系统模板
+        if not template:
+            template = db.query(PromptTemplate).filter(
+                PromptTemplate.is_system == True
+            ).order_by(PromptTemplate.created_at.asc()).first()
+        
         # 构建提示词
-        prompt = build_character_prompt(name, appearance, description)
-        task.current_step = f"提示词: {prompt[:100]}..."
+        prompt = build_character_prompt(name, appearance, description, template.template if template else None)
+        task.current_step = f"使用模板: {template.name if template else '默认'}, 提示词: {prompt[:80]}..."
         db.commit()
         
         # 调用 ComfyUI 生成图片（使用指定的工作流）
@@ -336,15 +354,30 @@ async def generate_portrait_task(
         db.close()
 
 
-def build_character_prompt(name: str, appearance: str, description: str) -> str:
-    """构建角色人设图提示词"""
+def build_character_prompt(name: str, appearance: str, description: str, template: str = None) -> str:
+    """构建角色人设图提示词
+    
+    Args:
+        name: 角色名称
+        appearance: 外貌描述
+        description: 角色描述
+        template: 提示词模板，包含 {appearance} 和 {description} 占位符
+    """
+    if template:
+        # 使用模板构建提示词
+        prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "")
+        # 清理多余的逗号和空格
+        prompt = " ".join(prompt.split())
+        prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
+        return prompt
+    
+    # 默认提示词
     base_prompt = "character portrait, high quality, detailed, "
     
     if appearance:
         base_prompt += appearance + ", "
     
     if description:
-        # 提取描述中的关键外貌特征
         base_prompt += description + ", "
     
     base_prompt += "single character, centered, clean background, professional artwork, 8k"

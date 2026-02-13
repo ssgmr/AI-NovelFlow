@@ -19,18 +19,41 @@ import type { Novel } from '../types';
 // API 基础 URL
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
+interface PromptTemplate {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+}
+
 export default function Novels() {
   const { novels, isLoading, fetchNovels, createNovel, deleteNovel, importNovel, updateNovel } = useNovelStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newNovel, setNewNovel] = useState({ title: '', author: '', description: '' });
+  const [newNovel, setNewNovel] = useState({ title: '', author: '', description: '', promptTemplateId: '' });
   const [importing, setImporting] = useState(false);
   const [parsingNovelId, setParsingNovelId] = useState<string | null>(null);
   const [editingNovel, setEditingNovel] = useState<Novel | null>(null);
+  
+  // 提示词模板
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
 
   useEffect(() => {
     fetchNovels();
+    fetchPromptTemplates();
   }, []);
+
+  const fetchPromptTemplates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/prompt-templates/`);
+      const data = await res.json();
+      if (data.success) {
+        setPromptTemplates(data.data);
+      }
+    } catch (error) {
+      console.error('加载提示词模板失败:', error);
+    }
+  };
 
   const filteredNovels = novels.filter(
     (novel) =>
@@ -42,7 +65,7 @@ export default function Novels() {
     e.preventDefault();
     await createNovel(newNovel);
     setShowCreateModal(false);
-    setNewNovel({ title: '', author: '', description: '' });
+    setNewNovel({ title: '', author: '', description: '', promptTemplateId: '' });
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,6 +315,26 @@ export default function Novels() {
                   className="input-field mt-1"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  人设提示词
+                </label>
+                <select
+                  value={newNovel.promptTemplateId}
+                  onChange={(e) => setNewNovel({ ...newNovel, promptTemplateId: e.target.value })}
+                  className="input-field mt-1"
+                >
+                  <option value="">使用系统默认</option>
+                  {promptTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} {template.isSystem ? '(系统)' : '(自定义)'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  选择用于生成角色人设图的提示词风格
+                </p>
+              </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
@@ -321,6 +364,7 @@ export default function Novels() {
                   title: editingNovel.title,
                   author: editingNovel.author,
                   description: editingNovel.description,
+                  promptTemplateId: editingNovel.promptTemplateId,
                 });
                 setEditingNovel(null);
               }} 
@@ -359,6 +403,26 @@ export default function Novels() {
                   onChange={(e) => setEditingNovel({ ...editingNovel, description: e.target.value })}
                   className="input-field mt-1"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  人设提示词
+                </label>
+                <select
+                  value={editingNovel.promptTemplateId || ''}
+                  onChange={(e) => setEditingNovel({ ...editingNovel, promptTemplateId: e.target.value })}
+                  className="input-field mt-1"
+                >
+                  <option value="">使用系统默认</option>
+                  {promptTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} {template.isSystem ? '(系统)' : '(自定义)'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  选择用于生成角色人设图的提示词风格
+                </p>
               </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button
