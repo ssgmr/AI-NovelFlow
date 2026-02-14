@@ -1,4 +1,5 @@
 import json
+import asyncio
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -498,15 +499,17 @@ async def generate_shot_image(
     
     print(f"[GenerateShot] Created task {task.id} for shot {shot_index}")
     
-    # 后台执行生成
-    background_tasks.add_task(
-        generate_shot_task,
-        task.id,
-        novel_id,
-        chapter_id,
-        shot_index,
-        shot_description,
-        workflow.id
+    # 使用 asyncio.create_task 实现真正的并发执行
+    # 而不是使用 background_tasks（它是顺序执行的）
+    asyncio.create_task(
+        generate_shot_task(
+            task.id,
+            novel_id,
+            chapter_id,
+            shot_index,
+            shot_description,
+            workflow.id
+        )
     )
     
     return {

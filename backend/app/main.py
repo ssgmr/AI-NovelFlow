@@ -27,8 +27,18 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     
+    # 启动 ComfyUI 监控器
+    from app.services.comfyui_monitor import init_monitor
+    from app.core.config import get_settings
+    settings = get_settings()
+    
+    monitor = init_monitor(settings.COMFYUI_HOST)
+    await monitor.start()
+    
     yield
+    
     # Shutdown
+    await monitor.stop()
 
 
 app = FastAPI(

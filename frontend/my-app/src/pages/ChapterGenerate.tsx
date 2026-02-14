@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
+import ComfyUIStatus from '../components/ComfyUIStatus';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
@@ -1109,40 +1110,7 @@ export default function ChapterGenerate() {
           </div>
 
           {/* 系统状态 */}
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-4">系统状态</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">ComfyUI</span>
-                <span className="flex items-center text-sm text-green-600">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-1" />
-                  在线
-                </span>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">GPU使用率</span>
-                  <span className="font-medium">85%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">显存占用</span>
-                  <span className="font-medium">12.5 / 16 GB</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '78%' }} />
-                </div>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-sm text-gray-600">队列任务</span>
-                <span className="font-medium">3</span>
-              </div>
-            </div>
-          </div>
+          <ComfyUIStatus />
         </div>
       </div>
 
