@@ -176,7 +176,10 @@
   },
   "110": {
     "inputs": {
-      "text": "生成这张角色三视图，包括正面，侧面，背面",
+      "text": [
+        "117",
+        0
+      ],
       "clip": [
         "104",
         0
@@ -261,11 +264,11 @@
   },
   "117": {
     "inputs": {
-      "text": "{CHARACTER_PROMPT}"
+      "text": "生成这张角色三视图，包括正面，侧面，背面"
     },
     "class_type": "CR Text",
     "_meta": {
-      "title": "CR Text"
+      "title": "🔤 CR Text"
     }
   },
   "121": {
@@ -367,18 +370,6 @@
     "class_type": "KSampler",
     "_meta": {
       "title": "KSampler"
-    }
-  },
-  "130": {
-    "inputs": {
-      "images": [
-        "125",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "PreviewImage"
     }
   },
   "132": {

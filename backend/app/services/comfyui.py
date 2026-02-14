@@ -591,6 +591,7 @@ class ComfyUIService:
                     break
         
         # 设置随机种子（如果有）
+        import random
         for node_id, node in api_workflow.items():
             if not isinstance(node, dict):
                 continue
@@ -601,9 +602,12 @@ class ComfyUIService:
             # 查找 KSampler 或类似采样节点，设置随机种子
             if class_type in ["KSampler", "KSamplerAdvanced", "SamplerCustom", "SamplerCustomAdvanced", "RandomNoise"]:
                 if "seed" in inputs:
-                    import random
                     inputs["seed"] = random.randint(1, 2**32)
                     print(f"[Workflow] Set random seed for {class_type} node {node_id}")
+                # 处理 RandomNoise 节点的 noise_seed
+                if "noise_seed" in inputs:
+                    inputs["noise_seed"] = random.randint(1, 2**32)
+                    print(f"[Workflow] Set random noise_seed for {class_type} node {node_id}")
         
         return api_workflow
     

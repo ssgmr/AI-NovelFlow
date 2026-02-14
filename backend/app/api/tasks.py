@@ -228,34 +228,75 @@ async def retry_task(
 @router.get("/{task_id}/workflow", response_model=dict)
 async def get_task_workflow(task_id: str, db: Session = Depends(get_db)):
     """获取任务提交给ComfyUI的工作流JSON"""
+    from app.models.workflow import Workflow
+    
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
     
-    if not task.workflow_json:
-        return {
-            "success": False,
-            "message": "该任务没有保存工作流JSON"
-        }
+    # 如果任务保存了工作流JSON，直接返回
+    if task.workflow_json:
+        try:
+            import json
+            workflow_obj = json.loads(task.workflow_json)
+            return {
+                "success": True,
+                "data": {
+                    "workflow": workflow_obj,
+                    "prompt": task.prompt_text or "未保存提示词"
+                }
+            }
+        except Exception as e:
+            return {
+                "success": True,
+                "data": {
+                    "workflow": task.workflow_json,
+                    "prompt": task.prompt_text or "未保存提示词"
+                }
+            }
     
-    try:
-        import json
-        workflow_obj = json.loads(task.workflow_json)
-        return {
-            "success": True,
-            "data": {
-                "workflow": workflow_obj,
-                "prompt": task.prompt_text
+    # 如果没有保存，尝试从 workflow 表重新构建
+    if task.workflow_id:
+        workflow = db.query(Workflow).filter(Workflow.id == task.workflow_id).first()
+    else:
+        # 获取默认的 character 工作流
+        workflow = db.query(Workflow).filter(
+            Workflow.type == "character",
+            Workflow.is_active == True
+        ).first()
+    
+    if workflow and workflow.workflow_json:
+        try:
+            import json
+            workflow_obj = json.loads(workflow.workflow_json)
+            # 如果有角色信息，尝试重建提示词
+            prompt = task.prompt_text or "未保存提示词"
+            if task.character_id:
+                character = db.query(Character).filter(Character.id == task.character_id).first()
+                if character:
+                    # 替换占位符
+                    for node_id, node in workflow_obj.items():
+                        if isinstance(node, dict) and "inputs" in node:
+                            inputs = node.get("inputs", {})
+                            if "text" in inputs and isinstance(inputs["text"], str):
+                                if "{CHARACTER_PROMPT}" in inputs["text"]:
+                                    inputs["text"] = prompt
+            
+            return {
+                "success": True,
+                "data": {
+                    "workflow": workflow_obj,
+                    "prompt": prompt,
+                    "note": "此工作流是从工作流配置重新构建的，可能不是实际提交给ComfyUI的版本"
+                }
             }
-        }
-    except Exception as e:
-        return {
-            "success": True,
-            "data": {
-                "workflow": task.workflow_json,
-                "prompt": task.prompt_text
-            }
-        }
+        except Exception as e:
+            pass
+    
+    return {
+        "success": False,
+        "message": "无法获取工作流信息"
+    }
 
 
 async def generate_portrait_task(
