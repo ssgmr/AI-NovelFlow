@@ -24,6 +24,76 @@ import type { Task } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
+// 图片预览弹层组件
+interface ImagePreviewModalProps {
+  imageUrl: string;
+  onClose: () => void;
+}
+
+function ImagePreviewModal({ imageUrl, onClose }: ImagePreviewModalProps) {
+  const [info, setInfo] = useState<{width: number, height: number, size?: string} | null>(null);
+
+  useEffect(() => {
+    // 获取图片尺寸
+    const img = new Image();
+    img.onload = () => {
+      setInfo(prev => ({ ...prev, width: img.naturalWidth, height: img.naturalHeight }));
+    };
+    img.src = imageUrl;
+
+    // 获取文件大小
+    fetch(imageUrl, { method: 'HEAD' })
+      .then(res => {
+        const contentLength = res.headers.get('content-length');
+        if (contentLength) {
+          const size = parseInt(contentLength);
+          const sizeStr = size > 1024 * 1024 
+            ? `${(size / 1024 / 1024).toFixed(2)} MB`
+            : size > 1024 
+              ? `${(size / 1024).toFixed(1)} KB`
+              : `${size} B`;
+          setInfo(prev => ({ ...prev, size: sizeStr } as any));
+        }
+      })
+      .catch(() => {});
+  }, [imageUrl]);
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center">
+        <img 
+          src={imageUrl} 
+          alt="预览" 
+          className="max-w-full max-h-[80vh] object-contain rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        />
+        
+        {/* 图片信息 */}
+        {info && (
+          <div className="mt-3 text-white text-sm opacity-80 flex items-center gap-4">
+            <span>尺寸: {info.width} × {info.height} px</span>
+            {info.size && <span>大小: {info.size}</span>}
+          </div>
+        )}
+        
+        <button
+          onClick={onClose}
+          className="absolute -top-10 right-0 p-2 text-white hover:text-gray-300 transition-colors"
+        >
+          <X className="h-6 w-6" />
+        </button>
+        
+        <div className="mt-4 text-white text-sm opacity-60">
+          点击图片外部关闭预览
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +103,48 @@ export default function Tasks() {
   const [viewingWorkflow, setViewingWorkflow] = useState<Task | null>(null);
   const [workflowData, setWorkflowData] = useState<{workflow: any, prompt: string} | null>(null);
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [imageInfo, setImageInfo] = useState<Record<string, {width: number, height: number, size?: string}>>({});
+
+  // 获取图片信息（尺寸和大小）
+  const fetchImageInfo = async (url: string, taskId: string) => {
+    try {
+      // 获取图片尺寸
+      const img = new Image();
+      img.onload = () => {
+        setImageInfo(prev => ({
+          ...prev,
+          [taskId]: {
+            ...prev[taskId],
+            width: img.naturalWidth,
+            height: img.naturalHeight
+          }
+        }));
+      };
+      img.src = url;
+      
+      // 尝试获取文件大小
+      const response = await fetch(url, { method: 'HEAD' });
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) {
+        const size = parseInt(contentLength);
+        const sizeStr = size > 1024 * 1024 
+          ? `${(size / 1024 / 1024).toFixed(2)} MB`
+          : size > 1024 
+            ? `${(size / 1024).toFixed(1)} KB`
+            : `${size} B`;
+        setImageInfo(prev => ({
+          ...prev,
+          [taskId]: {
+            ...prev[taskId],
+            size: sizeStr
+          }
+        }));
+      }
+    } catch (e) {
+      console.log('Failed to fetch image info:', e);
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -343,21 +455,35 @@ export default function Tasks() {
                     {task.status === 'completed' && task.resultUrl && (
                       <div className="mt-2">
                         {task.type === 'character_portrait' || task.type === 'shot_image' ? (
-                          <div className="relative group">
-                            <img 
-                              src={task.resultUrl} 
-                              alt="生成结果" 
-                              className="h-32 w-32 object-cover rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
-                              onClick={() => window.open(task.resultUrl, '_blank')}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '';
-                                (e.target as HTMLImageElement).className = 'hidden';
-                              }}
-                            />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
-                                 onClick={() => window.open(task.resultUrl, '_blank')}>
-                              <span className="text-white text-xs font-medium">查看原图</span>
+                          <div>
+                            <div className="relative group inline-block">
+                              <img 
+                                src={task.resultUrl} 
+                                alt="生成结果" 
+                                className="h-32 w-auto object-contain rounded-lg border border-gray-200 cursor-pointer hover:shadow-lg transition-shadow bg-gray-50"
+                                onClick={() => task.resultUrl && setPreviewImage(task.resultUrl)}
+                                onLoad={() => task.resultUrl && fetchImageInfo(task.resultUrl, task.id)}
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '';
+                                  (e.target as HTMLImageElement).className = 'hidden';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer"
+                                   onClick={() => task.resultUrl && setPreviewImage(task.resultUrl)}>
+                                <span className="text-white text-xs font-medium">查看原图</span>
+                              </div>
                             </div>
+                            {/* 图片信息 */}
+                            {imageInfo[task.id] && (
+                              <div className="mt-1 text-xs text-gray-500">
+                                {imageInfo[task.id].width && (
+                                  <span>{imageInfo[task.id].width} × {imageInfo[task.id].height} px</span>
+                                )}
+                                {imageInfo[task.id].size && (
+                                  <span className="ml-2">· {imageInfo[task.id].size}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <a 
@@ -374,8 +500,8 @@ export default function Tasks() {
                     
                     {/* Meta */}
                     <div className="mt-2 text-xs opacity-60">
-                      创建: {new Date(task.createdAt).toLocaleString()}
-                      {task.completedAt && ` · 完成: ${new Date(task.completedAt).toLocaleString()}`}
+                      创建: {new Date(new Date(task.createdAt).getTime() + 8 * 60 * 60 * 1000).toLocaleString('zh-CN')}
+                      {task.completedAt && ` · 完成: ${new Date(new Date(task.completedAt).getTime() + 8 * 60 * 60 * 1000).toLocaleString('zh-CN')}`}
                     </div>
                   </div>
                   
@@ -420,6 +546,14 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <ImagePreviewModal 
+          imageUrl={previewImage} 
+          onClose={() => setPreviewImage(null)} 
+        />
+      )}
 
       {/* Workflow View Modal */}
       {viewingWorkflow && (

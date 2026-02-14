@@ -320,17 +320,10 @@ export default function Characters() {
                   </div>
                 )}
                 
-                {/* Generate Button Overlay */}
+                {/* Generate Button Overlay - 只在悬停时显示提示 */}
                 {!character.imageUrl && character.generatingStatus !== 'running' && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => generatePortrait(character)}
-                      disabled={generatingId === character.id}
-                      className="btn-primary"
-                    >
-                      <Wand2 className="mr-2 h-4 w-4" />
-                      生成形象
-                    </button>
+                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                    <span className="text-white text-sm font-medium">点击下方按钮生成</span>
                   </div>
                 )}
                 
@@ -397,16 +390,19 @@ export default function Characters() {
                 {/* Actions */}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                   <div className="flex gap-2">
-                    {character.imageUrl && (
-                      <button
-                        onClick={() => generatePortrait(character)}
-                        disabled={generatingId === character.id}
-                        className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="重新生成"
-                      >
+                    {/* 生成形象按钮 - 无论是否有图片都显示 */}
+                    <button
+                      onClick={() => generatePortrait(character)}
+                      disabled={generatingId === character.id || character.generatingStatus === 'running'}
+                      className="p-2 text-gray-400 hover:text-primary-600 transition-colors disabled:opacity-50"
+                      title={character.imageUrl ? '重新生成' : '生成形象'}
+                    >
+                      {character.generatingStatus === 'running' ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
+                      ) : (
                         <Wand2 className="h-4 w-4" />
-                      </button>
-                    )}
+                      )}
+                    </button>
                     <button
                       onClick={() => setEditingCharacter(character)}
                       className="p-2 text-gray-400 hover:text-blue-600 transition-colors"

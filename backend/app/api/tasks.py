@@ -361,6 +361,7 @@ async def generate_portrait_task(
         # 保存提示词和构建的工作流JSON到任务记录
         task.prompt_text = prompt
         workflow_json_str = workflow.workflow_json if workflow else None
+        print(f"[Task] Workflow JSON available: {workflow_json_str is not None}, length: {len(workflow_json_str) if workflow_json_str else 0}")
         if workflow_json_str:
             try:
                 import json
@@ -379,7 +380,30 @@ async def generate_portrait_task(
         db.commit()
         
         # 调用 ComfyUI 生成图片（使用指定的工作流）
-        result = await comfyui_service.generate_character_image(prompt, workflow_json=workflow_json_str)
+        print(f"[Task] Generating image with workflow: {workflow.name if workflow else 'default'}")
+        print(f"[Task] Workflow JSON length: {len(workflow_json_str) if workflow_json_str else 0}")
+        print(f"[Task] Novel ID: {task.novel_id}, Character: {name}")
+        
+        # 获取工作流的节点映射配置
+        node_mapping = None
+        if workflow and workflow.node_mapping:
+            try:
+                import json
+                node_mapping = json.loads(workflow.node_mapping)
+                print(f"[Task] Using node mapping: {node_mapping}")
+            except Exception as e:
+                print(f"[Task] Failed to parse node_mapping: {e}")
+        
+        result = await comfyui_service.generate_character_image(
+            prompt, 
+            workflow_json=workflow_json_str,
+            novel_id=task.novel_id,
+            character_name=name,
+            aspect_ratio=novel.aspect_ratio if novel else None,
+            node_mapping=node_mapping
+        )
+        
+        print(f"[Task] Generation result: {result}")
         
         if result.get("success"):
             image_url = result.get("image_url")

@@ -88,7 +88,9 @@ class FileStorageService:
             return str(file_path)
             
         except Exception as e:
-            print(f"[FileStorage] Failed to download image: {e}")
+            import traceback
+            print(f"[FileStorage] Failed to download image from {url}: {e}")
+            traceback.print_exc()
             return None
     
     async def download_video(self, url: str, novel_id: str, chapter_id: str,

@@ -32,6 +32,10 @@ class Workflow(Base):
     # 创建者（用户上传的）
     created_by = Column(String, nullable=True)
     
+    # 节点映射配置 (JSON 字符串)
+    # 格式: {"prompt_node_id": "133", "save_image_node_id": "9"}
+    node_mapping = Column(Text, nullable=True)
+    
     # 时间戳
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

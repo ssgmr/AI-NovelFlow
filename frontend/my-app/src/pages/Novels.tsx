@@ -30,7 +30,24 @@ export default function Novels() {
   const { novels, isLoading, fetchNovels, createNovel, deleteNovel, importNovel, updateNovel } = useNovelStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newNovel, setNewNovel] = useState({ title: '', author: '', description: '', promptTemplateId: '' });
+  const [newNovel, setNewNovel] = useState({ 
+    title: '', 
+    author: '', 
+    description: '', 
+    promptTemplateId: '',
+    aspectRatio: '16:9'
+  });
+  
+  // 画面比例选项
+  const aspectRatioOptions = [
+    { value: '16:9', label: '16:9 (宽屏)', description: '适合横版视频' },
+    { value: '9:16', label: '9:16 (竖屏)', description: '适合短视频' },
+    { value: '4:3', label: '4:3 (标准)', description: '传统比例' },
+    { value: '3:4', label: '3:4 (竖版)', description: '适合竖版内容' },
+    { value: '1:1', label: '1:1 (正方形)', description: '适合社交媒体' },
+    { value: '21:9', label: '21:9 (超宽屏)', description: '电影宽银幕' },
+    { value: '2.35:1', label: '2.35:1 (电影)', description: '经典电影比例' },
+  ];
   const [importing, setImporting] = useState(false);
   const [parsingNovelId, setParsingNovelId] = useState<string | null>(null);
   const [editingNovel, setEditingNovel] = useState<Novel | null>(null);
@@ -65,7 +82,7 @@ export default function Novels() {
     e.preventDefault();
     await createNovel(newNovel);
     setShowCreateModal(false);
-    setNewNovel({ title: '', author: '', description: '', promptTemplateId: '' });
+    setNewNovel({ title: '', author: '', description: '', promptTemplateId: '', aspectRatio: '16:9' });
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,6 +352,25 @@ export default function Novels() {
                   选择用于生成角色人设图的提示词风格
                 </p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  画面比例
+                </label>
+                <select
+                  value={newNovel.aspectRatio}
+                  onChange={(e) => setNewNovel({ ...newNovel, aspectRatio: e.target.value })}
+                  className="input-field mt-1"
+                >
+                  {aspectRatioOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {aspectRatioOptions.find(o => o.value === newNovel.aspectRatio)?.description}
+                </p>
+              </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   type="button"
@@ -365,6 +401,7 @@ export default function Novels() {
                   author: editingNovel.author,
                   description: editingNovel.description,
                   promptTemplateId: editingNovel.promptTemplateId,
+                  aspectRatio: editingNovel.aspectRatio,
                 });
                 setEditingNovel(null);
               }} 
@@ -422,6 +459,25 @@ export default function Novels() {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
                   选择用于生成角色人设图的提示词风格
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  画面比例
+                </label>
+                <select
+                  value={editingNovel.aspectRatio || '16:9'}
+                  onChange={(e) => setEditingNovel({ ...editingNovel, aspectRatio: e.target.value })}
+                  className="input-field mt-1"
+                >
+                  {aspectRatioOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {aspectRatioOptions.find(o => o.value === (editingNovel.aspectRatio || '16:9'))?.description}
                 </p>
               </div>
               <div className="flex justify-end gap-3 mt-6">

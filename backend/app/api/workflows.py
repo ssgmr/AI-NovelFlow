@@ -19,12 +19,17 @@ WORKFLOW_TYPES = {
     "video": "分镜生视频"
 }
 
-# 默认工作流文件名映射
+# 默认工作流文件名映射 (每个类型的默认工作流)
 DEFAULT_WORKFLOWS = {
     "character": "character_default.json",
     "shot": "shot_default.json",
     "video": "video_default.json"
 }
+
+# 额外的系统工作流文件列表
+EXTRA_SYSTEM_WORKFLOWS = [
+    {"filename": "character_single.json", "type": "character", "name": "Z-image-turbo 单图生成", "description": "Z-image-turbo【非三视图】"}
+]
 
 
 def get_workflows_dir():
@@ -41,12 +46,13 @@ def load_default_workflows(db: Session):
     """加载默认工作流到数据库"""
     workflows_dir = get_workflows_dir()
     
+    # 1. 加载默认工作流
     for wf_type, filename in DEFAULT_WORKFLOWS.items():
         file_path = os.path.join(workflows_dir, filename)
         
-        # 检查是否已存在系统工作流
+        # 检查是否已存在同名系统工作流
         existing = db.query(Workflow).filter(
-            Workflow.type == wf_type,
+            Workflow.file_path == file_path,
             Workflow.is_system == True
         ).first()
         
@@ -57,20 +63,41 @@ def load_default_workflows(db: Session):
             with open(file_path, 'r', encoding='utf-8') as f:
                 workflow_json = f.read()
             
-            # 解析工作流名称
-            try:
-                workflow_data = json.loads(workflow_json)
-                name = f"系统默认-{WORKFLOW_TYPES.get(wf_type, wf_type)}"
-            except:
-                name = f"默认工作流-{wf_type}"
-            
             workflow = Workflow(
-                name=name,
-                description=f"系统预设的{WORKFLOW_TYPES.get(wf_type, wf_type)}工作流",
+                name=f"系统默认-{WORKFLOW_TYPES.get(wf_type, wf_type)}",
+                description=f"系统预设的{WORKFLOW_TYPES.get(wf_type, wf_type)}工作流（Flux2 Klein 9B 三视图）",
                 type=wf_type,
                 workflow_json=workflow_json,
                 is_system=True,
                 is_active=True,
+                file_path=file_path
+            )
+            db.add(workflow)
+    
+    # 2. 加载额外的系统工作流
+    for wf_config in EXTRA_SYSTEM_WORKFLOWS:
+        file_path = os.path.join(workflows_dir, wf_config["filename"])
+        
+        # 检查是否已存在
+        existing = db.query(Workflow).filter(
+            Workflow.file_path == file_path,
+            Workflow.is_system == True
+        ).first()
+        
+        if existing:
+            continue
+        
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                workflow_json = f.read()
+            
+            workflow = Workflow(
+                name=wf_config["name"],
+                description=wf_config["description"],
+                type=wf_config["type"],
+                workflow_json=workflow_json,
+                is_system=True,
+                is_active=False,  # 额外工作流默认不激活
                 file_path=file_path
             )
             db.add(workflow)
@@ -105,6 +132,7 @@ async def list_workflows(
                 "typeName": WORKFLOW_TYPES.get(w.type, w.type),
                 "isSystem": w.is_system,
                 "isActive": w.is_active,
+                "nodeMapping": json.loads(w.node_mapping) if w.node_mapping else None,
                 "createdAt": w.created_at.isoformat() if w.created_at else None,
             }
             for w in workflows
@@ -130,6 +158,7 @@ async def get_workflow(workflow_id: str, db: Session = Depends(get_db)):
             "workflowJson": workflow.workflow_json,
             "isSystem": workflow.is_system,
             "isActive": workflow.is_active,
+            "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
             "createdAt": workflow.created_at.isoformat() if workflow.created_at else None,
         }
     }
@@ -215,7 +244,7 @@ async def update_workflow(
     if not workflow:
         raise HTTPException(status_code=404, detail="工作流不存在")
     
-    # 系统工作流只能修改名称和描述
+    # 系统工作流可以修改：名称、描述、激活状态、节点映射
     if workflow.is_system:
         if "name" in data:
             workflow.name = data["name"]
@@ -223,6 +252,18 @@ async def update_workflow(
             workflow.description = data["description"]
         if "isActive" in data:
             workflow.is_active = data["isActive"]
+        # 系统工作流也支持节点映射配置
+        if "nodeMapping" in data:
+            try:
+                if data["nodeMapping"] is None:
+                    workflow.node_mapping = None
+                else:
+                    mapping = data["nodeMapping"]
+                    if not isinstance(mapping, dict):
+                        raise ValueError("nodeMapping 必须是对象")
+                    workflow.node_mapping = json.dumps(mapping, ensure_ascii=False)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"无效的节点映射配置: {str(e)}")
     else:
         # 用户工作流可以修改更多
         if "name" in data:
@@ -245,6 +286,19 @@ async def update_workflow(
                 raise HTTPException(status_code=400, detail=f"无效的JSON内容: {str(e)}")
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"保存文件失败: {str(e)}")
+        
+        # 更新节点映射配置
+        if "nodeMapping" in data:
+            try:
+                if data["nodeMapping"] is None:
+                    workflow.node_mapping = None
+                else:
+                    mapping = data["nodeMapping"]
+                    if not isinstance(mapping, dict):
+                        raise ValueError("nodeMapping 必须是对象")
+                    workflow.node_mapping = json.dumps(mapping, ensure_ascii=False)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"无效的节点映射配置: {str(e)}")
     
     db.commit()
     db.refresh(workflow)
@@ -330,5 +384,6 @@ async def get_active_workflow(workflow_type: str, db: Session = Depends(get_db))
             "type": workflow.type,
             "workflowJson": workflow.workflow_json,
             "isSystem": workflow.is_system,
+            "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
         }
     }

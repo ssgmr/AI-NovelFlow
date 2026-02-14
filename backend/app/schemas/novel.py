@@ -8,6 +8,7 @@ class NovelBase(BaseModel):
     author: str = ""
     description: str = ""
     prompt_template_id: Optional[str] = None
+    aspect_ratio: Optional[str] = "16:9"
 
 
 class NovelCreate(NovelBase):
@@ -24,6 +25,7 @@ class NovelResponse(NovelBase):
     status: str
     chapter_count: int
     prompt_template_id: Optional[str] = None
+    aspect_ratio: Optional[str] = "16:9"
     created_at: datetime
     updated_at: Optional[datetime] = None
 

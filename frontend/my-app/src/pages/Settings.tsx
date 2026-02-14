@@ -42,6 +42,10 @@ interface Workflow {
   typeName: string;
   isSystem: boolean;
   isActive: boolean;
+  nodeMapping?: {
+    prompt_node_id?: string;
+    save_image_node_id?: string;
+  };
 }
 
 const typeIcons = {
@@ -91,6 +95,13 @@ export default function Settings() {
   const [editForm, setEditForm] = useState({ name: '', description: '', workflowJson: '' });
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  
+  // 节点映射配置
+  const [mappingWorkflow, setMappingWorkflow] = useState<Workflow | null>(null);
+  const [mappingForm, setMappingForm] = useState({ promptNodeId: '', saveImageNodeId: '' });
+  const [availableNodes, setAvailableNodes] = useState<{clipTextEncode: string[], saveImage: string[]}>({ clipTextEncode: [], saveImage: [] });
+  const [workflowData, setWorkflowData] = useState<Record<string, any>>({});
+  const [savingMapping, setSavingMapping] = useState(false);
 
   // 人设提示词管理
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
@@ -239,6 +250,83 @@ export default function Settings() {
       setEditingWorkflow(null);
     } finally {
       setLoadingEdit(false);
+    }
+  };
+  
+  const handleOpenMapping = async (workflow: Workflow) => {
+    setMappingWorkflow(workflow);
+    try {
+      const res = await fetch(`${API_BASE}/workflows/${workflow.id}/`);
+      const data = await res.json();
+      if (data.success) {
+        const mapping = data.data.nodeMapping || {};
+        setMappingForm({
+          promptNodeId: mapping.prompt_node_id || '',
+          saveImageNodeId: mapping.save_image_node_id || ''
+        });
+        
+        // 解析工作流 JSON，提取可用节点
+        const workflowJson = data.data.workflowJson;
+        if (workflowJson) {
+          try {
+            const workflowObj = typeof workflowJson === 'string' ? JSON.parse(workflowJson) : workflowJson;
+            setWorkflowData(workflowObj);
+            
+            const clipTextEncode: string[] = [];
+            const saveImage: string[] = [];
+            
+            for (const [nodeId, node] of Object.entries(workflowObj)) {
+              if (typeof node === 'object' && node !== null) {
+                const classType = (node as any).class_type || '';
+                if (classType === 'CLIPTextEncode') {
+                  clipTextEncode.push(nodeId);
+                } else if (classType === 'SaveImage') {
+                  saveImage.push(nodeId);
+                }
+              }
+            }
+            
+            setAvailableNodes({ clipTextEncode, saveImage });
+          } catch (e) {
+            console.error('解析工作流 JSON 失败:', e);
+            setAvailableNodes({ clipTextEncode: [], saveImage: [] });
+            setWorkflowData({});
+          }
+        }
+      }
+    } catch (error) {
+      console.error('加载工作流映射失败:', error);
+    }
+  };
+  
+  const handleSaveMapping = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mappingWorkflow) return;
+    
+    setSavingMapping(true);
+    try {
+      const res = await fetch(`${API_BASE}/workflows/${mappingWorkflow.id}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nodeMapping: {
+            prompt_node_id: mappingForm.promptNodeId || null,
+            save_image_node_id: mappingForm.saveImageNodeId || null
+          }
+        })
+      });
+      
+      if (res.ok) {
+        setMappingWorkflow(null);
+        fetchWorkflows();
+      } else {
+        alert('保存映射配置失败');
+      }
+    } catch (error) {
+      console.error('保存映射配置失败:', error);
+      alert('保存失败');
+    } finally {
+      setSavingMapping(false);
     }
   };
 
@@ -610,6 +698,14 @@ export default function Settings() {
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
+                            onClick={() => handleOpenMapping(workflow)}
+                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 rounded transition-colors"
+                            title="映射配置"
+                          >
+                            <Server className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleDownload(workflow)}
                             className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-100 rounded transition-colors"
                             title="下载工作流"
@@ -926,6 +1022,114 @@ export default function Settings() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 节点映射配置弹窗 */}
+      {mappingWorkflow && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                映射配置
+                <span className="ml-2 text-sm font-normal text-gray-500">{mappingWorkflow.name}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMappingWorkflow(null)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveMapping} className="space-y-6">
+              {/* 提示词输入节点 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  提示词输入节点
+                </label>
+                <select
+                  value={mappingForm.promptNodeId}
+                  onChange={(e) => setMappingForm({ ...mappingForm, promptNodeId: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">自动查找 (Auto)</option>
+                  {availableNodes.clipTextEncode.map((nodeId) => (
+                    <option key={nodeId} value={nodeId}>
+                      Node#{nodeId}-CLIPTextEncode
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  选择用于注入角色提示词的 CLIPTextEncode 节点，留空则自动查找
+                </p>
+                
+                {/* Node JSON Preview */}
+                {mappingForm.promptNodeId && workflowData[mappingForm.promptNodeId] && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                    <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.promptNodeId} JSON Preview:</p>
+                    <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.promptNodeId]: workflowData[mappingForm.promptNodeId] }, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              
+              {/* 图片保存节点 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  图片保存节点
+                </label>
+                <select
+                  value={mappingForm.saveImageNodeId}
+                  onChange={(e) => setMappingForm({ ...mappingForm, saveImageNodeId: e.target.value })}
+                  className="input-field"
+                >
+                  <option value="">自动查找 (Auto)</option>
+                  {availableNodes.saveImage.map((nodeId) => (
+                    <option key={nodeId} value={nodeId}>
+                      Node#{nodeId}-SaveImage
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  选择用于保存生成图片的 SaveImage 节点，留空则自动查找
+                </p>
+                
+                {/* Node JSON Preview */}
+                {mappingForm.saveImageNodeId && workflowData[mappingForm.saveImageNodeId] && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                    <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.saveImageNodeId} JSON Preview:</p>
+                    <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.saveImageNodeId]: workflowData[mappingForm.saveImageNodeId] }, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setMappingWorkflow(null)}
+                  className="btn-secondary"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMapping}
+                  className="btn-primary"
+                >
+                  {savingMapping ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />保存中...</>
+                  ) : (
+                    <><Save className="mr-2 h-4 w-4" />保存</>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

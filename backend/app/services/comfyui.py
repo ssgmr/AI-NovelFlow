@@ -38,13 +38,17 @@ class ComfyUIService:
             "shot_video": "ltx-2"
         }
     
-    async def generate_character_image(self, prompt: str, workflow_json: str = None, **kwargs) -> Dict[str, Any]:
+    async def generate_character_image(self, prompt: str, workflow_json: str = None, novel_id: str = None, character_name: str = None, aspect_ratio: str = None, node_mapping: Dict[str, str] = None, **kwargs) -> Dict[str, Any]:
         """
         使用指定工作流生成角色人设图
         
         Args:
             prompt: 提示词
             workflow_json: 工作流 JSON 字符串（可选，不提供则使用默认工作流）
+            novel_id: 小说ID，用于设置保存路径
+            character_name: 角色名称，用于设置保存路径
+            aspect_ratio: 画面比例 (16:9, 9:16, 4:3, 3:4, 1:1, 21:9, 2.35:1)
+            node_mapping: 节点映射配置 {"prompt_node_id": "133", "save_image_node_id": "9"}
             width: 图片宽度 (默认 512)
             height: 图片高度 (默认 768)
             seed: 随机种子
@@ -61,14 +65,17 @@ class ComfyUIService:
             if workflow_json:
                 workflow = json.loads(workflow_json)
                 # 在工作流中查找并替换 prompt（根据常见的 ComfyUI 节点结构）
-                workflow = self._inject_prompt_to_workflow(workflow, prompt)
+                workflow = self._inject_prompt_to_workflow(workflow, prompt, novel_id, character_name, aspect_ratio, node_mapping)
             else:
                 # 构建 z-image 工作流提示
+                width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
                 workflow = self._build_z_image_workflow(
                     prompt=prompt,
-                    width=kwargs.get('width', 512),
-                    height=kwargs.get('height', 768),
-                    seed=kwargs.get('seed')
+                    width=width,
+                    height=height,
+                    seed=kwargs.get('seed'),
+                    novel_id=novel_id,
+                    character_name=character_name
                 )
             
             # 提交任务到 ComfyUI
@@ -82,8 +89,9 @@ class ComfyUIService:
             
             prompt_id = queue_result.get("prompt_id")
             
-            # 等待任务完成
-            result = await self._wait_for_result(prompt_id)
+            # 等待任务完成，传入工作流和 save_image_node_id 配置以识别正确的输出节点
+            save_image_node_id = node_mapping.get("save_image_node_id") if node_mapping else None
+            result = await self._wait_for_result(prompt_id, workflow, save_image_node_id)
             
             if result.get("success"):
                 return {
@@ -143,7 +151,7 @@ class ComfyUIService:
             
             prompt_id = queue_result.get("prompt_id")
             
-            result = await self._wait_for_result(prompt_id)
+            result = await self._wait_for_result(prompt_id, workflow)
             
             return {
                 "success": result.get("success"),
@@ -197,7 +205,7 @@ class ComfyUIService:
             
             prompt_id = queue_result.get("prompt_id")
             
-            result = await self._wait_for_result(prompt_id, timeout=300)  # 视频生成时间较长
+            result = await self._wait_for_result(prompt_id, workflow, timeout=300)  # 视频生成时间较长
             
             return {
                 "success": result.get("success"),
@@ -258,10 +266,18 @@ class ComfyUIService:
     async def _wait_for_result(
         self, 
         prompt_id: str, 
+        workflow: Dict[str, Any] = None,
+        save_image_node_id: str = None,
         timeout: int = 120,
         poll_interval: float = 2.0
     ) -> Dict[str, Any]:
-        """等待任务完成并获取结果"""
+        """等待任务完成并获取结果
+        
+        Args:
+            prompt_id: ComfyUI 任务 ID
+            workflow: 提交的工作流，用于识别正确的 SaveImage 节点
+            save_image_node_id: 配置的 SaveImage 节点 ID，优先使用
+        """
         start_time = asyncio.get_event_loop().time()
         
         while True:
@@ -291,29 +307,86 @@ class ComfyUIService:
                             outputs = prompt_history.get("outputs", {})
                             
                             if outputs:
-                                # 找到图片输出
+                                # 查找工作流中的所有 SaveImage 节点
+                                saveimage_nodes = set()
+                                if workflow:
+                                    for node_id, node in workflow.items():
+                                        if isinstance(node, dict) and node.get("class_type") == "SaveImage":
+                                            saveimage_nodes.add(str(node_id))
+                                    print(f"[ComfyUI] SaveImage nodes in workflow: {saveimage_nodes}")
+                                
+                                # 优先查找 SaveImage 节点的输出，或过滤掉临时文件
+                                best_image = None
+                                best_node_id = None
+                                
                                 for node_id, node_output in outputs.items():
                                     if "images" in node_output:
                                         images = node_output["images"]
                                         if images:
-                                            # 构建图片URL
-                                            filename = images[0].get("filename")
-                                            subfolder = images[0].get("subfolder", "")
-                                            image_url = f"{self.base_url}/view?filename={filename}&subfolder={subfolder}"
+                                            img_info = images[0]
+                                            filename = img_info.get("filename", "")
                                             
-                                            return {
-                                                "success": True,
-                                                "image_url": image_url,
-                                                "message": "生成成功"
-                                            }
+                                            # 跳过临时文件 (ComfyUI_temp_xxx)
+                                            if "temp" in filename.lower():
+                                                print(f"[ComfyUI] Skipping temp file from node {node_id}: {filename}")
+                                                continue
+                                            
+                                            node_id_str = str(node_id)
+                                            
+                                            # 如果配置了 save_image_node_id，优先匹配该节点
+                                            if save_image_node_id:
+                                                if node_id_str == str(save_image_node_id):
+                                                    best_image = img_info
+                                                    best_node_id = node_id
+                                                    print(f"[ComfyUI] Found configured SaveImage node {node_id} output: {filename}")
+                                                    break
+                                            # 否则优先选择任意 SaveImage 节点的输出
+                                            elif node_id_str in saveimage_nodes:
+                                                best_image = img_info
+                                                best_node_id = node_id
+                                                print(f"[ComfyUI] Found SaveImage node {node_id} output: {filename}")
+                                                break
+                                            
+                                            # 记录第一个非临时图片作为备选
+                                            if best_image is None:
+                                                best_image = img_info
+                                                best_node_id = node_id
+                                
+                                if best_image:
+                                    filename = best_image.get("filename")
+                                    subfolder = best_image.get("subfolder", "")
+                                    img_type = best_image.get("type", "output")
+                                    
+                                    # 构建 view URL，包含 type 参数
+                                    params = f"filename={filename}"
+                                    if subfolder:
+                                        params += f"&subfolder={subfolder}"
+                                    params += f"&type={img_type}"
+                                    
+                                    image_url = f"{self.base_url}/view?{params}"
+                                    print(f"[ComfyUI] Selected image from node {best_node_id}: {image_url}")
+                                    
+                                    return {
+                                        "success": True,
+                                        "image_url": image_url,
+                                        "message": "生成成功"
+                                    }
                                     
                                     # 检查视频输出
                                     if "gifs" in node_output or "videos" in node_output:
                                         videos = node_output.get("gifs") or node_output.get("videos")
                                         if videos:
-                                            filename = videos[0].get("filename")
-                                            subfolder = videos[0].get("subfolder", "")
-                                            video_url = f"{self.base_url}/view?filename={filename}&subfolder={subfolder}"
+                                            video_info = videos[0]
+                                            filename = video_info.get("filename")
+                                            subfolder = video_info.get("subfolder", "")
+                                            video_type = video_info.get("type", "output")
+                                            
+                                            params = f"filename={filename}"
+                                            if subfolder:
+                                                params += f"&subfolder={subfolder}"
+                                            params += f"&type={video_type}"
+                                            
+                                            video_url = f"{self.base_url}/view?{params}"
                                             
                                             return {
                                                 "success": True,
@@ -341,7 +414,9 @@ class ComfyUIService:
         prompt: str, 
         width: int = 1024, 
         height: int = 1024,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        novel_id: str = None,
+        character_name: str = None
     ) -> Dict[str, Any]:
         """
         构建 Flux 角色人设生成工作流
@@ -427,6 +502,16 @@ class ComfyUIService:
                 "class_type": "SaveImage"
             }
         }
+        
+        # 如果有 novel_id 和 character_name，更新 filename_prefix
+        if novel_id and character_name:
+            import re
+            safe_name = re.sub(r'[^\w\s-]', '', character_name).strip().replace(' ', '_')
+            if not safe_name:
+                safe_name = "character"
+            save_prefix = f"story_{novel_id}/{safe_name}"
+            workflow["13"]["inputs"]["filename_prefix"] = save_prefix
+            print(f"[Workflow] Set default workflow filename_prefix to: {save_prefix}")
         
         return workflow
     
@@ -525,13 +610,38 @@ class ComfyUIService:
         
         return api_workflow
     
-    def _inject_prompt_to_workflow(self, workflow: Dict[str, Any], prompt: str) -> Dict[str, Any]:
+    def _get_aspect_ratio_dimensions(self, aspect_ratio: str) -> tuple[int, int]:
+        """
+        根据画面比例返回对应的图片尺寸 (width, height)
+        尺寸按64的倍数调整，以符合模型要求
+        """
+        # 基础尺寸配置 (按64倍数调整)
+        dimensions = {
+            "16:9": (1088, 704),    # 横向宽屏 1920x1080 -> 1088x704
+            "9:16": (1088, 1920),   # 竖屏 1088x1920
+            "4:3": (1088, 832),     # 横向标准 1024x768 -> 1088x832
+            "3:4": (832, 1088),     # 竖版 768x1024 -> 832x1088
+            "1:1": (1088, 1088),    # 正方形 1024x1024 -> 1088x1088
+            "21:9": (1088, 480),    # 超宽屏 2560x1080 -> 1088x480
+            "2.35:1": (1088, 480),  # 电影宽银幕 ~1088x463 -> 1088x480
+        }
+        return dimensions.get(aspect_ratio, (1088, 1920))  # 默认竖屏
+    
+    def _inject_prompt_to_workflow(self, workflow: Dict[str, Any], prompt: str, novel_id: str = None, character_name: str = None, aspect_ratio: str = None, node_mapping: Dict[str, str] = None) -> Dict[str, Any]:
         """
         将提示词注入到工作流中
         
         支持两种格式：
         1. API 格式: {"node_id": {"inputs": {...}, "class_type": "..."}}
         2. UI 格式: {"nodes": [...], "links": [...]} - 将使用内置工作流
+        
+        Args:
+            workflow: 工作流 JSON
+            prompt: 提示词
+            novel_id: 小说ID
+            character_name: 角色名称
+            aspect_ratio: 画面比例
+            node_mapping: 节点映射配置 {"prompt_node_id": "133", "save_image_node_id": "9"}
         """
         # 检测工作流格式
         if "nodes" in workflow:
@@ -543,7 +653,26 @@ class ComfyUIService:
         api_workflow = workflow
         modified_count = 0
         
-        # 遍历所有节点，查找包含 {CHARACTER_PROMPT} 占位符的节点
+        # 构建保存路径（不含汉字）
+        save_prefix = None
+        if novel_id and character_name:
+            import re
+            safe_name = re.sub(r'[^\w\s-]', '', character_name).strip().replace(' ', '_')
+            if not safe_name:
+                safe_name = "character"
+            save_prefix = f"story_{novel_id}/{safe_name}"
+            print(f"[Workflow] Save prefix: {save_prefix}")
+        
+        # 根据画面比例获取尺寸
+        width, height = self._get_aspect_ratio_dimensions(aspect_ratio or "9:16")
+        print(f"[Workflow] Aspect ratio: {aspect_ratio}, Setting dimensions: {width}x{height}")
+        
+        # 获取用户配置的节点ID（如果没有配置，使用默认值）
+        prompt_node_id = str(node_mapping.get("prompt_node_id", "")) if node_mapping else ""
+        save_image_node_id = str(node_mapping.get("save_image_node_id", "")) if node_mapping else ""
+        print(f"[Workflow] Node mapping: prompt_node_id={prompt_node_id or 'auto'}, save_image_node_id={save_image_node_id or 'auto'}")
+        
+        # 遍历所有节点
         for node_id, node in api_workflow.items():
             if not isinstance(node, dict):
                 continue
@@ -551,23 +680,52 @@ class ComfyUIService:
             inputs = node.get("inputs", {})
             class_type = node.get("class_type", "")
             
-            # 查找包含 text 输入的节点（CLIPTextEncode 和 CR Text）
+            # 1. 设置 SaveImage 节点的 filename_prefix（优先使用用户配置的节点）
+            if class_type == "SaveImage" and save_prefix:
+                # 如果配置了 save_image_node_id，只修改该节点；否则修改所有 SaveImage 节点
+                if not save_image_node_id or str(node_id) == save_image_node_id:
+                    inputs["filename_prefix"] = save_prefix
+                    print(f"[Workflow] Set SaveImage node {node_id} filename_prefix to: {save_prefix}")
+            
+            # 2. 设置图片尺寸节点
+            if class_type in ["EmptySD3LatentImage", "EmptyFlux2LatentImage", "EmptyLatentImage"]:
+                if "width" in inputs:
+                    inputs["width"] = width
+                if "height" in inputs:
+                    inputs["height"] = height
+                print(f"[Workflow] Set {class_type} node {node_id} dimensions to {width}x{height}")
+            
+            # 3. 设置调度器的尺寸参数
+            if class_type == "Flux2Scheduler":
+                if "width" in inputs:
+                    inputs["width"] = width
+                if "height" in inputs:
+                    inputs["height"] = height
+                print(f"[Workflow] Set Flux2Scheduler node {node_id} dimensions to {width}x{height}")
+            
+            # 4. 注入提示词到指定节点或包含占位符的节点
+            node_id_str = str(node_id)
             if "text" in inputs:
                 current_text = inputs.get("text", "")
                 if isinstance(current_text, str):
-                    # 如果包含 {CHARACTER_PROMPT} 占位符，替换为实际提示词
-                    if "{CHARACTER_PROMPT}" in current_text:
+                    # 优先：如果配置了 prompt_node_id 且匹配当前节点
+                    if prompt_node_id and node_id_str == prompt_node_id:
                         inputs["text"] = prompt
                         modified_count += 1
-                        print(f"[Workflow] Injected prompt to {class_type} node {node_id}")
-                    # 如果是空文本或默认占位符，也替换
+                        print(f"[Workflow] Injected prompt to configured node {node_id}")
+                    # 其次：如果包含 {CHARACTER_PROMPT} 占位符
+                    elif "{CHARACTER_PROMPT}" in current_text:
+                        inputs["text"] = prompt
+                        modified_count += 1
+                        print(f"[Workflow] Injected prompt to {class_type} node {node_id} (placeholder)")
+                    # 最后：空文本或默认占位符
                     elif current_text == "" or current_text == "prompt here":
                         inputs["text"] = prompt
                         modified_count += 1
                         print(f"[Workflow] Injected prompt to {class_type} node {node_id} (empty/default)")
         
-        # 如果没有找到占位符，回退到原来的逻辑（替换第一个 CLIPTextEncode）
-        if modified_count == 0:
+        # 如果没有找到占位符且没有配置节点，回退到自动查找 CLIPTextEncode
+        if modified_count == 0 and not prompt_node_id:
             for node_id, node in api_workflow.items():
                 if not isinstance(node, dict):
                     continue
@@ -578,10 +736,8 @@ class ComfyUIService:
                 if class_type == "CLIPTextEncode":
                     current_text = inputs.get("text", "")
                     if isinstance(current_text, str):
-                        # 跳过负面提示词
                         if any(kw in current_text.lower() for kw in ["negative", "bad", "worst", "low quality"]):
                             continue
-                        # 跳过三视图提示词
                         if "三视图" in current_text or "正面" in current_text:
                             continue
                     
