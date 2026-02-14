@@ -155,214 +155,67 @@ async def delete_novel(novel_id: str, db: Session = Depends(get_db)):
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
+    
     db.delete(novel)
     db.commit()
+    
     return {"success": True, "message": "删除成功"}
 
 
-@router.post("/import")
-async def import_novel(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """导入 TXT 小说文件"""
-    content = await file.read()
-    text = content.decode('utf-8')
-    
-    # 简单解析：第一行作为标题
-    lines = text.strip().split('\n')
-    title = lines[0][:50] if lines else "未命名"
-    
-    # 创建小说
-    novel = Novel(
-        title=title,
-        description=f"从 {file.filename} 导入",
-    )
-    db.add(novel)
-    db.commit()
-    db.refresh(novel)
-    
-    return {
-        "success": True,
-        "data": {
-            "id": novel.id,
-            "title": novel.title,
-            "chapterCount": 0,
-        }
-    }
-
-
-@router.get("/{novel_id}/characters", response_model=dict)
-async def list_novel_characters(novel_id: str, db: Session = Depends(get_db)):
-    """获取小说的所有角色"""
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    characters = db.query(Character).filter(Character.novel_id == novel_id).all()
-    return {
-        "success": True,
-        "data": [
-            {
-                "id": c.id,
-                "novelId": c.novel_id,
-                "name": c.name,
-                "description": c.description,
-                "appearance": c.appearance,
-                "imageUrl": c.image_url,
-                "generatingStatus": c.generating_status,
-                "createdAt": c.created_at.isoformat() if c.created_at else None,
-            }
-            for c in characters
-        ]
-    }
-
-
-@router.post("/{novel_id}/parse-characters", response_model=dict)
-async def parse_characters_from_text(
-    novel_id: str,
-    background_tasks: BackgroundTasks,
-    sync: bool = False,  # 添加同步模式参数
-    db: Session = Depends(get_db)
-):
-    """
-    使用 DeepSeek API 解析小说文本，自动提取角色信息
-    
-    参数:
-    - sync: 是否同步执行（立即返回结果）
-    """
+@router.post("/{novel_id}/parse", response_model=dict)
+async def parse_novel(novel_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """解析小说内容，提取角色和场景"""
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
     # 获取所有章节内容
     chapters = db.query(Chapter).filter(Chapter.novel_id == novel_id).all()
-    if not chapters:
-        return {
-            "success": False,
-            "message": "小说没有章节内容，无法解析角色"
-        }
+    full_text = "\n\n".join([c.content for c in chapters if c.content])
     
-    # 合并章节文本（限制长度）
-    full_text = "\n\n".join([c.content for c in chapters if c.content])[:10000]
+    # 更新状态为解析中
+    novel.status = "processing"
+    db.commit()
     
-    if not full_text:
-        return {
-            "success": False,
-            "message": "章节内容为空，无法解析"
-        }
-    
-    if sync:
-        # 同步模式：立即执行并返回结果
-        await parse_characters_task(novel_id, full_text)
-        
-        # 获取解析后的角色列表
-        characters = db.query(Character).filter(Character.novel_id == novel_id).all()
-        return {
-            "success": True,
-            "message": f"成功解析 {len(characters)} 个角色",
-            "data": [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "description": c.description,
-                    "appearance": c.appearance,
-                }
-                for c in characters
-            ]
-        }
-    else:
-        # 异步模式：后台执行
-        background_tasks.add_task(
-            parse_characters_task,
-            novel_id,
-            full_text
-        )
-        
-        return {
-            "success": True,
-            "message": "角色解析任务已启动，请稍后查看"
-        }
-
-
-async def parse_characters_task(novel_id: str, text: str):
-    """后台任务：解析小说文本提取角色"""
-    from app.core.database import SessionLocal
-    import json
-    
-    db = SessionLocal()
-    try:
-        print(f"[解析任务] 开始解析小说 {novel_id} 的角色，文本长度: {len(text)}")
-        
-        # 调用 DeepSeek 解析文本
-        result = await deepseek_service.parse_novel_text(text)
-        
-        print(f"[解析任务] DeepSeek 返回结果: {json.dumps(result, ensure_ascii=False)[:500]}...")
-        
-        if "error" in result:
-            print(f"[解析任务] 解析失败: {result['error']}")
-            return
-        
-        characters_data = result.get("characters", [])
-        
-        if not characters_data:
-            print(f"[解析任务] 未识别到任何角色")
-            return
-        
-        print(f"[解析任务] 识别到 {len(characters_data)} 个角色")
-        
-        # 创建角色
-        created_count = 0
-        for char_data in characters_data:
-            name = char_data.get("name", "").strip()
-            if not name:
-                continue
-                
-            # 检查是否已存在
-            existing = db.query(Character).filter(
-                Character.novel_id == novel_id,
-                Character.name == name
-            ).first()
+    # 异步解析
+    async def do_parse():
+        try:
+            result = await deepseek_service.parse_novel_text(full_text)
             
-            if existing:
-                # 更新现有角色
-                existing.description = char_data.get("description", existing.description)
-                existing.appearance = char_data.get("appearance", existing.appearance)
-                print(f"[解析任务] 更新角色: {name}")
-            else:
-                # 创建新角色
-                character = Character(
-                    novel_id=novel_id,
-                    name=name,
-                    description=char_data.get("description", ""),
-                    appearance=char_data.get("appearance", ""),
-                )
-                db.add(character)
-                created_count += 1
-                print(f"[解析任务] 创建角色: {name}")
-        
-        db.commit()
-        print(f"[解析任务] 成功！新建 {created_count} 个角色，更新 {len(characters_data) - created_count} 个角色")
-        
-    except Exception as e:
-        print(f"[解析任务] 异常: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        db.close()
+            # 保存解析结果到各个章节
+            for chapter in chapters:
+                if chapter.content:
+                    chapter.parsed_data = result
+            
+            novel.status = "completed"
+            db.commit()
+        except Exception as e:
+            novel.status = "failed"
+            db.commit()
+    
+    background_tasks.add_task(do_parse)
+    
+    return {"success": True, "message": "解析任务已启动"}
 
 
 @router.get("/{novel_id}/chapters", response_model=dict)
 async def list_chapters(novel_id: str, db: Session = Depends(get_db)):
     """获取章节列表"""
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
     chapters = db.query(Chapter).filter(Chapter.novel_id == novel_id).order_by(Chapter.number).all()
     return {
         "success": True,
         "data": [
             {
                 "id": c.id,
-                "novelId": c.novel_id,
                 "number": c.number,
                 "title": c.title,
                 "status": c.status,
                 "progress": c.progress,
+                "createdAt": c.created_at.isoformat() if c.created_at else None,
             }
             for c in chapters
         ]
@@ -376,32 +229,29 @@ async def create_chapter(novel_id: str, data: dict, db: Session = Depends(get_db
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    db_chapter = Chapter(
+    chapter = Chapter(
         novel_id=novel_id,
-        title=data.get('title', '未命名章节'),
-        number=data.get('number', 1),
-        content=data.get('content', ''),
+        number=data.get("number", 1),
+        title=data["title"],
+        content=data.get("content", ""),
     )
-    db.add(db_chapter)
-    
-    db.commit()
-    db.refresh(db_chapter)
+    db.add(chapter)
     
     # 更新章节数
-    novel.chapter_count = db.query(Chapter).filter(Chapter.novel_id == novel_id).count()
+    novel.chapter_count = db.query(Chapter).filter(Chapter.novel_id == novel_id).count() + 1
+    
     db.commit()
+    db.refresh(chapter)
     
     return {
         "success": True,
         "data": {
-            "id": db_chapter.id,
-            "novelId": db_chapter.novel_id,
-            "number": db_chapter.number,
-            "title": db_chapter.title,
-            "status": db_chapter.status,
-            "progress": db_chapter.progress,
-            "content": db_chapter.content,
-            "createdAt": db_chapter.created_at.isoformat() if db_chapter.created_at else None,
+            "id": chapter.id,
+            "number": chapter.number,
+            "title": chapter.title,
+            "status": chapter.status,
+            "progress": chapter.progress,
+            "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
         }
     }
 
@@ -421,19 +271,13 @@ async def get_chapter(novel_id: str, chapter_id: str, db: Session = Depends(get_
         "success": True,
         "data": {
             "id": chapter.id,
-            "novelId": chapter.novel_id,
             "number": chapter.number,
             "title": chapter.title,
             "content": chapter.content,
             "status": chapter.status,
             "progress": chapter.progress,
             "parsedData": chapter.parsed_data,
-            "characterImages": chapter.character_images,
-            "shotImages": chapter.shot_images,
-            "shotVideos": chapter.shot_videos,
-            "finalVideo": chapter.final_video,
             "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
-            "updatedAt": chapter.updated_at.isoformat() if chapter.updated_at else None,
         }
     }
 
@@ -454,13 +298,12 @@ async def update_chapter(
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
-    # 更新字段
     if "title" in data:
         chapter.title = data["title"]
     if "content" in data:
         chapter.content = data["content"]
-    if "number" in data:
-        chapter.number = data["number"]
+    if "parsedData" in data:
+        chapter.parsed_data = data["parsedData"]
     
     db.commit()
     db.refresh(chapter)
@@ -469,12 +312,13 @@ async def update_chapter(
         "success": True,
         "data": {
             "id": chapter.id,
-            "novelId": chapter.novel_id,
             "number": chapter.number,
             "title": chapter.title,
             "content": chapter.content,
             "status": chapter.status,
             "progress": chapter.progress,
+            "parsedData": chapter.parsed_data,
+            "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
             "updatedAt": chapter.updated_at.isoformat() if chapter.updated_at else None,
         }
     }
@@ -501,3 +345,61 @@ async def delete_chapter(novel_id: str, chapter_id: str, db: Session = Depends(g
     db.commit()
     
     return {"success": True, "message": "删除成功"}
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/split", response_model=dict)
+async def split_chapter(
+    novel_id: str, 
+    chapter_id: str, 
+    db: Session = Depends(get_db)
+):
+    """
+    使用小说配置的拆分提示词将章节拆分为分镜
+    """
+    # 获取章节
+    chapter = db.query(Chapter).filter(
+        Chapter.id == chapter_id,
+        Chapter.novel_id == novel_id
+    ).first()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    # 获取小说
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    # 获取拆分提示词模板
+    prompt_template = None
+    if novel.chapter_split_prompt_template_id:
+        prompt_template = db.query(PromptTemplate).filter(
+            PromptTemplate.id == novel.chapter_split_prompt_template_id
+        ).first()
+    
+    # 如果没有配置，使用默认模板
+    if not prompt_template:
+        prompt_template = db.query(PromptTemplate).filter(
+            PromptTemplate.type == "chapter_split",
+            PromptTemplate.is_system == True
+        ).first()
+    
+    if not prompt_template:
+        raise HTTPException(status_code=400, detail="未找到章节拆分提示词模板")
+    
+    # 调用 DeepSeek API 进行拆分
+    result = await deepseek_service.split_chapter_with_prompt(
+        chapter_title=chapter.title,
+        chapter_content=chapter.content or "",
+        prompt_template=prompt_template.template,
+        word_count=50
+    )
+    
+    # 保存解析结果到章节
+    chapter.parsed_data = json.dumps(result, ensure_ascii=False)
+    db.commit()
+    
+    return {
+        "success": True,
+        "data": result
+    }

@@ -15,7 +15,8 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import type { Chapter } from '../types';
 
@@ -125,9 +126,11 @@ export default function ChapterGenerate() {
   const [currentShot, setCurrentShot] = useState(1);
   const [currentVideo, setCurrentVideo] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSplitting, setIsSplitting] = useState(false);
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFullTextModal, setShowFullTextModal] = useState(false);
+  const [splitResult, setSplitResult] = useState<any>(MOCK_DATA.result);
 
   // 获取真实章节数据
   useEffect(() => {
@@ -159,6 +162,31 @@ export default function ChapterGenerate() {
     setIsGenerating(true);
     // 模拟生成过程
     setTimeout(() => setIsGenerating(false), 3000);
+  };
+
+  const handleSplitChapter = async () => {
+    if (!id || !cid) return;
+    
+    setIsSplitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/novels/${id}/chapters/${cid}/split`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setSplitResult(data.data);
+        // 自动切换到 JSON 标签页查看结果
+        setActiveTab('json');
+      } else {
+        alert(data.message || '拆分失败');
+      }
+    } catch (error) {
+      console.error('拆分章节失败:', error);
+      alert('拆分失败，请检查网络连接');
+    } finally {
+      setIsSplitting(false);
+    }
   };
 
   const renderStepIndicator = () => (
@@ -226,13 +254,13 @@ export default function ChapterGenerate() {
       case 'json':
         return (
           <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
-            {JSON.stringify(MOCK_DATA.result, null, 2)}
+            {JSON.stringify(splitResult, null, 2)}
           </pre>
         );
       case 'characters':
         return (
           <div className="space-y-2">
-            {MOCK_DATA.result.characters.map((name, idx) => (
+            {splitResult?.characters?.map((name: string, idx: number) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <Users className="h-5 w-5 text-blue-500" />
                 <span className="font-medium">{name}</span>
@@ -243,7 +271,7 @@ export default function ChapterGenerate() {
       case 'scenes':
         return (
           <div className="space-y-2">
-            {MOCK_DATA.result.scenes.map((name, idx) => (
+            {splitResult?.scenes?.map((name: string, idx: number) => (
               <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <MapPin className="h-5 w-5 text-green-500" />
                 <span className="font-medium">{name}</span>
@@ -254,7 +282,7 @@ export default function ChapterGenerate() {
       case 'script':
         return (
           <div className="space-y-3">
-            {MOCK_DATA.result.shots.map((shot) => (
+            {splitResult?.shots?.map((shot: any) => (
               <div key={shot.id} className="p-3 bg-gray-50 rounded-lg border-l-4 border-purple-500">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-medium text-sm">镜{shot.id}</span>
@@ -335,11 +363,17 @@ export default function ChapterGenerate() {
             </p>
             {/* AI拆分分镜头按钮 */}
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <button className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
-                AI拆分分镜头
+              <button 
+                onClick={handleSplitChapter}
+                disabled={isSplitting}
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSplitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5" />
+                )}
+                {isSplitting ? 'AI拆分中...' : 'AI拆分分镜头'}
               </button>
             </div>
           </div>

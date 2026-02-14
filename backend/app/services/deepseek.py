@@ -149,6 +149,99 @@ Young female character, long flowing silver hair with blue highlights, sharp blu
         except Exception as e:
             return f"{character_name}, detailed character, high quality"
     
+    async def split_chapter_with_prompt(
+        self,
+        chapter_title: str,
+        chapter_content: str,
+        prompt_template: str,
+        word_count: int = 50
+    ) -> Dict[str, Any]:
+        """
+        使用自定义提示词将章节拆分为分镜数据结构
+        
+        Args:
+            chapter_title: 章节标题
+            chapter_content: 章节正文内容
+            prompt_template: 拆分提示词模板（包含占位符）
+            word_count: 每个分镜对应的故事字数
+            
+        Returns:
+            {
+                "chapter": "章节标题",
+                "characters": [...],
+                "scenes": [...],
+                "shots": [...]
+            }
+        """
+        # 处理提示词模板中的占位符
+        system_prompt = prompt_template.replace(
+            "{每个分镜对应拆分故事字数}", str(word_count)
+        ).replace(
+            "{图像风格}", "anime style, high quality, detailed"
+        )
+        
+        user_content = f"""章节标题：{chapter_title}
+
+章节内容：
+{chapter_content[:15000]}  # 限制长度避免超出token限制
+
+请将以上章节内容拆分为分镜数据结构。"""
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.api_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "deepseek-chat",
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_content}
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 8000,
+                        "response_format": {"type": "json_object"}
+                    },
+                    timeout=120.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    content = data["choices"][0]["message"]["content"]
+                    result = json.loads(content)
+                    
+                    # 确保返回格式正确
+                    if "chapter" not in result:
+                        result["chapter"] = chapter_title
+                    if "characters" not in result:
+                        result["characters"] = []
+                    if "scenes" not in result:
+                        result["scenes"] = []
+                    if "shots" not in result:
+                        result["shots"] = []
+                        
+                    return result
+                else:
+                    return {
+                        "error": f"API返回错误: {response.status_code}",
+                        "chapter": chapter_title,
+                        "characters": [],
+                        "scenes": [],
+                        "shots": []
+                    }
+                    
+        except Exception as e:
+            return {
+                "error": str(e),
+                "chapter": chapter_title,
+                "characters": [],
+                "scenes": [],
+                "shots": []
+            }
+    
     async def generate_shot_prompt(
         self,
         scene_description: str,
