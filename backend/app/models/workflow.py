@@ -15,7 +15,7 @@ class Workflow(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)  # 工作流名称
     description = Column(Text, nullable=True)  # 描述
-    type = Column(String, nullable=False)  # character(人设), shot(分镜), video(视频)
+    type = Column(String, nullable=False)  # character(人设), shot(分镜), video(视频), transition(转场视频)
     
     # 工作流JSON内容
     workflow_json = Column(Text, nullable=False)

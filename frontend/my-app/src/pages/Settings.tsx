@@ -29,7 +29,7 @@ interface Workflow {
   id: string;
   name: string;
   description?: string;
-  type: 'character' | 'shot' | 'video';
+  type: 'character' | 'shot' | 'video' | 'transition';
   typeName: string;
   isSystem: boolean;
   isActive: boolean;
@@ -44,19 +44,22 @@ interface Workflow {
 const typeIcons = {
   character: User,
   shot: ImageIcon,
-  video: Film
+  video: Film,
+  transition: Film
 };
 
 const typeColors = {
   character: 'bg-blue-100 text-blue-600',
   shot: 'bg-amber-100 text-amber-600',
-  video: 'bg-pink-100 text-pink-600'
+  video: 'bg-pink-100 text-pink-600',
+  transition: 'bg-purple-100 text-purple-600'
 };
 
 const typeNames = {
   character: '人设生成',
   shot: '分镜生图',
-  video: '分镜生视频'
+  video: '分镜生视频',
+  transition: '分镜生转场视频'
 };
 
 export default function Settings() {
@@ -97,7 +100,10 @@ export default function Settings() {
     videoSaveNodeId: '',
     maxSideNodeId: '',
     referenceImageNodeId: '',
-    frameCountNodeId: ''  // 总帧数节点
+    frameCountNodeId: '',  // 总帧数节点
+    // 转场视频专用
+    firstImageNodeId: '',  // 首帧图节点
+    lastImageNodeId: ''   // 尾帧图节点
   });
   const [availableNodes, setAvailableNodes] = useState<{
     clipTextEncode: string[], 
@@ -292,9 +298,9 @@ export default function Settings() {
                   nodeDescriptions[nodeId] = classType;
                 } else if (classType === 'SaveImage') {
                   saveImage.push(nodeId);
-                } else if (classType === 'easy int') {
-                  easyInt.push(`${nodeId} (${metaTitle})`);
-                  nodeDescriptions[nodeId] = metaTitle;
+                } else if (classType === 'easy int' || classType === 'JWInteger') {
+                  easyInt.push(`${nodeId} (${metaTitle || classType})`);
+                  nodeDescriptions[nodeId] = metaTitle || classType;
                 } else if (classType === 'CR Prompt Text') {
                   crPromptText.push(`${nodeId} (${metaTitle || classType})`);
                   nodeDescriptions[nodeId] = metaTitle || classType;
@@ -322,6 +328,19 @@ export default function Settings() {
                 referenceImageNodeId: mapping.reference_image_node_id || '',
                 frameCountNodeId: mapping.frame_count_node_id || ''
               });
+            } else if (workflow.type === 'transition') {
+              setMappingForm({
+                promptNodeId: '',
+                saveImageNodeId: '',
+                widthNodeId: '',
+                heightNodeId: '',
+                videoSaveNodeId: mapping.video_save_node_id || '',
+                maxSideNodeId: '',
+                referenceImageNodeId: '',
+                frameCountNodeId: mapping.frame_count_node_id || '',
+                firstImageNodeId: mapping.first_image_node_id || '',
+                lastImageNodeId: mapping.last_image_node_id || ''
+              });
             } else {
               setMappingForm({
                 promptNodeId: mapping.prompt_node_id || '',
@@ -330,7 +349,10 @@ export default function Settings() {
                 heightNodeId: mapping.height_node_id || '',
                 videoSaveNodeId: '',
                 maxSideNodeId: '',
-                referenceImageNodeId: ''
+                referenceImageNodeId: '',
+                frameCountNodeId: '',
+                firstImageNodeId: '',
+                lastImageNodeId: ''
               });
             }
           } catch (e) {
@@ -361,6 +383,13 @@ export default function Settings() {
           max_side_node_id: mappingForm.maxSideNodeId || null,
           reference_image_node_id: mappingForm.referenceImageNodeId || null,
           frame_count_node_id: mappingForm.frameCountNodeId || null
+        };
+      } else if (mappingWorkflow.type === 'transition') {
+        nodeMapping = {
+          first_image_node_id: mappingForm.firstImageNodeId || null,
+          last_image_node_id: mappingForm.lastImageNodeId || null,
+          frame_count_node_id: mappingForm.frameCountNodeId || null,
+          video_save_node_id: mappingForm.videoSaveNodeId || null
         };
       } else {
         nodeMapping = {
@@ -460,7 +489,7 @@ export default function Settings() {
     }
   };
 
-  const getWorkflowsByType = (type: 'character' | 'shot' | 'video') => {
+  const getWorkflowsByType = (type: 'character' | 'shot' | 'video' | 'transition') => {
     return workflows.filter(w => w.type === type);
   };
 
@@ -594,7 +623,7 @@ export default function Settings() {
           </div>
 
           {/* 工作流类型标签页 */}
-          {(['character', 'shot', 'video'] as const).map((type) => {
+          {(['character', 'shot', 'video', 'transition'] as const).map((type) => {
             const Icon = typeIcons[type];
             const typeWorkflows = getWorkflowsByType(type);
             const activeWorkflow = typeWorkflows.find(w => w.isActive);
@@ -935,8 +964,8 @@ export default function Settings() {
             </div>
             
             <form onSubmit={handleSaveMapping} className="space-y-6">
-              {/* 提示词输入节点 - 非视频工作流显示 */}
-              {mappingWorkflow?.type !== 'video' && (
+              {/* 提示词输入节点 - 人设和分镜生图工作流显示 */}
+              {(mappingWorkflow?.type === 'character' || mappingWorkflow?.type === 'shot') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     提示词输入节点
@@ -947,11 +976,14 @@ export default function Settings() {
                     className="input-field"
                   >
                     <option value="">自动查找 (Auto)</option>
-                    {availableNodes.clipTextEncode.map((nodeId) => (
-                      <option key={nodeId} value={nodeId}>
-                        Node#{nodeId}-CLIPTextEncode
-                      </option>
-                    ))}
+                    {availableNodes.clipTextEncode.map((nodeInfo) => {
+                      const nodeId = nodeInfo.split(' ')[0];
+                      return (
+                        <option key={nodeInfo} value={nodeId}>
+                          Node#{nodeInfo}
+                        </option>
+                      );
+                    })}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
                     选择用于注入角色提示词的 CLIPTextEncode 节点，留空则自动查找
@@ -969,8 +1001,8 @@ export default function Settings() {
                 </div>
               )}
               
-              {/* 图片保存节点 - 非视频工作流显示 */}
-              {mappingWorkflow?.type !== 'video' && (
+              {/* 图片保存节点 - 人设和分镜生图工作流显示 */}
+              {(mappingWorkflow?.type === 'character' || mappingWorkflow?.type === 'shot') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     图片保存节点
@@ -1029,6 +1061,16 @@ export default function Settings() {
                   <p className="text-xs text-gray-500 mt-1">
                     选择用于设置生成图片宽度的 easy int 节点 (Width)
                   </p>
+                  
+                  {/* Node JSON Preview */}
+                  {mappingForm.widthNodeId && workflowData[mappingForm.widthNodeId] && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                      <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.widthNodeId} JSON Preview:</p>
+                      <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.widthNodeId]: workflowData[mappingForm.widthNodeId] }, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1058,6 +1100,16 @@ export default function Settings() {
                   <p className="text-xs text-gray-500 mt-1">
                     选择用于设置生成图片高度的 easy int 节点 (Height)
                   </p>
+                  
+                  {/* Node JSON Preview */}
+                  {mappingForm.heightNodeId && workflowData[mappingForm.heightNodeId] && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                      <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.heightNodeId} JSON Preview:</p>
+                      <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.heightNodeId]: workflowData[mappingForm.heightNodeId] }, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1168,6 +1220,16 @@ export default function Settings() {
                     <p className="text-xs text-gray-500 mt-1">
                       选择用于设置视频最长边的 easy int 节点
                     </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.maxSideNodeId && workflowData[mappingForm.maxSideNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.maxSideNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.maxSideNodeId]: workflowData[mappingForm.maxSideNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
 
                   {/* 参考图片节点 */}
@@ -1193,6 +1255,16 @@ export default function Settings() {
                     <p className="text-xs text-gray-500 mt-1">
                       选择用于加载参考图片（分镜图）的 LoadImage 节点
                     </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.referenceImageNodeId && workflowData[mappingForm.referenceImageNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.referenceImageNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.referenceImageNodeId]: workflowData[mappingForm.referenceImageNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
 
                   {/* 总帧数节点 */}
@@ -1220,6 +1292,163 @@ export default function Settings() {
                     <p className="text-xs text-gray-500 mt-1">
                       选择用于设置视频总帧数的 easy int 节点（值应为 8 的倍数 + 1）
                     </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.frameCountNodeId && workflowData[mappingForm.frameCountNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.frameCountNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.frameCountNodeId]: workflowData[mappingForm.frameCountNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* 转场视频工作流特有配置 */}
+              {mappingWorkflow?.type === 'transition' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      首帧图节点 (LoadImage - First IMG)
+                    </label>
+                    <select
+                      value={mappingForm.firstImageNodeId}
+                      onChange={(e) => setMappingForm({ ...mappingForm, firstImageNodeId: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="">自动查找 (Auto)</option>
+                      {availableNodes.loadImage
+                        .filter(node => node.includes('First') || node.includes('first') || node.includes('首帧'))
+                        .map((nodeInfo) => {
+                          const nodeId = nodeInfo.split(' ')[0];
+                          return (
+                            <option key={nodeInfo} value={nodeId}>
+                              Node#{nodeInfo}
+                            </option>
+                          );
+                        })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      选择用于输入首帧图片的 LoadImage 节点
+                    </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.firstImageNodeId && workflowData[mappingForm.firstImageNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.firstImageNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.firstImageNodeId]: workflowData[mappingForm.firstImageNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      尾帧图节点 (LoadImage - End IMG)
+                    </label>
+                    <select
+                      value={mappingForm.lastImageNodeId}
+                      onChange={(e) => setMappingForm({ ...mappingForm, lastImageNodeId: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="">自动查找 (Auto)</option>
+                      {availableNodes.loadImage
+                        .filter(node => node.includes('End') || node.includes('end') || node.includes('尾帧'))
+                        .map((nodeInfo) => {
+                          const nodeId = nodeInfo.split(' ')[0];
+                          return (
+                            <option key={nodeInfo} value={nodeId}>
+                              Node#{nodeInfo}
+                            </option>
+                          );
+                        })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      选择用于输入尾帧图片的 LoadImage 节点
+                    </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.lastImageNodeId && workflowData[mappingForm.lastImageNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.lastImageNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.lastImageNodeId]: workflowData[mappingForm.lastImageNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      视频保存节点 (VHS_VideoCombine)
+                    </label>
+                    <select
+                      value={mappingForm.videoSaveNodeId}
+                      onChange={(e) => setMappingForm({ ...mappingForm, videoSaveNodeId: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="">自动查找 (Auto)</option>
+                      {availableNodes.vhsVideoCombine.map((nodeInfo) => {
+                        const nodeId = nodeInfo.split(' ')[0];
+                        return (
+                          <option key={nodeInfo} value={nodeId}>
+                            Node#{nodeInfo}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      选择用于保存生成视频的 VHS_VideoCombine 节点
+                    </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.videoSaveNodeId && workflowData[mappingForm.videoSaveNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.videoSaveNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.videoSaveNodeId]: workflowData[mappingForm.videoSaveNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      总帧数节点 (JWInteger)
+                    </label>
+                    <select
+                      value={mappingForm.frameCountNodeId}
+                      onChange={(e) => setMappingForm({ ...mappingForm, frameCountNodeId: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="">自动查找 (Auto)</option>
+                      {availableNodes.easyInt
+                        .filter(node => node.includes('总帧数') || node.includes('frame') || node.includes('Frame'))
+                        .map((nodeInfo) => {
+                          const nodeId = nodeInfo.split(' ')[0];
+                          return (
+                            <option key={nodeInfo} value={nodeId}>
+                              Node#{nodeInfo}
+                            </option>
+                          );
+                        })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      选择用于设置视频总帧数的节点（值应为 8 的倍数 + 1）
+                    </p>
+                    
+                    {/* Node JSON Preview */}
+                    {mappingForm.frameCountNodeId && workflowData[mappingForm.frameCountNodeId] && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                        <p className="text-xs text-gray-400 mb-1">Node #{mappingForm.frameCountNodeId} JSON Preview:</p>
+                        <pre className="text-xs text-gray-600 overflow-x-auto">
+{JSON.stringify({ [mappingForm.frameCountNodeId]: workflowData[mappingForm.frameCountNodeId] }, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
