@@ -44,6 +44,113 @@ interface Character {
   novelId: string;
 }
 
+// 转场视频项组件
+interface TransitionVideoItemProps {
+  fromIndex: number;
+  toIndex: number;
+  fromVideo?: string;
+  toVideo?: string;
+  fromImage?: string;
+  toImage?: string;
+  transitionVideo?: string;
+  isGenerating: boolean;
+  onGenerate: () => void;
+  onClick: () => void;
+  isActive: boolean;
+}
+
+function TransitionVideoItem({
+  fromIndex,
+  toIndex,
+  fromVideo,
+  toVideo,
+  fromImage,
+  toImage,
+  transitionVideo,
+  isGenerating,
+  onGenerate,
+  onClick,
+  isActive
+}: TransitionVideoItemProps) {
+  const hasVideos = !!fromVideo && !!toVideo;
+  const hasTransition = !!transitionVideo;
+  
+  return (
+    <div 
+      className={`relative flex-shrink-0 flex flex-col items-center gap-1 ${isActive ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
+    >
+      {/* 转场缩略图 */}
+      <div
+        onClick={hasTransition ? onClick : undefined}
+        className={`relative w-16 h-16 rounded-lg overflow-hidden cursor-pointer transition-all ${
+          isActive ? 'ring-2 ring-offset-2 ring-orange-500' : ''
+        } ${!hasTransition ? 'grayscale' : ''}`}
+      >
+        {/* 两张图片拼接 */}
+        <div className="flex h-full">
+          <div className="w-1/2 relative">
+            {fromImage ? (
+              <img src={fromImage} alt={`镜${fromIndex}`} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gray-200" />
+            )}
+            <div className="absolute bottom-0 left-0 bg-black/60 text-white text-[8px] px-1">
+              {fromIndex}
+            </div>
+          </div>
+          <div className="w-1/2 relative">
+            {toImage ? (
+              <img src={toImage} alt={`镜${toIndex}`} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gray-200" />
+            )}
+            <div className="absolute bottom-0 right-0 bg-black/60 text-white text-[8px] px-1">
+              {toIndex}
+            </div>
+          </div>
+        </div>
+        
+        {/* 箭头覆盖层 */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className={`rounded-full p-1 ${hasTransition ? 'bg-orange-500' : 'bg-gray-400'}`}>
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </div>
+        </div>
+        
+        {/* 生成中状态 */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 text-white animate-spin" />
+          </div>
+        )}
+      </div>
+      
+      {/* 状态标签 */}
+      <div className="flex flex-col items-center gap-0.5">
+        {hasTransition ? (
+          <span className="text-[9px] text-green-600 font-medium">已生成</span>
+        ) : isGenerating ? (
+          <span className="text-[9px] text-orange-600">生成中...</span>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onGenerate();
+            }}
+            disabled={!hasVideos || isGenerating}
+            className="text-[9px] bg-orange-500 text-white px-2 py-0.5 rounded hover:bg-orange-600 disabled:opacity-50 disabled:bg-gray-300 transition-colors"
+            title={!hasVideos ? '请先生成视频' : '生成转场视频'}
+          >
+            生成
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ChapterGenerate() {
   const { id, cid } = useParams<{ id: string; cid: string }>();
   const navigate = useNavigate();
@@ -1433,7 +1540,23 @@ export default function ChapterGenerate() {
 
           {/* 分镜视频 */}
           <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-4">分镜视频</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">分镜视频</h3>
+              {parsedData?.shots && parsedData.shots.length > 1 && (
+                <button
+                  onClick={handleGenerateAllTransitions}
+                  disabled={generatingTransitions.size > 0}
+                  className="btn-secondary text-sm py-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                  title="为所有相邻分镜生成转场视频"
+                >
+                  {generatingTransitions.size > 0 ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />生成中...</>
+                  ) : (
+                    <><RefreshCw className="h-3 w-3 mr-1" />一键生成全部转场</>
+                  )}
+                </button>
+              )}
+            </div>
             <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
               {shotVideos[currentVideo] ? (
                 <video
@@ -1452,200 +1575,102 @@ export default function ChapterGenerate() {
                 </div>
               )}
             </div>
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            {/* 分镜视频列表 + 转场入口 */}
+            <div className="flex gap-2 overflow-x-auto pb-2 items-center">
               {parsedData?.shots?.map((shot: any, index: number) => {
                 const shotNum = index + 1;
                 const imageUrl = shotImages[shotNum] || shot.image_url;
                 const hasVideo = !!shotVideos[shotNum];
                 const isPending = pendingVideos.has(shotNum);
                 const isGenerating = generatingVideos.has(shotNum);
-                const duration = shot.duration || 4; // 默认4秒
+                const duration = shot.duration || 4;
                 
                 return (
-                  <div
-                    key={shot.id}
-                    onClick={() => setCurrentVideo(shotNum)}
-                    className={`relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden cursor-pointer transition-transform hover:scale-105 ${
-                      currentVideo === shotNum ? 'ring-2 ring-offset-2 ring-purple-500' : ''
-                    }`}
-                  >
-                    {imageUrl ? (
-                      <img 
-                        src={imageUrl} 
-                        alt={`镜${shot.id}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                        <ImageIcon className="h-6 w-6 text-white/70" />
+                  <div key={shot.id} className="flex items-center gap-2">
+                    {/* 分镜视频缩略图 */}
+                    <div
+                      onClick={() => setCurrentVideo(shotNum)}
+                      className={`relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden cursor-pointer transition-transform hover:scale-105 ${
+                        currentVideo === shotNum ? 'ring-2 ring-offset-2 ring-purple-500' : ''
+                      }`}
+                    >
+                      {imageUrl ? (
+                        <img 
+                          src={imageUrl} 
+                          alt={`镜${shot.id}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                          <ImageIcon className="h-6 w-6 text-white/70" />
+                        </div>
+                      )}
+                      
+                      {/* 状态角标 */}
+                      {hasVideo && (
+                        <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                      )}
+                      {(isPending || isGenerating) && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <Loader2 className="h-4 w-4 text-white animate-spin" />
+                        </div>
+                      )}
+                      
+                      {/* 底部信息栏 */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 flex items-center justify-between">
+                        <span className="text-[10px] text-white font-medium">镜{shot.id}</span>
+                        <span className="text-[10px] text-white/80">{duration}s</span>
                       </div>
-                    )}
-                    
-                    {/* 状态角标 */}
-                    {hasVideo && (
-                      <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
-                    )}
-                    {(isPending || isGenerating) && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <Loader2 className="h-4 w-4 text-white animate-spin" />
-                      </div>
-                    )}
-                    
-                    {/* 底部信息栏 */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 flex items-center justify-between">
-                      <span className="text-[10px] text-white font-medium">镜{shot.id}</span>
-                      <span className="text-[10px] text-white/80">{duration}s</span>
                     </div>
+                    
+                    {/* 转场入口（在当前分镜和后一个分镜之间） */}
+                    {index < parsedData.shots.length - 1 && (
+                      <TransitionVideoItem
+                        fromIndex={shotNum}
+                        toIndex={shotNum + 1}
+                        fromVideo={shotVideos[shotNum]}
+                        toVideo={shotVideos[shotNum + 1]}
+                        fromImage={shotImages[shotNum] || shot.image_url}
+                        toImage={shotImages[shotNum + 1] || parsedData.shots[shotNum]?.image_url}
+                        transitionVideo={transitionVideos[`${shotNum}-${shotNum + 1}`]}
+                        isGenerating={generatingTransitions.has(`${shotNum}-${shotNum + 1}`)}
+                        onGenerate={() => handleGenerateTransition(shotNum, shotNum + 1)}
+                        onClick={() => {
+                          if (transitionVideos[`${shotNum}-${shotNum + 1}`]) {
+                            setCurrentTransition(`${shotNum}-${shotNum + 1}`);
+                          }
+                        }}
+                        isActive={currentTransition === `${shotNum}-${shotNum + 1}`}
+                      />
+                    )}
                   </div>
                 );
               }) || <p className="text-gray-500 text-sm">暂无视频</p>}
             </div>
+            
+            {/* 转场视频播放器（当选择了转场时显示） */}
+            {currentTransition && transitionVideos[currentTransition] && (
+              <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-orange-800">
+                    转场 {currentTransition} 预览
+                  </span>
+                  <button 
+                    onClick={() => setCurrentTransition('')}
+                    className="text-xs text-orange-600 hover:text-orange-800"
+                  >
+                    关闭
+                  </button>
+                </div>
+                <video
+                  src={transitionVideos[currentTransition]}
+                  controls
+                  className="w-full rounded-lg"
+                  poster={shotImages[parseInt(currentTransition.split('-')[0])]}
+                />
+              </div>
+            )}
           </div>
-
-          {/* 转场视频 */}
-          {parsedData?.shots && parsedData.shots.length > 1 && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">转场视频</h3>
-                <button
-                  onClick={handleGenerateAllTransitions}
-                  disabled={generatingTransitions.size > 0}
-                  className="btn-secondary text-sm py-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50"
-                  title="为所有相邻分镜生成转场视频"
-                >
-                  {generatingTransitions.size > 0 ? (
-                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />生成中...</>
-                  ) : (
-                    <><RefreshCw className="h-3 w-3 mr-1" />一键生成全部转场</>
-                  )}
-                </button>
-              </div>
-              
-              {/* 当前选中转场预览 */}
-              {currentTransition && transitionVideos[currentTransition] ? (
-                <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-                  <video
-                    key={currentTransition}
-                    src={transitionVideos[currentTransition]}
-                    controls
-                    className="w-full h-full"
-                    poster={shotImages[parseInt(currentTransition.split('-')[0])]}
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                  <div className="text-center text-gray-400">
-                    <Film className="h-12 w-12 mx-auto mb-2" />
-                    <p className="text-sm">
-                      {currentTransition 
-                        ? `转场 ${currentTransition} 暂无视频` 
-                        : '点击选择转场进行预览'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* 转场列表 */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {parsedData.shots.slice(0, -1).map((shot: any, index: number) => {
-                  const fromNum = index + 1;
-                  const toNum = index + 2;
-                  const transitionKey = `${fromNum}-${toNum}`;
-                  const hasTransition = !!transitionVideos[transitionKey];
-                  const isGenerating = generatingTransitions.has(transitionKey);
-                  const firstImage = shotImages[fromNum] || shot.image_url;
-                  const secondImage = shotImages[toNum] || parsedData.shots[toNum - 1]?.image_url;
-                  
-                  return (
-                    <div
-                      key={transitionKey}
-                      className={`relative flex-shrink-0 w-28 cursor-pointer transition-transform hover:scale-105 ${
-                        currentTransition === transitionKey ? 'ring-2 ring-offset-2 ring-orange-500 rounded-lg' : ''
-                      }`}
-                    >
-                      {/* 两张图片拼接 */}
-                      <div 
-                        className="flex h-16 rounded-lg overflow-hidden"
-                        onClick={() => setCurrentTransition(transitionKey)}
-                      >
-                        <div className="w-1/2 relative">
-                          {firstImage ? (
-                            <img src={firstImage} alt={`镜${fromNum}`} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-xs text-gray-400">镜{fromNum}</span>
-                            </div>
-                          )}
-                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[8px] px-1 rounded">
-                            {fromNum}
-                          </div>
-                        </div>
-                        <div className="w-1/2 relative">
-                          {secondImage ? (
-                            <img src={secondImage} alt={`镜${toNum}`} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-xs text-gray-400">镜{toNum}</span>
-                            </div>
-                          )}
-                          <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded">
-                            {toNum}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* 转场状态指示器 */}
-                      <div className="flex items-center justify-between mt-1 px-1">
-                        {hasTransition ? (
-                          <span className="text-[10px] text-green-600 flex items-center">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1" />
-                            已生成
-                          </span>
-                        ) : isGenerating ? (
-                          <span className="text-[10px] text-orange-600 flex items-center">
-                            <Loader2 className="h-3 w-3 mr-0.5 animate-spin" />
-                            生成中
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400">未生成</span>
-                        )}
-                        
-                        {/* 生成按钮 */}
-                        {!hasTransition && !isGenerating && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleGenerateTransition(fromNum, toNum);
-                            }}
-                            disabled={!firstImage || !secondImage}
-                            className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded hover:bg-orange-600 disabled:opacity-50 disabled:bg-gray-300"
-                            title={!firstImage || !secondImage ? '请先生成分镜图片' : '生成转场视频'}
-                          >
-                            生成
-                          </button>
-                        )}
-                      </div>
-                      
-                      {/* 箭头指示 */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                        <div className="bg-orange-500 text-white rounded-full p-0.5">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* 提示文字 */}
-              <p className="text-xs text-gray-500 mt-2">
-                转场视频用于连接相邻分镜，生成后会自动插入到最终合成的视频中
-              </p>
-            </div>
-          )}
-        </div>
 
         {/* 右侧边栏 */}
         <div className="col-span-4 space-y-6">

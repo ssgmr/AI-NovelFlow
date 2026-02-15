@@ -187,5 +187,141 @@ class FileStorageService:
         return save_dir / filename
 
 
+    def get_transition_video_path(self, novel_id: str, chapter_id: str,
+                                  first_video_filename: str, second_video_filename: str) -> Path:
+        """获取转场视频保存路径
+        
+        Args:
+            first_video_filename: 前一个视频的文件名（不含扩展名）
+            second_video_filename: 后一个视频的文件名（不含扩展名）
+            
+        Returns:
+            转场视频保存路径
+        """
+        story_dir = self._get_story_dir(novel_id)
+        chapter_short = chapter_id[:8] if chapter_id else "unknown"
+        save_dir = story_dir / f"chapter_{chapter_short}" / "transition-videos"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 文件名格式：trans-video-{前一个视频文件名}-{后一视频文件名}.mp4
+        filename = f"trans-video-{first_video_filename}-{second_video_filename}.mp4"
+        return save_dir / filename
+    
+    def get_video_frame_path(self, video_path: str, frame_type: str = "first") -> Path:
+        """获取视频帧图片保存路径
+        
+        Args:
+            video_path: 视频文件路径
+            frame_type: 帧类型 ("first" 或 "last")
+            
+        Returns:
+            帧图片保存路径
+        """
+        video_path = Path(video_path)
+        # 在与视频相同目录创建 frames 子目录
+        frames_dir = video_path.parent / "frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 使用视频文件名 + 帧类型命名
+        video_name = video_path.stem
+        filename = f"{video_name}_{frame_type}_frame.png"
+        return frames_dir / filename
+    
+    async def extract_video_frames(self, video_path: str) -> dict:
+        """提取视频的首帧和尾帧
+        
+        Args:
+            video_path: 视频文件路径
+            
+        Returns:
+            {"first": 首帧路径, "last": 尾帧路径, "success": bool, "message": str}
+        """
+        import cv2
+        import asyncio
+        
+        try:
+            video_path = Path(video_path)
+            if not video_path.exists():
+                return {"success": False, "message": f"视频文件不存在: {video_path}"}
+            
+            # 获取帧保存路径
+            first_frame_path = self.get_video_frame_path(str(video_path), "first")
+            last_frame_path = self.get_video_frame_path(str(video_path), "last")
+            
+            # 如果帧已经提取过，直接返回
+            if first_frame_path.exists() and last_frame_path.exists():
+                return {
+                    "success": True,
+                    "first": str(first_frame_path),
+                    "last": str(last_frame_path),
+                    "message": "帧已存在"
+                }
+            
+            # 使用 asyncio 在线程池中执行 OpenCV 操作
+            def _extract():
+                cap = cv2.VideoCapture(str(video_path))
+                if not cap.isOpened():
+                    return {"success": False, "message": "无法打开视频文件"}
+                
+                # 获取视频总帧数
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if total_frames <= 0:
+                    cap.release()
+                    return {"success": False, "message": "视频没有帧"}
+                
+                result = {"success": True}
+                
+                # 提取首帧
+                if not first_frame_path.exists():
+                    ret, frame = cap.read()
+                    if ret:
+                        cv2.imwrite(str(first_frame_path), frame)
+                        result["first"] = str(first_frame_path)
+                    else:
+                        result["success"] = False
+                        result["message"] = "无法读取首帧"
+                        cap.release()
+                        return result
+                else:
+                    result["first"] = str(first_frame_path)
+                
+                # 提取尾帧
+                if not last_frame_path.exists():
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, total_frames - 1)
+                    ret, frame = cap.read()
+                    if ret:
+                        cv2.imwrite(str(last_frame_path), frame)
+                        result["last"] = str(last_frame_path)
+                    else:
+                        # 如果无法读取最后一帧，尝试倒数第二帧
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, total_frames - 2))
+                        ret, frame = cap.read()
+                        if ret:
+                            cv2.imwrite(str(last_frame_path), frame)
+                            result["last"] = str(last_frame_path)
+                        else:
+                            result["success"] = False
+                            result["message"] = "无法读取尾帧"
+                else:
+                    result["last"] = str(last_frame_path)
+                
+                cap.release()
+                result["message"] = "帧提取成功"
+                return result
+            
+            # 在线程池中执行
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _extract)
+            
+            print(f"[FileStorage] Video frames extracted: first={first_frame_path.exists()}, last={last_frame_path.exists()}")
+            return result
+            
+        except Exception as e:
+            import traceback
+            print(f"[FileStorage] Failed to extract frames: {e}")
+            traceback.print_exc()
+            return {"success": False, "message": f"帧提取失败: {str(e)}"}
+
+
 # 全局实例
 file_storage = FileStorageService()

@@ -1,5 +1,6 @@
 import json
 import asyncio
+import httpx
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -1283,14 +1284,14 @@ async def generate_transition_video(
     if from_index < 1 or to_index > len(shots) or from_index >= to_index:
         raise HTTPException(status_code=400, detail="无效的分镜索引")
     
-    # 获取分镜图片
-    shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+    # 获取分镜视频（转场需要视频而不是图片）
+    shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
     
-    first_image = shot_images[from_index - 1] if from_index <= len(shot_images) else None
-    last_image = shot_images[to_index - 1] if to_index <= len(shot_images) else None
+    first_video = shot_videos[from_index - 1] if from_index <= len(shot_videos) else None
+    second_video = shot_videos[to_index - 1] if to_index <= len(shot_videos) else None
     
-    if not first_image or not last_image:
-        raise HTTPException(status_code=400, detail="分镜图片尚未生成")
+    if not first_video or not second_video:
+        raise HTTPException(status_code=400, detail="分镜视频尚未生成，请先生成分镜视频")
     
     # 检查是否已有进行中的转场视频任务
     transition_key = f"{from_index}-{to_index}"
@@ -1389,12 +1390,12 @@ async def generate_all_transitions(
     if len(shots) < 2:
         raise HTTPException(status_code=400, detail="分镜数量不足，无法生成转场")
     
-    # 获取分镜图片
-    shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+    # 获取分镜视频（转场需要视频）
+    shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
     
-    # 检查是否所有分镜都有图片
-    if len(shot_images) < len(shots):
-        raise HTTPException(status_code=400, detail="部分分镜图片尚未生成")
+    # 检查是否所有分镜都有视频
+    if len(shot_videos) < len(shots):
+        raise HTTPException(status_code=400, detail="部分分镜视频尚未生成，请先生成所有分镜视频")
     
     frame_count = data.get("frame_count", 49)
     
@@ -1472,13 +1473,13 @@ async def generate_transition_video_task(
     workflow_id: str,
     frame_count: int = 49
 ):
-    """后台任务：生成转场视频"""
+    """后台任务：生成转场视频（从视频提取首帧/尾帧）"""
     from app.core.database import SessionLocal
-    from app.services.file_storage import FileStorage
+    from app.services.file_storage import file_storage
+    from pathlib import Path
     import os
     
     db = SessionLocal()
-    file_storage = FileStorage()
     
     try:
         task = db.query(Task).filter(Task.id == task_id).first()
@@ -1491,39 +1492,66 @@ async def generate_transition_video_task(
         task.progress = 10
         db.commit()
         
-        # 获取章节和图片
+        # 获取章节和视频
         chapter = db.query(Chapter).filter(Chapter.id == chapter_id).first()
         if not chapter:
             raise Exception("章节不存在")
         
-        shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+        shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
         
-        first_image_url = shot_images[from_index - 1] if from_index <= len(shot_images) else None
-        last_image_url = shot_images[to_index - 1] if to_index <= len(shot_images) else None
+        # 获取前后两个视频的 URL
+        first_video_url = shot_videos[from_index - 1] if from_index <= len(shot_videos) else None
+        second_video_url = shot_videos[to_index - 1] if to_index <= len(shot_videos) else None
         
-        if not first_image_url or not last_image_url:
-            raise Exception("分镜图片不存在")
+        if not first_video_url or not second_video_url:
+            raise Exception("分镜视频尚未生成")
         
         # 转换URL为本地路径
-        first_image_path = None
-        last_image_path = None
+        first_video_path = None
+        second_video_path = None
         
-        if first_image_url.startswith("/api/files/"):
-            relative_path = first_image_url.replace("/api/files/", "")
-            first_image_path = os.path.join(file_storage.base_dir, relative_path)
+        if first_video_url.startswith("/api/files/"):
+            relative_path = first_video_url.replace("/api/files/", "")
+            first_video_path = os.path.join(str(file_storage.base_dir), relative_path)
         
-        if last_image_url.startswith("/api/files/"):
-            relative_path = last_image_url.replace("/api/files/", "")
-            last_image_path = os.path.join(file_storage.base_dir, relative_path)
+        if second_video_url.startswith("/api/files/"):
+            relative_path = second_video_url.replace("/api/files/", "")
+            second_video_path = os.path.join(str(file_storage.base_dir), relative_path)
         
-        if not first_image_path or not last_image_path:
-            raise Exception("无法解析图片路径")
+        if not first_video_path or not second_video_path:
+            raise Exception("无法解析视频路径")
+        
+        if not os.path.exists(first_video_path) or not os.path.exists(second_video_path):
+            raise Exception("视频文件不存在")
+        
+        # 获取视频文件名（不含扩展名）用于生成转场视频文件名
+        first_video_name = Path(first_video_path).stem
+        second_video_name = Path(second_video_path).stem
+        
+        task.current_step = "正在提取视频帧..."
+        task.progress = 20
+        db.commit()
+        
+        # 提取前一个视频的尾帧
+        first_frames = await file_storage.extract_video_frames(first_video_path)
+        if not first_frames.get("success") or not first_frames.get("last"):
+            raise Exception(f"无法提取第一个视频的尾帧: {first_frames.get('message')}")
+        
+        # 提取后一个视频的首帧
+        second_frames = await file_storage.extract_video_frames(second_video_path)
+        if not second_frames.get("success") or not second_frames.get("first"):
+            raise Exception(f"无法提取第二个视频的首帧: {second_frames.get('message')}")
+        
+        # 转场视频输入：前一个视频的尾帧 + 后一个视频的首帧
+        last_frame_path = first_frames["last"]
+        first_frame_path = second_frames["first"]
         
         task.current_step = "正在调用 ComfyUI 生成转场视频..."
-        task.progress = 30
+        task.progress = 40
         db.commit()
         
         # 获取工作流
+        from app.models.workflow import Workflow
         workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
         if not workflow:
             raise Exception("工作流不存在")
@@ -1540,49 +1568,53 @@ async def generate_transition_video_task(
         result = await comfyui_service.generate_transition_video_with_workflow(
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
-            first_image_path=first_image_path,
-            last_image_path=last_image_path,
+            first_image_path=first_frame_path,  # 后一个视频的首帧作为 First IMG
+            last_image_path=last_frame_path,    # 前一个视频的尾帧作为 End IMG
             frame_count=frame_count
         )
         
         if result.get("success"):
             video_url = result.get("video_url")
             
-            # 下载视频到本地存储
+            # 保存到 transition-videos 目录
             task.current_step = "正在保存视频..."
             task.progress = 80
             db.commit()
             
-            download_result = await comfyui_service.download_file(
-                video_url, 
-                file_storage.base_dir,
-                prefix="transition"
+            # 构建保存路径
+            transition_path = file_storage.get_transition_video_path(
+                novel_id, chapter_id, first_video_name, second_video_name
             )
             
-            if download_result.get("success"):
-                local_path = download_result.get("local_path")
-                relative_path = local_path.replace(str(file_storage.base_dir), "")
-                local_url = f"/api/files/{relative_path.lstrip('/')}"
+            # 下载视频
+            async with httpx.AsyncClient() as client:
+                response = await client.get(video_url, timeout=120.0)
+                response.raise_for_status()
                 
-                # 更新章节的转场视频记录
-                transition_videos = json.loads(chapter.transition_videos) if chapter.transition_videos else {}
-                if not isinstance(transition_videos, dict):
-                    transition_videos = {}
-                
-                transition_key = f"{from_index}-{to_index}"
-                transition_videos[transition_key] = local_url
-                chapter.transition_videos = json.dumps(transition_videos)
-                
-                # 更新任务状态
-                task.status = "completed"
-                task.progress = 100
-                task.result_url = local_url
-                task.current_step = "转场视频生成完成"
-                db.commit()
-                
-                print(f"[TransitionTask] Completed: {from_index}->{to_index}, video: {local_url}")
-            else:
-                raise Exception(f"视频下载失败: {download_result.get('message')}")
+                with open(transition_path, 'wb') as f:
+                    f.write(response.content)
+            
+            # 构建本地访问 URL
+            relative_path = str(transition_path).replace(str(file_storage.base_dir), "")
+            local_url = f"/api/files/{relative_path.lstrip('/')}"
+            
+            # 更新章节的转场视频记录
+            transition_videos = json.loads(chapter.transition_videos) if chapter.transition_videos else {}
+            if not isinstance(transition_videos, dict):
+                transition_videos = {}
+            
+            transition_key = f"{from_index}-{to_index}"
+            transition_videos[transition_key] = local_url
+            chapter.transition_videos = json.dumps(transition_videos)
+            
+            # 更新任务状态
+            task.status = "completed"
+            task.progress = 100
+            task.result_url = local_url
+            task.current_step = "转场视频生成完成"
+            db.commit()
+            
+            print(f"[TransitionTask] Completed: {from_index}->{to_index}, video: {local_url}")
         else:
             raise Exception(result.get("message", "生成失败"))
             
