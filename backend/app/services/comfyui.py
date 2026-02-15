@@ -157,7 +157,8 @@ class ComfyUIService:
             return {
                 "success": result.get("success"),
                 "image_url": result.get("image_url"),
-                "message": result.get("message", "")
+                "message": result.get("message", ""),
+                "submitted_workflow": workflow  # 返回实际提交给ComfyUI的工作流
             }
             
         except Exception as e:
@@ -947,7 +948,8 @@ class ComfyUIService:
             return {
                 "success": result.get("success"),
                 "image_url": result.get("image_url"),
-                "message": result.get("message", "")
+                "message": result.get("message", ""),
+                "submitted_workflow": workflow  # 返回实际提交给ComfyUI的工作流
             }
             
         except Exception as e:

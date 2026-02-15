@@ -731,6 +731,12 @@ async def generate_shot_task(
         
         print(f"[ShotTask {task_id}] Generation result: {result}")
         
+        # 保存实际提交给ComfyUI的工作流（替换参数后的）
+        if result.get("submitted_workflow"):
+            task.workflow_json = json.dumps(result["submitted_workflow"], ensure_ascii=False, indent=2)
+            db.commit()
+            print(f"[ShotTask {task_id}] Saved submitted workflow to task")
+        
         if not result.get("success"):
             task.status = "failed"
             task.error_message = result.get("message", "生成失败")
