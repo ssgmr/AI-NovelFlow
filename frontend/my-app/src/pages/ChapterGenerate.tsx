@@ -1886,8 +1886,10 @@ export default function ChapterGenerate() {
 
         {/* 右侧边栏 */}
         <div className="col-span-4 space-y-6">
-          {/* 系统状态 */}
-          <ComfyUIStatus />
+          {/* 系统状态 - 吸顶效果 */}
+          <div className="sticky top-6">
+            <ComfyUIStatus />
+          </div>
         </div>
       </div>
 
