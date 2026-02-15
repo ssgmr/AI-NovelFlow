@@ -1671,6 +1671,7 @@ export default function ChapterGenerate() {
               </div>
             )}
           </div>
+        </div>
 
         {/* 右侧边栏 */}
         <div className="col-span-4 space-y-6">
