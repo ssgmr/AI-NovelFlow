@@ -284,6 +284,7 @@ export default function Tasks() {
         return <ImageIcon className="h-5 w-5" />;
       case 'shot_video':
       case 'chapter_video':
+      case 'transition_video':
         return <Film className="h-5 w-5" />;
       default:
         return <ListTodo className="h-5 w-5" />;
@@ -296,6 +297,7 @@ export default function Tasks() {
       'shot_image': '分镜图生成',
       'shot_video': '视频生成',
       'chapter_video': '章节视频合成',
+      'transition_video': '转场视频生成',
     };
     return names[type] || type;
   };
@@ -538,7 +540,7 @@ export default function Tasks() {
                               </div>
                             )}
                           </div>
-                        ) : task.type === 'shot_video' || task.type === 'chapter_video' ? (
+                        ) : task.type === 'shot_video' || task.type === 'chapter_video' || task.type === 'transition_video' ? (
                           <button
                             onClick={() => task.resultUrl && setPreviewVideo(task.resultUrl)}
                             className="text-sm underline inline-flex items-center gap-1 text-green-600 hover:text-green-700"

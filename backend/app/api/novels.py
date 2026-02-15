@@ -1256,9 +1256,10 @@ async def generate_transition_video(
     
     Request Body:
     {
-        "from_index": 1,  // 起始分镜索引 (1-based)
-        "to_index": 2,    // 结束分镜索引 (1-based)
-        "frame_count": 49 // 可选，总帧数（8的倍数+1）
+        "from_index": 1,       // 起始分镜索引 (1-based)
+        "to_index": 2,         // 结束分镜索引 (1-based)
+        "frame_count": 49,     // 可选，总帧数（8的倍数+1）
+        "workflow_id": "xxx"   // 可选，指定工作流ID（不指定则使用默认）
     }
     """
     # 获取章节
@@ -1273,6 +1274,7 @@ async def generate_transition_video(
     from_index = data.get("from_index")
     to_index = data.get("to_index")
     frame_count = data.get("frame_count", 49)  # 默认49帧 (约2秒@25fps)
+    workflow_id = data.get("workflow_id")  # 可选，自定义工作流ID
     
     if not from_index or not to_index:
         raise HTTPException(status_code=400, detail="缺少 from_index 或 to_index")
@@ -1311,12 +1313,19 @@ async def generate_transition_video(
             "status": existing_task.status
         }
     
-    # 获取激活的转场视频工作流
+    # 获取转场视频工作流
     from app.models.workflow import Workflow
-    workflow = db.query(Workflow).filter(
-        Workflow.type == "transition",
-        Workflow.is_active == True
-    ).first()
+    if workflow_id:
+        # 使用指定的工作流
+        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        if not workflow:
+            raise HTTPException(status_code=400, detail="指定的工作流不存在")
+    else:
+        # 使用默认的激活工作流
+        workflow = db.query(Workflow).filter(
+            Workflow.type == "transition",
+            Workflow.is_active == True
+        ).first()
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置转场视频工作流，请在系统设置中配置")
@@ -1330,13 +1339,15 @@ async def generate_transition_video(
         chapter_id=chapter_id,
         status="pending",
         progress=0,
-        current_step="等待处理"
+        current_step="等待处理",
+        workflow_id=workflow.id,
+        workflow_name=workflow.name
     )
     db.add(task)
     db.commit()
     db.refresh(task)
     
-    print(f"[Transition] Created task {task.id} for transition {from_index}->{to_index}")
+    print(f"[Transition] Created task {task.id} for transition {from_index}->{to_index} using workflow {workflow.name}")
     
     # 启动后台任务
     asyncio.create_task(
@@ -1371,7 +1382,8 @@ async def generate_all_transitions(
     
     Request Body:
     {
-        "frame_count": 49 // 可选，总帧数
+        "frame_count": 49,     // 可选，总帧数
+        "workflow_id": "xxx"   // 可选，指定工作流ID（不指定则使用默认）
     }
     """
     # 获取章节
@@ -1398,13 +1410,21 @@ async def generate_all_transitions(
         raise HTTPException(status_code=400, detail="部分分镜视频尚未生成，请先生成所有分镜视频")
     
     frame_count = data.get("frame_count", 49)
+    workflow_id = data.get("workflow_id")  # 可选，自定义工作流ID
     
-    # 获取激活的转场视频工作流
+    # 获取转场视频工作流
     from app.models.workflow import Workflow
-    workflow = db.query(Workflow).filter(
-        Workflow.type == "transition",
-        Workflow.is_active == True
-    ).first()
+    if workflow_id:
+        # 使用指定的工作流
+        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        if not workflow:
+            raise HTTPException(status_code=400, detail="指定的工作流不存在")
+    else:
+        # 使用默认的激活工作流
+        workflow = db.query(Workflow).filter(
+            Workflow.type == "transition",
+            Workflow.is_active == True
+        ).first()
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置转场视频工作流")
@@ -1436,7 +1456,9 @@ async def generate_all_transitions(
             chapter_id=chapter_id,
             status="pending",
             progress=0,
-            current_step="等待处理"
+            current_step="等待处理",
+            workflow_id=workflow.id,
+            workflow_name=workflow.name
         )
         db.add(task)
         db.commit()
@@ -1565,13 +1587,22 @@ async def generate_transition_video_task(
                 pass
         
         # 生成转场视频
+        # 注意：转场是从分镜A过渡到分镜B
+        # - First IMG（首帧输入）应该是分镜A的尾帧
+        # - End IMG（尾帧输入）应该是分镜B的首帧
         result = await comfyui_service.generate_transition_video_with_workflow(
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
-            first_image_path=first_frame_path,  # 后一个视频的首帧作为 First IMG
-            last_image_path=last_frame_path,    # 前一个视频的尾帧作为 End IMG
+            first_image_path=last_frame_path,   # 前一个视频的尾帧作为 First IMG
+            last_image_path=first_frame_path,   # 后一个视频的首帧作为 End IMG
             frame_count=frame_count
         )
+        
+        # 保存实际提交给ComfyUI的工作流
+        if result.get("submitted_workflow"):
+            task.workflow_json = json.dumps(result["submitted_workflow"], ensure_ascii=False, indent=2)
+            db.commit()
+            print(f"[TransitionTask] Saved submitted workflow to task")
         
         if result.get("success"):
             video_url = result.get("video_url")

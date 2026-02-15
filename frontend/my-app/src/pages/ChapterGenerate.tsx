@@ -20,7 +20,8 @@ import {
   Save,
   Grid3x3,
   Clock,
-  Film
+  Film,
+  Settings
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
@@ -55,6 +56,7 @@ interface TransitionVideoItemProps {
   transitionVideo?: string;
   isGenerating: boolean;
   onGenerate: () => void;
+  onRegenerate?: () => void;
   onClick: () => void;
   isActive: boolean;
 }
@@ -69,6 +71,7 @@ function TransitionVideoItem({
   transitionVideo,
   isGenerating,
   onGenerate,
+  onRegenerate,
   onClick,
   isActive
 }: TransitionVideoItemProps) {
@@ -130,7 +133,20 @@ function TransitionVideoItem({
       {/* 状态标签 */}
       <div className="flex flex-col items-center gap-0.5">
         {hasTransition ? (
-          <span className="text-[9px] text-green-600 font-medium">已生成</span>
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-[9px] text-green-600 font-medium">已生成</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRegenerate?.();
+              }}
+              disabled={isGenerating}
+              className="text-[9px] bg-orange-500 text-white px-2 py-0.5 rounded hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              title="重新生成转场视频"
+            >
+              重新生成
+            </button>
+          </div>
         ) : isGenerating ? (
           <span className="text-[9px] text-orange-600">生成中...</span>
         ) : (
@@ -197,6 +213,12 @@ export default function ChapterGenerate() {
   const [transitionVideos, setTransitionVideos] = useState<Record<string, string>>({});  // {"1-2": url}
   const [generatingTransitions, setGeneratingTransitions] = useState<Set<string>>(new Set());  // {"1-2"}
   const [currentTransition, setCurrentTransition] = useState<string>("");  // 当前选中的转场，如 "1-2"
+  
+  // 转场配置
+  const [transitionWorkflows, setTransitionWorkflows] = useState<any[]>([]);  // 转场工作流列表
+  const [selectedTransitionWorkflow, setSelectedTransitionWorkflow] = useState<string>("");  // 选中的工作流ID
+  const [transitionDuration, setTransitionDuration] = useState<number>(2);  // 转场时长（秒）默认2秒
+  const [showTransitionConfig, setShowTransitionConfig] = useState<boolean>(false);  // 是否显示配置面板
 
   // 生成分镜图片
   const handleGenerateShotImage = async (shotIndex: number) => {
@@ -432,6 +454,8 @@ export default function ChapterGenerate() {
       fetchCharacters();
       // fetchChapter 会在内部调用 fetchShotTasks
       fetchChapter();
+      // 加载转场工作流列表
+      fetchTransitionWorkflows();
     }
   }, [cid, id]);
 
@@ -456,7 +480,7 @@ export default function ChapterGenerate() {
     
     // 递归轮询，确保上一个请求完成后再等待 3 秒
     const poll = async () => {
-      if (pendingShots.size === 0 && pendingVideos.size === 0) {
+      if (pendingShots.size === 0 && pendingVideos.size === 0 && generatingTransitions.size === 0) {
         // 没有 pending 任务，继续等待
         timeoutId = setTimeout(poll, 3000);
         return;
@@ -484,21 +508,23 @@ export default function ChapterGenerate() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [cid, id, pendingShots.size, pendingVideos.size]);
+  }, [cid, id, pendingShots.size, pendingVideos.size, generatingTransitions.size]);
 
   // 检查分镜任务状态并更新
   const checkShotTaskStatus = async () => {
-    if (pendingShots.size === 0 && pendingVideos.size === 0) return;
+    if (pendingShots.size === 0 && pendingVideos.size === 0 && generatingTransitions.size === 0) return;
     
     try {
-      // 同时检查图片和视频任务
-      const [imageRes, videoRes] = await Promise.all([
+      // 同时检查图片、视频和转场视频任务
+      const [imageRes, videoRes, transitionRes] = await Promise.all([
         fetch(`${API_BASE}/tasks?type=shot_image&limit=50`),
-        fetch(`${API_BASE}/tasks?type=shot_video&limit=50`)
+        fetch(`${API_BASE}/tasks?type=shot_video&limit=50`),
+        fetch(`${API_BASE}/tasks?type=transition_video&limit=50`)
       ]);
-      const [imageData, videoData] = await Promise.all([
+      const [imageData, videoData, transitionData] = await Promise.all([
         imageRes.json(),
-        videoRes.json()
+        videoRes.json(),
+        transitionRes.json()
       ]);
       
       // 处理图片任务
@@ -577,6 +603,50 @@ export default function ChapterGenerate() {
         // 如果有视频任务完成，刷新章节数据
         if (hasCompletedVideo) {
           console.log('[ChapterGenerate] Fetching chapter data after video completion');
+          fetchChapter();
+        }
+      }
+      
+      // 处理转场视频任务
+      if (transitionData.success && generatingTransitions.size > 0) {
+        const chapterTransitionTasks = transitionData.data.filter((task: any) => 
+          task.chapterId === cid
+        );
+        
+        console.log('[ChapterGenerate] Checking transition tasks:', chapterTransitionTasks.length, 'generating:', generatingTransitions.size);
+        
+        let hasCompletedTransition = false;
+        const stillGeneratingTransitions = new Set<string>();
+        
+        chapterTransitionTasks.forEach((task: any) => {
+          const match = task.name.match(/镜(\d+)→镜(\d+)/);
+          if (!match) return;
+          const transitionKey = `${match[1]}-${match[2]}`;
+          
+          console.log('[ChapterGenerate] Transition task:', task.name, 'status:', task.status, 'key:', transitionKey);
+          
+          if (task.status === 'completed') {
+            if (task.resultUrl) {
+              console.log('[ChapterGenerate] Transition completed, setting URL for', transitionKey);
+              setTransitionVideos(prev => ({ ...prev, [transitionKey]: task.resultUrl }));
+              hasCompletedTransition = true;
+            }
+          } else if (task.status === 'pending' || task.status === 'running') {
+            stillGeneratingTransitions.add(transitionKey);
+          } else if (task.status === 'failed') {
+            hasCompletedTransition = true;
+          }
+        });
+        
+        console.log('[ChapterGenerate] Transition check result - hasCompleted:', hasCompletedTransition, 'stillGenerating:', [...stillGeneratingTransitions]);
+        
+        if (hasCompletedTransition || stillGeneratingTransitions.size !== generatingTransitions.size) {
+          setGeneratingTransitions(stillGeneratingTransitions);
+        }
+        
+        // 如果有转场视频任务完成，刷新章节数据
+        if (hasCompletedTransition) {
+          console.log('[ChapterGenerate] Fetching chapter data after transition completion');
           fetchChapter();
         }
       }
@@ -681,18 +751,55 @@ export default function ChapterGenerate() {
     }
   };
 
+  // 获取转场工作流列表
+  const fetchTransitionWorkflows = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/workflows?type=transition`);
+      const data = await res.json();
+      if (data.success) {
+        setTransitionWorkflows(data.data || []);
+        // 默认选中第一个激活的工作流
+        const activeWorkflow = data.data.find((w: any) => w.isActive);
+        if (activeWorkflow) {
+          setSelectedTransitionWorkflow(activeWorkflow.id);
+        } else if (data.data.length > 0) {
+          setSelectedTransitionWorkflow(data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('获取转场工作流失败:', error);
+    }
+  };
+
   // 生成单个转场视频
-  const handleGenerateTransition = async (fromIndex: number, toIndex: number) => {
+  const handleGenerateTransition = async (fromIndex: number, toIndex: number, useCustomConfig: boolean = false) => {
     const transitionKey = `${fromIndex}-${toIndex}`;
     setGeneratingTransitions(prev => new Set(prev).add(transitionKey));
     
     try {
+      // 构建请求体
+      const body: any = { 
+        from_index: fromIndex, 
+        to_index: toIndex
+      };
+      
+      // 如果使用自定义配置，添加工作流ID和帧数
+      if (useCustomConfig) {
+        if (selectedTransitionWorkflow) {
+          body.workflow_id = selectedTransitionWorkflow;
+        }
+        // 根据时长计算帧数 (25fps)，确保是 8 的倍数 + 1
+        const frameCount = Math.max(9, Math.round(transitionDuration * 25 / 8) * 8 + 1);
+        body.frame_count = frameCount;
+        console.log(`[GenerateTransition] Using custom config: duration=${transitionDuration}s, frames=${frameCount}`);
+      }
+      
       const res = await fetch(
         `${API_BASE}/novels/${id}/chapters/${cid}/transitions`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from_index: fromIndex, to_index: toIndex, frame_count: 49 })
+          body: JSON.stringify(body)
         }
       );
       const data = await res.json();
@@ -726,12 +833,24 @@ export default function ChapterGenerate() {
     }
     
     try {
+      // 构建请求体
+      const body: any = {};
+      
+      // 如果配置了自定义选项，添加它们
+      if (selectedTransitionWorkflow) {
+        body.workflow_id = selectedTransitionWorkflow;
+      }
+      // 根据时长计算帧数 (25fps)，确保是 8 的倍数 + 1
+      const frameCount = Math.max(9, Math.round(transitionDuration * 25 / 8) * 8 + 1);
+      body.frame_count = frameCount;
+      console.log(`[GenerateAllTransitions] Using config: duration=${transitionDuration}s, frames=${frameCount}, workflow=${selectedTransitionWorkflow || 'default'}`);
+      
       const res = await fetch(
         `${API_BASE}/novels/${id}/chapters/${cid}/transitions/batch`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ frame_count: 49 })
+          body: JSON.stringify(body)
         }
       );
       const data = await res.json();
@@ -1541,7 +1660,21 @@ export default function ChapterGenerate() {
           {/* 分镜视频 */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">分镜视频</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold text-gray-900">
+                  {currentTransition && transitionVideos[currentTransition] 
+                    ? `转场 ${currentTransition} 预览` 
+                    : '分镜视频'}
+                </h3>
+                {currentTransition && transitionVideos[currentTransition] && (
+                  <button
+                    onClick={() => setCurrentTransition('')}
+                    className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                  >
+                    返回分镜视频
+                  </button>
+                )}
+              </div>
               {parsedData?.shots && parsedData.shots.length > 1 && (
                 <button
                   onClick={handleGenerateAllTransitions}
@@ -1558,7 +1691,18 @@ export default function ChapterGenerate() {
               )}
             </div>
             <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-              {shotVideos[currentVideo] ? (
+              {currentTransition && transitionVideos[currentTransition] ? (
+                // 转场视频播放
+                <video
+                  key={`transition-${currentTransition}`}
+                  src={transitionVideos[currentTransition]}
+                  controls
+                  autoPlay
+                  className="w-full h-full"
+                  poster={shotImages[parseInt(currentTransition.split('-')[0])]}
+                />
+              ) : shotVideos[currentVideo] ? (
+                // 分镜视频播放
                 <video
                   key={currentVideo}
                   src={shotVideos[currentVideo]}
@@ -1575,6 +1719,70 @@ export default function ChapterGenerate() {
                 </div>
               )}
             </div>
+            
+            {/* 转场配置面板 */}
+            {parsedData?.shots && parsedData.shots.length > 1 && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">转场配置</span>
+                    {showTransitionConfig && (
+                      <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded">已启用自定义</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowTransitionConfig(!showTransitionConfig)}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    {showTransitionConfig ? '收起配置' : '展开配置'}
+                  </button>
+                </div>
+                
+                {showTransitionConfig && (
+                  <div className="space-y-3 pt-2 border-t border-gray-200">
+                    {/* 工作流选择 */}
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-gray-600 whitespace-nowrap">工作流:</label>
+                      <select
+                        value={selectedTransitionWorkflow}
+                        onChange={(e) => setSelectedTransitionWorkflow(e.target.value)}
+                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      >
+                        {transitionWorkflows.map((wf) => (
+                          <option key={wf.id} value={wf.id}>
+                            {wf.name} {wf.isActive ? '(默认)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* 时长设置 */}
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-gray-600 whitespace-nowrap">时长:</label>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="range"
+                          min="1"
+                          max="5"
+                          step="0.5"
+                          value={transitionDuration}
+                          onChange={(e) => setTransitionDuration(parseFloat(e.target.value))}
+                          className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 w-16 text-right">{transitionDuration}秒</span>
+                      </div>
+                    </div>
+                    
+                    {/* 提示信息 */}
+                    <p className="text-xs text-gray-500">
+                      配置后点击"生成"或"一键生成全部转场"将使用自定义设置
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* 分镜视频列表 + 转场入口 */}
             <div className="flex gap-2 overflow-x-auto pb-2 items-center">
               {parsedData?.shots?.map((shot: any, index: number) => {
@@ -1589,9 +1797,15 @@ export default function ChapterGenerate() {
                   <div key={shot.id} className="flex items-center gap-2">
                     {/* 分镜视频缩略图 */}
                     <div
-                      onClick={() => setCurrentVideo(shotNum)}
+                      onClick={() => {
+                        // 如果当前在转场预览模式，先退出
+                        if (currentTransition) {
+                          setCurrentTransition('');
+                        }
+                        setCurrentVideo(shotNum);
+                      }}
                       className={`relative flex-shrink-0 w-24 h-16 rounded-lg overflow-hidden cursor-pointer transition-transform hover:scale-105 ${
-                        currentVideo === shotNum ? 'ring-2 ring-offset-2 ring-purple-500' : ''
+                        currentVideo === shotNum && !currentTransition ? 'ring-2 ring-offset-2 ring-purple-500' : ''
                       }`}
                     >
                       {imageUrl ? (
@@ -1634,7 +1848,8 @@ export default function ChapterGenerate() {
                         toImage={shotImages[shotNum + 1] || parsedData.shots[shotNum]?.image_url}
                         transitionVideo={transitionVideos[`${shotNum}-${shotNum + 1}`]}
                         isGenerating={generatingTransitions.has(`${shotNum}-${shotNum + 1}`)}
-                        onGenerate={() => handleGenerateTransition(shotNum, shotNum + 1)}
+                        onGenerate={() => handleGenerateTransition(shotNum, shotNum + 1, true)}
+                        onRegenerate={() => handleGenerateTransition(shotNum, shotNum + 1, true)}
                         onClick={() => {
                           if (transitionVideos[`${shotNum}-${shotNum + 1}`]) {
                             setCurrentTransition(`${shotNum}-${shotNum + 1}`);
@@ -1647,29 +1862,6 @@ export default function ChapterGenerate() {
                 );
               }) || <p className="text-gray-500 text-sm">暂无视频</p>}
             </div>
-            
-            {/* 转场视频播放器（当选择了转场时显示） */}
-            {currentTransition && transitionVideos[currentTransition] && (
-              <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-orange-800">
-                    转场 {currentTransition} 预览
-                  </span>
-                  <button 
-                    onClick={() => setCurrentTransition('')}
-                    className="text-xs text-orange-600 hover:text-orange-800"
-                  >
-                    关闭
-                  </button>
-                </div>
-                <video
-                  src={transitionVideos[currentTransition]}
-                  controls
-                  className="w-full rounded-lg"
-                  poster={shotImages[parseInt(currentTransition.split('-')[0])]}
-                />
-              </div>
-            )}
           </div>
         </div>
 

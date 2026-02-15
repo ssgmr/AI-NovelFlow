@@ -35,11 +35,11 @@ EXTRA_SYSTEM_WORKFLOWS = [
      "node_mapping": {"prompt_node_id": "11", "video_save_node_id": "1", "reference_image_node_id": "12", "max_side_node_id": "36", "frame_count_node_id": "35"}},
     {"filename": "video_ltx2_expanded.json", "type": "video", "name": "LTX2 视频生成-扩写版", "description": "LTX-2 图生视频，使用 Qwen3 自动扩写提示词",
      "node_mapping": {"prompt_node_id": "15", "video_save_node_id": "1", "reference_image_node_id": "12", "max_side_node_id": "36", "frame_count_node_id": "35"}},
-    {"filename": "transition_ltx2_camera.json", "type": "transition", "name": "LTX2 镜头转场视频", "description": "LTX-2 镜头转场（最稳：不改世界，只改镜头）",
+    {"filename": "transition_ltx2_camera.json", "type": "transition", "name": "LTX2 镜头转场视频", "description": "适合：首尾帧是同一场景不同景别/角度",
      "node_mapping": {"first_image_node_id": "98", "last_image_node_id": "106", "frame_count_node_id": "174", "video_save_node_id": "105"}},
-    {"filename": "transition_ltx2_lighting.json", "type": "transition", "name": "LTX2 光线转场视频", "description": "LTX-2 光线/时间转场（白天到夜晚/室内灯亮）",
+    {"filename": "transition_ltx2_lighting.json", "type": "transition", "name": "LTX2 光线转场视频", "description": "适合：首尾帧颜色差很多，但场景/人物不变",
      "node_mapping": {"first_image_node_id": "98", "last_image_node_id": "106", "frame_count_node_id": "174", "video_save_node_id": "105"}},
-    {"filename": "transition_ltx2_first_last_frame.json", "type": "transition", "name": "LTX2 遮挡转场视频", "description": "LTX-2 遮挡转场（wipe/遮挡物经过镜头）",
+    {"filename": "transition_ltx2_first_last_frame.json", "type": "transition", "name": "LTX2 遮挡转场视频", "description": "适合：两张图差异大，想自然衔接",
      "node_mapping": {"first_image_node_id": "98", "last_image_node_id": "106", "frame_count_node_id": "174", "video_save_node_id": "105"}}
 ]
 
