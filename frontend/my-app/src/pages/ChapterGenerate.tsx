@@ -1774,10 +1774,29 @@ export default function ChapterGenerate() {
                       </div>
                     </div>
                     
-                    {/* 提示信息 */}
-                    <p className="text-xs text-gray-500">
-                      配置后点击"生成"或"一键生成全部转场"将使用自定义设置
-                    </p>
+                    {/* 提示信息和还原按钮 */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                      <p className="text-xs text-gray-500">
+                        配置后点击"生成"或"一键生成全部转场"将使用自定义设置
+                      </p>
+                      <button
+                        onClick={() => {
+                          // 还原到默认工作流
+                          const defaultWorkflow = transitionWorkflows.find((w: any) => w.isActive);
+                          if (defaultWorkflow) {
+                            setSelectedTransitionWorkflow(defaultWorkflow.id);
+                          } else if (transitionWorkflows.length > 0) {
+                            setSelectedTransitionWorkflow(transitionWorkflows[0].id);
+                          }
+                          // 还原时长为2秒
+                          setTransitionDuration(2);
+                          toast.info('已还原为默认设置');
+                        }}
+                        className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        还原
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
