@@ -86,6 +86,11 @@ export default function ChapterGenerate() {
   const [pendingVideos, setPendingVideos] = useState<Set<number>>(new Set());
   const [shotVideos, setShotVideos] = useState<Record<number, string>>({});  // 分镜视频URL映射
 
+  // 转场视频生成相关
+  const [transitionVideos, setTransitionVideos] = useState<Record<string, string>>({});  // {"1-2": url}
+  const [generatingTransitions, setGeneratingTransitions] = useState<Set<string>>(new Set());  // {"1-2"}
+  const [currentTransition, setCurrentTransition] = useState<string>("");  // 当前选中的转场，如 "1-2"
+
   // 生成分镜图片
   const handleGenerateShotImage = async (shotIndex: number) => {
     setGeneratingShots(prev => new Set(prev).add(shotIndex));
@@ -537,6 +542,110 @@ export default function ChapterGenerate() {
     }
   };
 
+  // 获取转场视频生成任务状态
+  const fetchTransitionTasks = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/tasks?type=transition_video&limit=50`);
+      const data = await res.json();
+      if (data.success) {
+        // 过滤出当前章节的 pending/running 任务
+        const activeTasks = data.data.filter((task: any) => 
+          task.chapterId === cid && 
+          (task.status === 'pending' || task.status === 'running')
+        );
+        
+        // 从任务名称提取转场索引 (格式: "生成转场视频: 镜X→镜Y")
+        const pendingTransitionKeys = new Set<string>();
+        activeTasks.forEach((task: any) => {
+          const match = task.name.match(/镜(\d+)→镜(\d+)/);
+          if (match) {
+            pendingTransitionKeys.add(`${match[1]}-${match[2]}`);
+          }
+        });
+        
+        console.log('[ChapterGenerate] fetchTransitionTasks found active:', [...pendingTransitionKeys]);
+        
+        if (pendingTransitionKeys.size > 0) {
+          setGeneratingTransitions(pendingTransitionKeys);
+        }
+      }
+    } catch (error) {
+      console.error('获取转场任务状态失败:', error);
+    }
+  };
+
+  // 生成单个转场视频
+  const handleGenerateTransition = async (fromIndex: number, toIndex: number) => {
+    const transitionKey = `${fromIndex}-${toIndex}`;
+    setGeneratingTransitions(prev => new Set(prev).add(transitionKey));
+    
+    try {
+      const res = await fetch(
+        `${API_BASE}/novels/${id}/chapters/${cid}/transitions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from_index: fromIndex, to_index: toIndex, frame_count: 49 })
+        }
+      );
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(`转场视频 镜${fromIndex}→镜${toIndex} 已开始生成`);
+      } else {
+        toast.error(data.message || '生成失败');
+        setGeneratingTransitions(prev => {
+          const next = new Set(prev);
+          next.delete(transitionKey);
+          return next;
+        });
+      }
+    } catch (error) {
+      console.error('生成转场视频失败:', error);
+      toast.error('生成失败');
+      setGeneratingTransitions(prev => {
+        const next = new Set(prev);
+        next.delete(transitionKey);
+        return next;
+      });
+    }
+  };
+
+  // 一键生成所有转场视频
+  const handleGenerateAllTransitions = async () => {
+    if (!parsedData?.shots || parsedData.shots.length < 2) {
+      toast.warning('分镜数量不足，无法生成转场');
+      return;
+    }
+    
+    try {
+      const res = await fetch(
+        `${API_BASE}/novels/${id}/chapters/${cid}/transitions/batch`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frame_count: 49 })
+        }
+      );
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(`已创建 ${data.task_count} 个转场视频生成任务`);
+        // 添加所有转场到生成中状态
+        const allTransitions = new Set<string>();
+        for (let i = 1; i < parsedData.shots.length; i++) {
+          allTransitions.add(`${i}-${i + 1}`);
+        }
+        setGeneratingTransitions(allTransitions);
+      } else {
+        toast.error(data.message || '生成失败');
+      }
+    } catch (error) {
+      console.error('批量生成转场视频失败:', error);
+      toast.error('生成失败');
+    }
+  };
+
   // 获取小说数据
   const fetchNovel = async () => {
     try {
@@ -612,6 +721,12 @@ export default function ChapterGenerate() {
         } else {
           console.log('[ChapterGenerate] No shot videos in chapter data');
         }
+        
+        // 加载转场视频
+        if (data.data.transitionVideos) {
+          console.log('[ChapterGenerate] Loaded transition videos:', data.data.transitionVideos);
+          setTransitionVideos(data.data.transitionVideos);
+        }
       }
     } catch (error) {
       console.error('获取章节数据失败:', error);
@@ -620,6 +735,7 @@ export default function ChapterGenerate() {
       // 章节数据加载完成后，获取任务状态以恢复 pending 状态
       fetchShotTasks();
       fetchVideoTasks();
+      fetchTransitionTasks();
     }
   };
 
@@ -1385,6 +1501,150 @@ export default function ChapterGenerate() {
               }) || <p className="text-gray-500 text-sm">暂无视频</p>}
             </div>
           </div>
+
+          {/* 转场视频 */}
+          {parsedData?.shots && parsedData.shots.length > 1 && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-900">转场视频</h3>
+                <button
+                  onClick={handleGenerateAllTransitions}
+                  disabled={generatingTransitions.size > 0}
+                  className="btn-secondary text-sm py-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                  title="为所有相邻分镜生成转场视频"
+                >
+                  {generatingTransitions.size > 0 ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />生成中...</>
+                  ) : (
+                    <><RefreshCw className="h-3 w-3 mr-1" />一键生成全部转场</>
+                  )}
+                </button>
+              </div>
+              
+              {/* 当前选中转场预览 */}
+              {currentTransition && transitionVideos[currentTransition] ? (
+                <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+                  <video
+                    key={currentTransition}
+                    src={transitionVideos[currentTransition]}
+                    controls
+                    className="w-full h-full"
+                    poster={shotImages[parseInt(currentTransition.split('-')[0])]}
+                  />
+                </div>
+              ) : (
+                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                  <div className="text-center text-gray-400">
+                    <Film className="h-12 w-12 mx-auto mb-2" />
+                    <p className="text-sm">
+                      {currentTransition 
+                        ? `转场 ${currentTransition} 暂无视频` 
+                        : '点击选择转场进行预览'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 转场列表 */}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {parsedData.shots.slice(0, -1).map((shot: any, index: number) => {
+                  const fromNum = index + 1;
+                  const toNum = index + 2;
+                  const transitionKey = `${fromNum}-${toNum}`;
+                  const hasTransition = !!transitionVideos[transitionKey];
+                  const isGenerating = generatingTransitions.has(transitionKey);
+                  const firstImage = shotImages[fromNum] || shot.image_url;
+                  const secondImage = shotImages[toNum] || parsedData.shots[toNum - 1]?.image_url;
+                  
+                  return (
+                    <div
+                      key={transitionKey}
+                      className={`relative flex-shrink-0 w-28 cursor-pointer transition-transform hover:scale-105 ${
+                        currentTransition === transitionKey ? 'ring-2 ring-offset-2 ring-orange-500 rounded-lg' : ''
+                      }`}
+                    >
+                      {/* 两张图片拼接 */}
+                      <div 
+                        className="flex h-16 rounded-lg overflow-hidden"
+                        onClick={() => setCurrentTransition(transitionKey)}
+                      >
+                        <div className="w-1/2 relative">
+                          {firstImage ? (
+                            <img src={firstImage} alt={`镜${fromNum}`} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-xs text-gray-400">镜{fromNum}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[8px] px-1 rounded">
+                            {fromNum}
+                          </div>
+                        </div>
+                        <div className="w-1/2 relative">
+                          {secondImage ? (
+                            <img src={secondImage} alt={`镜${toNum}`} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-xs text-gray-400">镜{toNum}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-1 right-1 bg-black/50 text-white text-[8px] px-1 rounded">
+                            {toNum}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 转场状态指示器 */}
+                      <div className="flex items-center justify-between mt-1 px-1">
+                        {hasTransition ? (
+                          <span className="text-[10px] text-green-600 flex items-center">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1" />
+                            已生成
+                          </span>
+                        ) : isGenerating ? (
+                          <span className="text-[10px] text-orange-600 flex items-center">
+                            <Loader2 className="h-3 w-3 mr-0.5 animate-spin" />
+                            生成中
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-400">未生成</span>
+                        )}
+                        
+                        {/* 生成按钮 */}
+                        {!hasTransition && !isGenerating && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGenerateTransition(fromNum, toNum);
+                            }}
+                            disabled={!firstImage || !secondImage}
+                            className="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded hover:bg-orange-600 disabled:opacity-50 disabled:bg-gray-300"
+                            title={!firstImage || !secondImage ? '请先生成分镜图片' : '生成转场视频'}
+                          >
+                            生成
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* 箭头指示 */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        <div className="bg-orange-500 text-white rounded-full p-0.5">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* 提示文字 */}
+              <p className="text-xs text-gray-500 mt-2">
+                转场视频用于连接相邻分镜，生成后会自动插入到最终合成的视频中
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 右侧边栏 */}

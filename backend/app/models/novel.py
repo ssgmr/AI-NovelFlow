@@ -45,6 +45,7 @@ class Chapter(Base):
     character_images = Column(Text, nullable=True)  # JSON array
     shot_images = Column(Text, nullable=True)  # JSON array
     shot_videos = Column(Text, nullable=True)  # JSON array
+    transition_videos = Column(Text, nullable=True)  # JSON object: {"1-2": url, "2-3": url, ...}
     final_video = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

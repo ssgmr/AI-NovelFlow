@@ -1172,3 +1172,139 @@ class ComfyUIService:
                 "success": False,
                 "message": f"生成失败: {str(e)}"
             }
+    
+    async def generate_transition_video_with_workflow(
+        self,
+        workflow_json: str,
+        node_mapping: Dict[str, str],
+        first_image_path: str,
+        last_image_path: str,
+        aspect_ratio: str = "16:9",
+        frame_count: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        使用指定工作流生成转场视频 (首帧+尾帧)
+        
+        Args:
+            workflow_json: 工作流 JSON 字符串
+            node_mapping: 节点映射配置 {
+                "first_image_node_id": "98",      # LoadImage - 首帧
+                "last_image_node_id": "106",      # LoadImage - 尾帧
+                "video_save_node_id": "105",      # VHS_VideoCombine
+                "frame_count_node_id": "174"      # 总帧数设置
+            }
+            first_image_path: 首帧图片本地路径
+            last_image_path: 尾帧图片本地路径
+            aspect_ratio: 画面比例
+            frame_count: 总帧数（8的倍数+1，如 33, 41, 49, 57）
+            
+        Returns:
+            {
+                "success": bool,
+                "video_url": str,
+                "message": str,
+                "submitted_workflow": dict
+            }
+        """
+        try:
+            # 解析工作流
+            workflow = json.loads(workflow_json)
+            
+            # 获取节点映射
+            first_image_node_id = node_mapping.get("first_image_node_id", "98")
+            last_image_node_id = node_mapping.get("last_image_node_id", "106")
+            video_save_node_id = node_mapping.get("video_save_node_id", "105")
+            frame_count_node_id = node_mapping.get("frame_count_node_id", "174")
+            
+            print(f"[ComfyUI] Transition node mapping: first={first_image_node_id}, last={last_image_node_id}, save={video_save_node_id}")
+            
+            # 1. 上传首帧图片
+            print(f"[ComfyUI] Uploading first frame image: {first_image_path}")
+            first_upload = await self._upload_image(first_image_path)
+            if not first_upload.get("success"):
+                return {"success": False, "message": f"首帧图片上传失败: {first_upload.get('message')}"}
+            
+            # 2. 上传尾帧图片
+            print(f"[ComfyUI] Uploading last frame image: {last_image_path}")
+            last_upload = await self._upload_image(last_image_path)
+            if not last_upload.get("success"):
+                return {"success": False, "message": f"尾帧图片上传失败: {last_upload.get('message')}"}
+            
+            # 3. 设置首帧图片到工作流
+            if first_image_node_id in workflow:
+                workflow[first_image_node_id]["inputs"]["image"] = first_upload.get("filename")
+                print(f"[ComfyUI] Set first frame to node {first_image_node_id}: {first_upload.get('filename')}")
+            else:
+                # 查找第一个 LoadImage 节点
+                for node_id, node in workflow.items():
+                    if node.get("class_type") == "LoadImage":
+                        workflow[node_id]["inputs"]["image"] = first_upload.get("filename")
+                        print(f"[ComfyUI] Auto-set first frame to LoadImage node {node_id}")
+                        break
+            
+            # 4. 设置尾帧图片到工作流
+            if last_image_node_id in workflow:
+                workflow[last_image_node_id]["inputs"]["image"] = last_upload.get("filename")
+                print(f"[ComfyUI] Set last frame to node {last_image_node_id}: {last_upload.get('filename')}")
+            else:
+                # 查找第二个 LoadImage 节点
+                load_image_count = 0
+                for node_id, node in workflow.items():
+                    if node.get("class_type") == "LoadImage":
+                        load_image_count += 1
+                        if load_image_count == 2:
+                            workflow[node_id]["inputs"]["image"] = last_upload.get("filename")
+                            print(f"[ComfyUI] Auto-set last frame to LoadImage node {node_id}")
+                            break
+            
+            # 5. 设置总帧数
+            if frame_count and frame_count_node_id in workflow:
+                workflow[frame_count_node_id]["inputs"]["value"] = frame_count
+                print(f"[ComfyUI] Set frame count {frame_count} to node {frame_count_node_id}")
+            
+            # 6. 设置随机种子
+            seed = random.randint(1, 2**32)
+            for node_id, node in workflow.items():
+                if node.get("class_type") in ["RandomNoise", "KSampler", "PainterSamplerLTXV"]:
+                    if "seed" in node.get("inputs", {}):
+                        workflow[node_id]["inputs"]["seed"] = seed
+                    if "noise_seed" in node.get("inputs", {}):
+                        workflow[node_id]["inputs"]["noise_seed"] = seed
+            print(f"[ComfyUI] Set seed: {seed}")
+            
+            # 提交任务
+            print(f"[ComfyUI] Submitting transition video generation task")
+            queue_result = await self._queue_prompt(workflow)
+            
+            if not queue_result.get("success"):
+                return {
+                    "success": False,
+                    "message": queue_result.get("error", "提交任务失败")
+                }
+            
+            prompt_id = queue_result.get("prompt_id")
+            
+            # 等待结果
+            result = await self._wait_for_result(
+                prompt_id, 
+                workflow, 
+                save_image_node_id=video_save_node_id,
+                timeout=7200
+            )
+            
+            video_url = result.get("video_url") or result.get("image_url")
+            return {
+                "success": result.get("success"),
+                "video_url": video_url,
+                "message": result.get("message", ""),
+                "submitted_workflow": workflow
+            }
+            
+        except Exception as e:
+            print(f"[ComfyUI] Generate transition video failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "message": f"生成失败: {str(e)}"
+            }

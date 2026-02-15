@@ -277,6 +277,7 @@ async def get_chapter(novel_id: str, chapter_id: str, db: Session = Depends(get_
     character_images = json.loads(chapter.character_images) if chapter.character_images else []
     shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
     shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
+    transition_videos = json.loads(chapter.transition_videos) if chapter.transition_videos else {}
     
     return {
         "success": True,
@@ -291,6 +292,7 @@ async def get_chapter(novel_id: str, chapter_id: str, db: Session = Depends(get_
             "characterImages": character_images,
             "shotImages": shot_images,
             "shotVideos": shot_videos,
+            "transitionVideos": transition_videos,
             "finalVideo": chapter.final_video,
             "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
         }
@@ -1225,6 +1227,367 @@ async def generate_shot_video_task(
             
     except Exception as e:
         print(f"[VideoTask {task_id}] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        try:
+            task.status = "failed"
+            task.error_message = str(e)
+            task.current_step = "任务异常"
+            db.commit()
+        except:
+            pass
+    finally:
+        db.close()
+
+
+# ==================== 转场视频生成 API ====================
+
+@router.post("/{novel_id}/chapters/{chapter_id}/transitions", response_model=dict)
+async def generate_transition_video(
+    novel_id: str,
+    chapter_id: str,
+    data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    生成转场视频（两个分镜之间）
+    
+    Request Body:
+    {
+        "from_index": 1,  // 起始分镜索引 (1-based)
+        "to_index": 2,    // 结束分镜索引 (1-based)
+        "frame_count": 49 // 可选，总帧数（8的倍数+1）
+    }
+    """
+    # 获取章节
+    chapter = db.query(Chapter).filter(
+        Chapter.id == chapter_id,
+        Chapter.novel_id == novel_id
+    ).first()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    from_index = data.get("from_index")
+    to_index = data.get("to_index")
+    frame_count = data.get("frame_count", 49)  # 默认49帧 (约2秒@25fps)
+    
+    if not from_index or not to_index:
+        raise HTTPException(status_code=400, detail="缺少 from_index 或 to_index")
+    
+    # 解析分镜数据
+    parsed_data = json.loads(chapter.parsed_data) if chapter.parsed_data else {}
+    shots = parsed_data.get("shots", [])
+    
+    if from_index < 1 or to_index > len(shots) or from_index >= to_index:
+        raise HTTPException(status_code=400, detail="无效的分镜索引")
+    
+    # 获取分镜图片
+    shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+    
+    first_image = shot_images[from_index - 1] if from_index <= len(shot_images) else None
+    last_image = shot_images[to_index - 1] if to_index <= len(shot_images) else None
+    
+    if not first_image or not last_image:
+        raise HTTPException(status_code=400, detail="分镜图片尚未生成")
+    
+    # 检查是否已有进行中的转场视频任务
+    transition_key = f"{from_index}-{to_index}"
+    existing_task = db.query(Task).filter(
+        Task.novel_id == novel_id,
+        Task.chapter_id == chapter_id,
+        Task.type == "transition_video",
+        Task.name.like(f"%镜{from_index}-镜{to_index}%"),
+        Task.status.in_(["pending", "running"])
+    ).first()
+    
+    if existing_task:
+        return {
+            "success": True,
+            "message": "转场视频生成任务已在进行中",
+            "task_id": existing_task.id,
+            "status": existing_task.status
+        }
+    
+    # 获取激活的转场视频工作流
+    from app.models.workflow import Workflow
+    workflow = db.query(Workflow).filter(
+        Workflow.type == "transition",
+        Workflow.is_active == True
+    ).first()
+    
+    if not workflow:
+        raise HTTPException(status_code=400, detail="未配置转场视频工作流，请在系统设置中配置")
+    
+    # 创建任务记录
+    task = Task(
+        type="transition_video",
+        name=f"生成转场视频: 镜{from_index}→镜{to_index}",
+        description=f"为章节 '{chapter.title}' 的分镜 {from_index} 到 {to_index} 生成转场过渡视频",
+        novel_id=novel_id,
+        chapter_id=chapter_id,
+        status="pending",
+        progress=0,
+        current_step="等待处理"
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    
+    print(f"[Transition] Created task {task.id} for transition {from_index}->{to_index}")
+    
+    # 启动后台任务
+    asyncio.create_task(
+        generate_transition_video_task(
+            task.id,
+            novel_id,
+            chapter_id,
+            from_index,
+            to_index,
+            workflow.id,
+            frame_count
+        )
+    )
+    
+    return {
+        "success": True,
+        "message": "转场视频生成任务已创建",
+        "task_id": task.id,
+        "status": "pending"
+    }
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/transitions/batch", response_model=dict)
+async def generate_all_transitions(
+    novel_id: str,
+    chapter_id: str,
+    data: dict = {},
+    db: Session = Depends(get_db)
+):
+    """
+    一键生成所有相邻分镜之间的转场视频
+    
+    Request Body:
+    {
+        "frame_count": 49 // 可选，总帧数
+    }
+    """
+    # 获取章节
+    chapter = db.query(Chapter).filter(
+        Chapter.id == chapter_id,
+        Chapter.novel_id == novel_id
+    ).first()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    # 解析分镜数据
+    parsed_data = json.loads(chapter.parsed_data) if chapter.parsed_data else {}
+    shots = parsed_data.get("shots", [])
+    
+    if len(shots) < 2:
+        raise HTTPException(status_code=400, detail="分镜数量不足，无法生成转场")
+    
+    # 获取分镜图片
+    shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+    
+    # 检查是否所有分镜都有图片
+    if len(shot_images) < len(shots):
+        raise HTTPException(status_code=400, detail="部分分镜图片尚未生成")
+    
+    frame_count = data.get("frame_count", 49)
+    
+    # 获取激活的转场视频工作流
+    from app.models.workflow import Workflow
+    workflow = db.query(Workflow).filter(
+        Workflow.type == "transition",
+        Workflow.is_active == True
+    ).first()
+    
+    if not workflow:
+        raise HTTPException(status_code=400, detail="未配置转场视频工作流")
+    
+    # 为每对相邻分镜创建任务
+    task_ids = []
+    for i in range(1, len(shots)):
+        from_idx = i
+        to_idx = i + 1
+        
+        # 检查是否已有进行中的任务
+        existing_task = db.query(Task).filter(
+            Task.novel_id == novel_id,
+            Task.chapter_id == chapter_id,
+            Task.type == "transition_video",
+            Task.name.like(f"%镜{from_idx}-镜{to_idx}%"),
+            Task.status.in_(["pending", "running"])
+        ).first()
+        
+        if existing_task:
+            task_ids.append(existing_task.id)
+            continue
+        
+        task = Task(
+            type="transition_video",
+            name=f"生成转场视频: 镜{from_idx}→镜{to_idx}",
+            description=f"为章节 '{chapter.title}' 的分镜 {from_idx} 到 {to_idx} 生成转场过渡视频",
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            status="pending",
+            progress=0,
+            current_step="等待处理"
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        task_ids.append(task.id)
+        
+        # 延迟启动，避免同时提交过多任务
+        asyncio.create_task(
+            generate_transition_video_task(
+                task.id,
+                novel_id,
+                chapter_id,
+                from_idx,
+                to_idx,
+                workflow.id,
+                frame_count
+            )
+        )
+    
+    return {
+        "success": True,
+        "message": f"已创建 {len(task_ids)} 个转场视频生成任务",
+        "task_count": len(task_ids),
+        "task_ids": task_ids
+    }
+
+
+async def generate_transition_video_task(
+    task_id: str,
+    novel_id: str,
+    chapter_id: str,
+    from_index: int,
+    to_index: int,
+    workflow_id: str,
+    frame_count: int = 49
+):
+    """后台任务：生成转场视频"""
+    from app.core.database import SessionLocal
+    from app.services.file_storage import FileStorage
+    import os
+    
+    db = SessionLocal()
+    file_storage = FileStorage()
+    
+    try:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            print(f"[TransitionTask] Task {task_id} not found")
+            return
+        
+        task.status = "running"
+        task.current_step = "准备生成转场视频..."
+        task.progress = 10
+        db.commit()
+        
+        # 获取章节和图片
+        chapter = db.query(Chapter).filter(Chapter.id == chapter_id).first()
+        if not chapter:
+            raise Exception("章节不存在")
+        
+        shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+        
+        first_image_url = shot_images[from_index - 1] if from_index <= len(shot_images) else None
+        last_image_url = shot_images[to_index - 1] if to_index <= len(shot_images) else None
+        
+        if not first_image_url or not last_image_url:
+            raise Exception("分镜图片不存在")
+        
+        # 转换URL为本地路径
+        first_image_path = None
+        last_image_path = None
+        
+        if first_image_url.startswith("/api/files/"):
+            relative_path = first_image_url.replace("/api/files/", "")
+            first_image_path = os.path.join(file_storage.base_dir, relative_path)
+        
+        if last_image_url.startswith("/api/files/"):
+            relative_path = last_image_url.replace("/api/files/", "")
+            last_image_path = os.path.join(file_storage.base_dir, relative_path)
+        
+        if not first_image_path or not last_image_path:
+            raise Exception("无法解析图片路径")
+        
+        task.current_step = "正在调用 ComfyUI 生成转场视频..."
+        task.progress = 30
+        db.commit()
+        
+        # 获取工作流
+        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        if not workflow:
+            raise Exception("工作流不存在")
+        
+        # 解析节点映射
+        node_mapping = {}
+        if workflow.node_mapping:
+            try:
+                node_mapping = json.loads(workflow.node_mapping)
+            except:
+                pass
+        
+        # 生成转场视频
+        result = await comfyui_service.generate_transition_video_with_workflow(
+            workflow_json=workflow.workflow_json,
+            node_mapping=node_mapping,
+            first_image_path=first_image_path,
+            last_image_path=last_image_path,
+            frame_count=frame_count
+        )
+        
+        if result.get("success"):
+            video_url = result.get("video_url")
+            
+            # 下载视频到本地存储
+            task.current_step = "正在保存视频..."
+            task.progress = 80
+            db.commit()
+            
+            download_result = await comfyui_service.download_file(
+                video_url, 
+                file_storage.base_dir,
+                prefix="transition"
+            )
+            
+            if download_result.get("success"):
+                local_path = download_result.get("local_path")
+                relative_path = local_path.replace(str(file_storage.base_dir), "")
+                local_url = f"/api/files/{relative_path.lstrip('/')}"
+                
+                # 更新章节的转场视频记录
+                transition_videos = json.loads(chapter.transition_videos) if chapter.transition_videos else {}
+                if not isinstance(transition_videos, dict):
+                    transition_videos = {}
+                
+                transition_key = f"{from_index}-{to_index}"
+                transition_videos[transition_key] = local_url
+                chapter.transition_videos = json.dumps(transition_videos)
+                
+                # 更新任务状态
+                task.status = "completed"
+                task.progress = 100
+                task.result_url = local_url
+                task.current_step = "转场视频生成完成"
+                db.commit()
+                
+                print(f"[TransitionTask] Completed: {from_index}->{to_index}, video: {local_url}")
+            else:
+                raise Exception(f"视频下载失败: {download_result.get('message')}")
+        else:
+            raise Exception(result.get("message", "生成失败"))
+            
+    except Exception as e:
+        print(f"[TransitionTask] Error: {e}")
         import traceback
         traceback.print_exc()
         

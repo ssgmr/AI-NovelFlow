@@ -33,6 +33,7 @@ export interface Chapter {
   characterImages?: string[];
   shotImages?: string[];
   shotVideos?: string[];
+  transitionVideos?: Record<string, string>;  // {"1-2": url, "2-3": url}
   finalVideo?: string;
 }
 
