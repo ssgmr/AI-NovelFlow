@@ -1308,3 +1308,57 @@ class ComfyUIService:
                 "success": False,
                 "message": f"生成失败: {str(e)}"
             }
+    
+    async def cancel_prompt(self, prompt_id: str) -> Dict[str, Any]:
+        """
+        取消 ComfyUI 中正在执行的任务
+        
+        Args:
+            prompt_id: ComfyUI 任务 ID
+            
+        Returns:
+            {
+                "success": bool,
+                "message": str
+            }
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                # 首先尝试从队列中删除（如果任务还在队列中）
+                try:
+                    delete_response = await client.post(
+                        f"{self.base_url}/queue",
+                        json={"delete": [prompt_id]},
+                        timeout=10.0
+                    )
+                    if delete_response.status_code == 200:
+                        return {
+                            "success": True,
+                            "message": "已从队列中删除任务"
+                        }
+                except Exception as e:
+                    print(f"[ComfyUI] Delete from queue failed: {e}")
+                
+                # 如果删除队列失败，尝试中断当前正在执行的任务
+                # 注意：这会中断所有正在执行的任务，而不仅是指定的任务
+                response = await client.post(
+                    f"{self.base_url}/interrupt",
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    return {
+                        "success": True,
+                        "message": "已向 ComfyUI 发送终止请求"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": f"终止请求失败: {response.status_code}"
+                    }
+        except Exception as e:
+            print(f"[ComfyUI] Cancel prompt failed: {e}")
+            return {
+                "success": False,
+                "message": f"发送终止请求失败: {str(e)}"
+            }

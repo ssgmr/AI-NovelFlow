@@ -16,7 +16,8 @@ import {
   ChevronUp,
   Terminal,
   Code,
-  X
+  X,
+  Square
 } from 'lucide-react';
 import ComfyUIStatus from '../components/ComfyUIStatus';
 import JSONEditor from '../components/JSONEditor';
@@ -224,6 +225,30 @@ export default function Tasks() {
     }
   };
 
+  const handleCancelAll = async () => {
+    const activeCount = tasks.filter(t => t.status === 'pending' || t.status === 'running').length;
+    if (activeCount === 0) {
+      toast('没有需要终止的任务', 'info');
+      return;
+    }
+    
+    if (!confirm(`确定要终止所有 ${activeCount} 个进行中的任务吗？\n\n此操作不可恢复！`)) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/tasks/cancel-all`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast(data.message, 'success');
+        fetchTasks();
+      } else {
+        toast(data.message || '终止任务失败', 'error');
+      }
+    } catch (error) {
+      console.error('终止任务失败:', error);
+      toast('终止任务失败', 'error');
+    }
+  };
+
   const toggleErrorDetail = (taskId: string) => {
     setExpandedErrors(prev => {
       const newSet = new Set(prev);
@@ -365,14 +390,26 @@ export default function Tasks() {
             查看和管理所有生成任务
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="btn-secondary"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          刷新
-        </button>
+        <div className="flex gap-2">
+          {/* 终止所有任务按钮 - 只在有进行中的任务时显示 */}
+          {(stats.pending > 0 || stats.running > 0) && (
+            <button
+              onClick={handleCancelAll}
+              className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center font-medium"
+            >
+              <Square className="h-4 w-4 mr-2 fill-current" />
+              终止所有任务
+            </button>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="btn-secondary"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            刷新
+          </button>
+        </div>
       </div>
 
       {/* ComfyUI Status */}
