@@ -21,7 +21,8 @@ import {
   Grid3x3,
   Clock,
   Film,
-  Settings
+  Settings,
+  Package
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
