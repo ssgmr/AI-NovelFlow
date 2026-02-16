@@ -5,9 +5,14 @@ import {
   XCircle, 
   Loader2,
   ArrowRight,
-  Zap,
-  Film,
-  Image
+  ChevronRight,
+  Book,
+  Users,
+  FileText,
+  FileJson,
+  Image as ImageIcon,
+  Video,
+  Film
 } from 'lucide-react';
 import { useConfigStore } from '../stores/configStore';
 import { Link } from 'react-router-dom';
@@ -50,24 +55,33 @@ export default function Welcome() {
       {/* Workflow Overview */}
       <div className="card">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">工作流程</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="flex items-center justify-between overflow-x-auto pb-2">
           {[
-            { icon: Zap, title: '文本解析', desc: 'DeepSeek AI' },
-            { icon: Image, title: '人设生成', desc: 'z-image' },
-            { icon: Image, title: '分镜生图', desc: 'qwen-edit' },
-            { icon: Film, title: '视频生成', desc: 'ltx-2' },
-            { icon: Sparkles, title: '视频合成', desc: 'FFmpeg' },
+            { icon: Book, title: '小说', color: 'from-sky-500 to-blue-500' },
+            { icon: Sparkles, title: 'AI解析角色', color: 'from-violet-500 to-purple-500' },
+            { icon: Users, title: '生成角色图', color: 'from-fuchsia-500 to-pink-500' },
+            { icon: FileText, title: '原文内容', color: 'from-blue-500 to-cyan-500' },
+            { icon: Sparkles, title: 'AI拆分分镜头', color: 'from-purple-500 to-pink-500' },
+            { icon: FileJson, title: 'JSON结构', color: 'from-emerald-500 to-teal-500' },
+            { icon: Users, title: '生成合并角色图', color: 'from-orange-500 to-amber-500' },
+            { icon: ImageIcon, title: '生成分镜图片', color: 'from-rose-500 to-pink-500' },
+            { icon: Video, title: '生成分镜视频', color: 'from-indigo-500 to-violet-500' },
+            { icon: Film, title: '生成分镜转场视频', color: 'from-cyan-500 to-blue-500' },
+            { icon: CheckCircle, title: '合并视频', color: 'from-green-500 to-emerald-500' },
           ].map((step, index) => (
-            <div key={step.title} className="flex items-center">
-              <div className="flex-1 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 mb-3">
-                  <step.icon className="h-6 w-6 text-primary-600" />
+            <div key={step.title} className="flex items-center flex-shrink-0">
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-gradient-to-br ${step.color} text-white shadow-md`}>
+                  <step.icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-medium text-gray-900">{step.title}</h3>
-                <p className="text-sm text-gray-500">{step.desc}</p>
+                <span className="text-xs font-medium text-gray-700 text-center whitespace-nowrap">
+                  {step.title}
+                </span>
               </div>
-              {index < 4 && (
-                <ArrowRight className="hidden md:block h-5 w-5 text-gray-300 mx-2" />
+              {index < 10 && (
+                <div className="flex items-center flex-1 justify-center mx-1 mb-6">
+                  <ChevronRight className="h-5 w-5 text-gray-300" />
+                </div>
               )}
             </div>
           ))}
