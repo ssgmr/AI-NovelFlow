@@ -231,13 +231,6 @@ async def run_test_case(
 # 初始化预设测试用例
 async def init_preset_test_cases(db: Session):
     """初始化预设测试用例"""
-    # 检查是否已存在小马过河测试用例
-    existing = db.query(TestCase).filter(TestCase.is_preset == True).first()
-    if existing:
-        return
-    
-    # 创建小马过河小说
-    from app.api.novels import parse_characters_task
     from app.models.prompt_template import PromptTemplate
     
     # 获取默认提示词模板
@@ -245,6 +238,20 @@ async def init_preset_test_cases(db: Session):
         PromptTemplate.is_system == True
     ).order_by(PromptTemplate.created_at.asc()).first()
     
+    # 检查是否已存在预设测试用例
+    existing_names = [tc.name for tc in db.query(TestCase).filter(TestCase.is_preset == True).all()]
+    
+    # 1. 创建小马过河测试用例
+    if "小马过河 - 完整流程测试" not in existing_names:
+        await _create_xiaoma_test_case(db, default_template)
+    
+    # 2. 创建小红帽测试用例
+    if "小红帽 - 完整流程测试" not in existing_names:
+        await _create_redridinghood_test_case(db, default_template)
+
+
+async def _create_xiaoma_test_case(db: Session, default_template):
+    """创建小马过河测试用例"""
     novel = Novel(
         title="小马过河（章节版）",
         author="AI测试用例",
@@ -339,11 +346,10 @@ async def init_preset_test_cases(db: Session):
         )
         db.add(chapter)
     
-    # 更新章节数
     novel.chapter_count = len(chapters_data)
     db.commit()
     
-    # 直接创建预设角色（避免调用 DeepSeek API）
+    # 创建预设角色
     preset_characters = [
         {
             "name": "小马",
@@ -377,7 +383,6 @@ async def init_preset_test_cases(db: Session):
         db.add(character)
     
     db.commit()
-    print(f"[初始化] 已创建 {len(preset_characters)} 个预设角色")
     
     # 创建测试用例
     test_case = TestCase(
@@ -390,6 +395,211 @@ async def init_preset_test_cases(db: Session):
         expected_character_count=4,
         expected_shot_count=8,
         notes="主要角色：小马、马妈妈、老牛、小松鼠",
+    )
+    db.add(test_case)
+    db.commit()
+    
+    print(f"[初始化] 已创建预设测试用例: {test_case.name}")
+
+
+async def _create_redridinghood_test_case(db: Session, default_template):
+    """创建小红帽测试用例"""
+    novel = Novel(
+        title="小红帽（章回体版）",
+        author="AI测试用例",
+        description="经典格林童话，用于测试AI角色解析和分镜生成功能",
+        is_preset=True,
+        prompt_template_id=default_template.id if default_template else None,
+    )
+    db.add(novel)
+    db.commit()
+    db.refresh(novel)
+    
+    # 创建5个章节
+    chapters_data = [
+        {
+            "title": "第一回：小红帽奉母命 初入森林遇灰狼",
+            "content": """从前有个小姑娘，人人都喜欢她。外婆送她一顶红色小帽子，她天天戴着，因此大家都叫她——小红帽。
+
+一日，母亲对她说：
+
+"你外婆病了，你把这篮点心送去。路上不要乱跑，也不要和陌生人说话。"
+
+小红帽答应了。
+
+她提着篮子，走进森林。
+
+森林幽深，鸟鸣阵阵。
+
+忽然，一只大灰狼从树后走出来。
+
+它笑着问：
+
+"小姑娘，你要去哪儿呀？"
+
+小红帽天真地回答：
+
+"我去看外婆。"
+
+大灰狼眼睛一转，心中暗喜。"""
+        },
+        {
+            "title": "第二回：灰狼暗生毒计 小红帽误入歧途",
+            "content": """大灰狼假装温和地说：
+
+"你看，这林中花多美啊。你摘一些给外婆，她一定会高兴。"
+
+小红帽一听，觉得有理。
+
+她走进林中深处，采起花来。
+
+却不知道，大灰狼已经抄近路，直奔外婆家。
+
+森林里，花香阵阵。
+
+小红帽越走越远。
+
+危险，悄然逼近。"""
+        },
+        {
+            "title": "第三回：恶狼吞外婆 假扮亲人待红帽",
+            "content": """大灰狼来到外婆家。
+
+它敲门。
+
+"是谁呀？"
+
+"我是小红帽。"
+
+外婆开门。
+
+大灰狼猛地扑上去——
+
+把外婆吞进肚里！
+
+随后，它穿上外婆的衣服，戴上帽子，躺在床上等待。
+
+不久，小红帽来到门前。
+
+她推门进屋。
+
+屋里很安静。
+
+她走到床前。"""
+        },
+        {
+            "title": "第四回：识破真面目 灾祸临头险丧命",
+            "content": """小红帽看着"外婆"，有些奇怪。
+
+"外婆，你的耳朵怎么这么大？"
+
+"为了更好听你说话。"
+
+"外婆，你的眼睛怎么这么大？"
+
+"为了更好看你。"
+
+"外婆，你的牙齿怎么这么大？"
+
+大灰狼猛地跳起来：
+
+"为了吃掉你！"
+
+它一口把小红帽也吞了下去。
+
+屋里恢复了寂静。"""
+        },
+        {
+            "title": "第五回：猎人解危难 红帽悔悟得新生",
+            "content": """这时，一位猎人路过。
+
+他听见屋里有怪声。
+
+推门一看，发现大灰狼躺着。
+
+他觉得可疑，举起剪刀，剖开狼肚。
+
+小红帽和外婆竟然从里面跳了出来！
+
+大家惊魂未定。
+
+他们往狼肚里塞满石头，再缝好。
+
+狼醒来想逃。
+
+却因石头太重，跌倒在地，再也没有起来。
+
+小红帽流着泪说：
+
+"我以后再也不乱跑，也不和陌生人说话了。"
+
+故事到此结束。"""
+        },
+    ]
+    
+    for idx, ch_data in enumerate(chapters_data, 1):
+        chapter = Chapter(
+            novel_id=novel.id,
+            number=idx,
+            title=ch_data["title"],
+            content=ch_data["content"],
+        )
+        db.add(chapter)
+    
+    novel.chapter_count = len(chapters_data)
+    db.commit()
+    
+    # 创建预设角色
+    preset_characters = [
+        {
+            "name": "小红帽",
+            "description": "故事主角，一个天真可爱的小女孩，喜欢戴着外婆送的红色小帽子",
+            "appearance": "可爱的小女孩，金色卷发，戴着红色小帽子，穿着红色斗篷，手提点心篮子"
+        },
+        {
+            "name": "外婆",
+            "description": "小红帽的外婆，慈祥温和，住在森林深处",
+            "appearance": "慈祥的老奶奶，白发苍苍，戴着眼镜，穿着舒适的居家服"
+        },
+        {
+            "name": "大灰狼",
+            "description": "故事反派，狡猾凶恶的大灰狼，善于欺骗",
+            "appearance": "体型庞大的灰色野狼，绿色的眼睛闪烁着狡诈的光芒，露出锋利的牙齿"
+        },
+        {
+            "name": "猎人",
+            "description": "勇敢的猎人，路过外婆家时救出了小红帽和外婆",
+            "appearance": "强壮的中年男子，穿着猎装，背着猎枪，手持剪刀，正义勇敢"
+        },
+        {
+            "name": "妈妈",
+            "description": "小红帽的妈妈，温柔体贴，叮嘱女儿路上小心",
+            "appearance": "温柔的年轻母亲，系着围裙，神情关切"
+        }
+    ]
+    
+    for char_data in preset_characters:
+        character = Character(
+            novel_id=novel.id,
+            name=char_data["name"],
+            description=char_data["description"],
+            appearance=char_data["appearance"],
+        )
+        db.add(character)
+    
+    db.commit()
+    
+    # 创建测试用例
+    test_case = TestCase(
+        name="小红帽 - 完整流程测试",
+        description="经典格林童话，包含5个主要角色，5个章节，用于测试AI解析、角色生成、分镜生成和视频合成流程",
+        novel_id=novel.id,
+        type="full",
+        is_preset=True,
+        is_active=True,
+        expected_character_count=5,
+        expected_shot_count=5,
+        notes="主要角色：小红帽、外婆、大灰狼、猎人、妈妈",
     )
     db.add(test_case)
     db.commit()
