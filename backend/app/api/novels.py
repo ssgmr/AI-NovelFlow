@@ -205,6 +205,92 @@ async def parse_novel(novel_id: str, background_tasks: BackgroundTasks, db: Sess
     return {"success": True, "message": "解析任务已启动"}
 
 
+@router.post("/{novel_id}/parse-characters/", response_model=dict)
+async def parse_characters(
+    novel_id: str, 
+    sync: bool = False,
+    db: Session = Depends(get_db)
+):
+    """解析小说内容，自动提取角色信息"""
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    # 获取所有章节内容
+    chapters = db.query(Chapter).filter(Chapter.novel_id == novel_id).all()
+    if not chapters:
+        return {"success": False, "message": "小说没有章节内容"}
+    
+    full_text = "\n\n".join([c.content for c in chapters if c.content])
+    if not full_text.strip():
+        return {"success": False, "message": "章节内容为空"}
+    
+    try:
+        # 调用 DeepSeek 解析文本提取角色
+        result = await deepseek_service.parse_novel_text(full_text)
+        
+        if "error" in result:
+            return {"success": False, "message": f"解析失败: {result['error']}"}
+        
+        characters_data = result.get("characters", [])
+        if not characters_data:
+            return {"success": True, "data": [], "message": "未识别到角色"}
+        
+        # 创建角色记录
+        created_characters = []
+        for char_data in characters_data:
+            name = char_data.get("name", "").strip()
+            if not name:
+                continue
+            
+            # 检查是否已存在
+            existing = db.query(Character).filter(
+                Character.novel_id == novel_id,
+                Character.name == name
+            ).first()
+            
+            if existing:
+                # 更新现有角色
+                existing.description = char_data.get("description", existing.description)
+                existing.appearance = char_data.get("appearance", existing.appearance)
+                created_characters.append(existing)
+            else:
+                # 创建新角色
+                character = Character(
+                    novel_id=novel_id,
+                    name=name,
+                    description=char_data.get("description", ""),
+                    appearance=char_data.get("appearance", ""),
+                )
+                db.add(character)
+                created_characters.append(character)
+        
+        db.commit()
+        
+        # 刷新对象以获取 ID
+        for char in created_characters:
+            db.refresh(char)
+        
+        return {
+            "success": True,
+            "data": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "description": c.description,
+                    "appearance": c.appearance,
+                }
+                for c in created_characters
+            ],
+            "message": f"成功识别并创建 {len(created_characters)} 个角色"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "message": f"解析异常: {str(e)}"}
+
+
 @router.get("/{novel_id}/chapters", response_model=dict)
 async def list_chapters(novel_id: str, db: Session = Depends(get_db)):
     """获取章节列表"""
