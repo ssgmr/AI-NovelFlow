@@ -401,14 +401,14 @@ export default function Characters() {
             <div
               key={character.id}
               id={`character-${character.id}`}
-              className={`bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-all ${
+              className={`bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-all group ${
                 highlightedId === character.id 
                   ? 'ring-4 ring-blue-500 ring-opacity-50 border-blue-500 animate-pulse' 
                   : 'border-gray-200'
               }`}
             >
               {/* Character Image - 根据小说画面比例显示 */}
-              <div className={`${aspectClass} bg-gray-100 relative w-full group`}>
+              <div className={`${aspectClass} bg-gray-100 relative w-full`}>
                 {character.imageUrl ? (
                   <img
                     src={character.imageUrl}
@@ -531,16 +531,6 @@ export default function Characters() {
                     </button>
                   </div>
                 )}
-
-                {/* Actions - 仅保留查看角色按钮 */}
-                <div className="flex items-center justify-end mt-4 pt-4 border-t border-gray-100">
-                  <Link
-                    to={`/characters?novel=${character.novelId}&highlight=${character.id}`}
-                    className="text-xs text-primary-600 hover:text-primary-700"
-                  >
-                    查看详情
-                  </Link>
-                </div>
 
                 {/* 生成提示词 */}
                 {characterPrompts[character.id] && (
