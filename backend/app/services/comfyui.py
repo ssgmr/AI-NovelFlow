@@ -955,7 +955,8 @@ class ComfyUIService:
                 "success": result.get("success"),
                 "image_url": result.get("image_url"),
                 "message": result.get("message", ""),
-                "submitted_workflow": workflow  # 返回实际提交给ComfyUI的工作流
+                "submitted_workflow": workflow,  # 返回实际提交给ComfyUI的工作流
+                "prompt_id": prompt_id  # 返回 ComfyUI 任务 ID，用于取消任务
             }
             
         except Exception as e:
@@ -1161,7 +1162,8 @@ class ComfyUIService:
                 "success": result.get("success"),
                 "video_url": video_url,
                 "message": result.get("message", ""),
-                "submitted_workflow": workflow  # 返回实际提交的工作流
+                "submitted_workflow": workflow,  # 返回实际提交的工作流
+                "prompt_id": prompt_id  # 返回 ComfyUI 任务 ID，用于取消任务
             }
             
         except Exception as e:
@@ -1297,7 +1299,8 @@ class ComfyUIService:
                 "success": result.get("success"),
                 "video_url": video_url,
                 "message": result.get("message", ""),
-                "submitted_workflow": workflow
+                "submitted_workflow": workflow,
+                "prompt_id": prompt_id  # 返回 ComfyUI 任务 ID，用于取消任务
             }
             
         except Exception as e:
