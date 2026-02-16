@@ -15,6 +15,7 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Sparkles,
   Save,
@@ -1759,33 +1760,24 @@ export default function ChapterGenerate() {
 
   const renderStepIndicator = () => (
     <div className="card mb-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center">
         {STEPS.map((step, index) => {
-          const isCompleted = index < currentStepIndex;
-          const isCurrent = index === currentStepIndex;
           const StepIcon = step.icon;
           
           return (
             <div key={step.key} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div className={`
-                  w-10 h-10 rounded-full flex items-center justify-center mb-2
-                  ${isCompleted ? 'bg-green-500 text-white' : ''}
-                  ${isCurrent ? 'bg-purple-600 text-white ring-4 ring-purple-100' : ''}
-                  ${!isCompleted && !isCurrent ? 'bg-gray-100 text-gray-400' : ''}
-                `}>
-                  {isCompleted ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <StepIcon className="h-5 w-5" />
-                  )}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-md">
+                  <StepIcon className="h-5 w-5" />
                 </div>
-                <span className={`text-xs font-medium ${isCurrent ? 'text-purple-600' : isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
+                <span className="text-xs font-medium text-gray-700 text-center whitespace-nowrap">
                   {step.label}
                 </span>
               </div>
               {index < STEPS.length - 1 && (
-                <div className={`w-8 h-0.5 mx-1 ${index < currentStepIndex ? 'bg-green-500' : 'bg-gray-200'}`} />
+                <div className="flex items-center mx-2 mb-6">
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                </div>
               )}
             </div>
           );
