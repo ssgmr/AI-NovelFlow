@@ -1840,7 +1840,7 @@ export default function ChapterGenerate() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  <Grid3X3 className="h-4 w-4" />
+                  <Grid3x3 className="h-4 w-4" />
                   表格编辑
                 </button>
               </div>
