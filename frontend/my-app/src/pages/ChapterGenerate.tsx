@@ -1936,26 +1936,7 @@ export default function ChapterGenerate() {
             <h1 className="text-2xl font-bold text-gray-900">
               {loading ? '加载中...' : chapter?.title || '未命名章节'}
             </h1>
-            <p className="text-sm text-gray-500">AI动画生成中...</p>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleRegenerate}
-            disabled={isGenerating}
-            className="btn-secondary"
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            重新生成
-          </button>
-          <button className="btn-primary bg-gradient-to-r from-purple-600 to-blue-600">
-            <Download className="h-4 w-4 mr-2" />
-            下载视频
-          </button>
         </div>
       </div>
 
