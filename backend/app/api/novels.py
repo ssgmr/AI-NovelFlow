@@ -1724,3 +1724,110 @@ async def download_chapter_materials(
         media_type="application/zip",
         filename=filename
     )
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/merge-videos", response_model=dict)
+async def merge_chapter_videos(
+    novel_id: str,
+    chapter_id: str,
+    data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    合并章节视频
+    
+    Args:
+        data: {
+            "include_transitions": bool  # 是否包含转场视频
+        }
+    
+    Returns:
+        {
+            "success": bool,
+            "video_url": str,
+            "message": str
+        }
+    """
+    # 验证小说和章节存在
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    chapter = db.query(Chapter).filter(
+        Chapter.id == chapter_id,
+        Chapter.novel_id == novel_id
+    ).first()
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    include_transitions = data.get("include_transitions", False)
+    
+    # 获取视频列表
+    shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
+    transition_videos = json.loads(chapter.transition_videos) if chapter.transition_videos else {}
+    
+    if not shot_videos or len(shot_videos) == 0:
+        return {
+            "success": False,
+            "message": "没有分镜视频可以合并"
+        }
+    
+    # 转换 URL 为本地路径
+    video_paths = []
+    for video_url in shot_videos:
+        if video_url.startswith("/api/files/"):
+            relative_path = video_url.replace("/api/files/", "")
+            full_path = file_storage.base_dir / relative_path
+            if full_path.exists():
+                video_paths.append(str(full_path))
+    
+    if len(video_paths) == 0:
+        return {
+            "success": False,
+            "message": "视频文件不存在"
+        }
+    
+    # 获取转场视频路径
+    trans_paths = []
+    if include_transitions and transition_videos:
+        for i in range(len(shot_videos) - 1):
+            key = f"{i+1}-{i+2}"
+            trans_url = transition_videos.get(key)
+            if trans_url and trans_url.startswith("/api/files/"):
+                relative_path = trans_url.replace("/api/files/", "")
+                full_path = file_storage.base_dir / relative_path
+                if full_path.exists():
+                    trans_paths.append(str(full_path))
+                else:
+                    trans_paths.append(None)
+            else:
+                trans_paths.append(None)
+    
+    # 生成输出路径
+    story_dir = file_storage._get_story_dir(novel_id)
+    chapter_short = chapter_id[:8] if chapter_id else "unknown"
+    output_filename = f"chapter_{chapter_short}_merged{'_with_trans' if include_transitions else ''}.mp4"
+    output_path = str(story_dir / output_filename)
+    
+    # 合并视频
+    result = await file_storage.merge_videos(
+        video_paths, 
+        output_path, 
+        trans_paths if include_transitions else None
+    )
+    
+    if result.get("success"):
+        # 构建访问 URL
+        relative_path = output_path.replace(str(file_storage.base_dir), "")
+        video_url = f"/api/files/{relative_path.lstrip('/')}"
+        
+        return {
+            "success": True,
+            "video_url": video_url,
+            "message": result.get("message", "合并成功")
+        }
+    else:
+        return {
+            "success": False,
+            "message": result.get("message", "合并失败")
+        }

@@ -5,7 +5,7 @@ import os
 import httpx
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -367,6 +367,109 @@ class FileStorageService:
             print(f"[FileStorage] Failed to zip chapter materials: {e}")
             traceback.print_exc()
             return None
+
+
+    async def merge_videos(self, video_paths: List[str], output_path: str, 
+                          transition_videos: List[str] = None) -> Dict[str, Any]:
+        """
+        合并多个视频文件
+        
+        Args:
+            video_paths: 视频文件路径列表（分镜视频）
+            output_path: 输出文件路径
+            transition_videos: 转场视频路径列表（可选），长度应为 len(video_paths) - 1
+            
+        Returns:
+            {
+                "success": bool,
+                "output_path": str,
+                "message": str
+            }
+        """
+        try:
+            import cv2
+            import asyncio
+            
+            if not video_paths or len(video_paths) == 0:
+                return {"success": False, "message": "没有视频文件"}
+            
+            def _merge():
+                # 构建视频列表（插入转场视频）
+                final_video_list = []
+                for i, video_path in enumerate(video_paths):
+                    final_video_list.append(video_path)
+                    # 在每个视频后插入转场（除了最后一个）
+                    if transition_videos and i < len(transition_videos) and i < len(video_paths) - 1:
+                        trans_path = transition_videos[i]
+                        if Path(trans_path).exists():
+                            final_video_list.append(trans_path)
+                
+                if len(final_video_list) == 0:
+                    return {"success": False, "message": "没有有效的视频文件"}
+                
+                # 获取第一个视频的信息
+                first_cap = cv2.VideoCapture(final_video_list[0])
+                if not first_cap.isOpened():
+                    return {"success": False, "message": "无法打开第一个视频"}
+                
+                fps = first_cap.get(cv2.CAP_PROP_FPS)
+                width = int(first_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(first_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                first_cap.release()
+                
+                # 创建视频写入器
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+                
+                if not out.isOpened():
+                    return {"success": False, "message": "无法创建输出视频"}
+                
+                total_frames = 0
+                
+                # 逐个写入视频
+                for video_path in final_video_list:
+                    cap = cv2.VideoCapture(video_path)
+                    if not cap.isOpened():
+                        continue
+                    
+                    # 如果需要调整分辨率
+                    v_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    v_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    
+                    while True:
+                        ret, frame = cap.read()
+                        if not ret:
+                            break
+                        
+                        # 调整分辨率以匹配输出
+                        if v_width != width or v_height != height:
+                            frame = cv2.resize(frame, (width, height))
+                        
+                        out.write(frame)
+                        total_frames += 1
+                    
+                    cap.release()
+                
+                out.release()
+                
+                return {
+                    "success": True,
+                    "output_path": output_path,
+                    "message": f"合并完成，共 {len(final_video_list)} 个视频片段"
+                }
+            
+            # 在线程池中执行
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _merge)
+            
+            print(f"[FileStorage] Video merge result: {result}")
+            return result
+            
+        except Exception as e:
+            import traceback
+            print(f"[FileStorage] Failed to merge videos: {e}")
+            traceback.print_exc()
+            return {"success": False, "message": f"合并失败: {str(e)}"}
 
 
 # 全局实例

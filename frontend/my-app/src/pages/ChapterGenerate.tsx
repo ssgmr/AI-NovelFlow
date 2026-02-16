@@ -145,6 +145,142 @@ function DownloadMaterialsCard({
   );
 }
 
+// 合并视频组件
+function MergeVideosCard({
+  novelId,
+  chapterId,
+  shotVideos,
+  transitionVideos,
+  chapter
+}: {
+  novelId: string;
+  chapterId: string;
+  shotVideos: Record<number, string>;
+  transitionVideos: Record<string, string>;
+  chapter: Chapter | null;
+}) {
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergedVideoUrl, setMergedVideoUrl] = useState<string | null>(null);
+  const [includeTransitions, setIncludeTransitions] = useState(true);
+
+  const videoList = Object.values(shotVideos).filter(Boolean);
+  const hasVideos = videoList.length > 0;
+  const hasTransitions = Object.keys(transitionVideos).length > 0;
+
+  const handleMerge = async () => {
+    if (!novelId || !chapterId || videoList.length === 0) {
+      toast('没有可合并的视频', 'error');
+      return;
+    }
+
+    setIsMerging(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/novels/${novelId}/chapters/${chapterId}/merge-videos/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ include_transitions: includeTransitions })
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setMergedVideoUrl(data.video_url);
+        toast('视频合并成功', 'success');
+      } else {
+        toast(data.message || '合并失败', 'error');
+      }
+    } catch (error) {
+      console.error('Merge error:', error);
+      toast('合并失败', 'error');
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+        <div className="flex items-center gap-2">
+          <Film className="h-5 w-5 text-purple-600" />
+          <h3 className="font-semibold text-gray-900">合并视频</h3>
+        </div>
+      </div>
+      <div className="p-4">
+        {!hasVideos ? (
+          <p className="text-sm text-gray-500">暂无分镜视频</p>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500 mb-3">
+              已生成 {videoList.length} 个分镜视频
+              {hasTransitions && `，${Object.keys(transitionVideos).length} 个转场视频`}
+            </p>
+            
+            {/* 选项 */}
+            <div className="space-y-2 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={!includeTransitions}
+                  onChange={() => setIncludeTransitions(false)}
+                  className="w-4 h-4 text-purple-600"
+                />
+                <span className="text-sm text-gray-700">仅合并分镜视频</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={includeTransitions}
+                  onChange={() => setIncludeTransitions(true)}
+                  disabled={!hasTransitions}
+                  className="w-4 h-4 text-purple-600 disabled:opacity-50"
+                />
+                <span className={`text-sm ${hasTransitions ? 'text-gray-700' : 'text-gray-400'}`}>
+                  合并分镜+转场视频
+                </span>
+              </label>
+            </div>
+
+            {/* 合并按钮 */}
+            <button
+              onClick={handleMerge}
+              disabled={isMerging}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isMerging ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  合并中...
+                </>
+              ) : (
+                <>
+                  <Film className="h-4 w-4" />
+                  {includeTransitions ? '合并分镜+转场' : '仅合并分镜'}
+                </>
+              )}
+            </button>
+
+            {/* 合并后的视频播放器 */}
+            {mergedVideoUrl && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-sm font-medium text-gray-700 mb-2">合并结果</p>
+                <video
+                  src={mergedVideoUrl}
+                  controls
+                  className="w-full rounded-lg bg-gray-900"
+                  style={{ aspectRatio: chapter?.novel?.aspectRatio === '9:16' ? '9/16' : '16/9' }}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // 步骤定义
 const STEPS = [
   { key: 'parse', label: '解析文本', icon: FileJson },
@@ -2025,6 +2161,15 @@ export default function ChapterGenerate() {
           {/* 系统状态 - 吸顶效果 */}
           <div className="sticky top-6 space-y-4">
             <ComfyUIStatus />
+            
+            {/* 合并视频 */}
+            <MergeVideosCard
+              novelId={id}
+              chapterId={cid}
+              shotVideos={shotVideos}
+              transitionVideos={transitionVideos}
+              chapter={chapter}
+            />
             
             {/* 章节素材下载 */}
             <DownloadMaterialsCard 
