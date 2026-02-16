@@ -408,7 +408,7 @@ export default function Characters() {
               }`}
             >
               {/* Character Image - 根据小说画面比例显示 */}
-              <div className={`${aspectClass} bg-gray-100 relative w-full`}>
+              <div className={`${aspectClass} bg-gray-100 relative w-full group`}>
                 {character.imageUrl ? (
                   <img
                     src={character.imageUrl}
@@ -434,12 +434,38 @@ export default function Characters() {
                   </div>
                 )}
                 
-                {/* Generate Button Overlay - 只在悬停时显示提示 */}
-                {!character.imageUrl && character.generatingStatus !== 'running' && (
-                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                    <span className="text-white text-sm font-medium">点击下方按钮生成</span>
-                  </div>
-                )}
+                {/* Delete Button - 右上角 */}
+                <button
+                  onClick={() => handleDelete(character.id)}
+                  className="absolute top-2 right-2 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                  title="删除"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                
+                {/* Edit Button - 左下角 */}
+                <button
+                  onClick={() => setEditingCharacter(character)}
+                  className="absolute bottom-2 left-2 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                  title="编辑"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+                
+                {/* AI生成形象 Button - 右下角，带文字 */}
+                <button
+                  onClick={() => generatePortrait(character)}
+                  disabled={generatingId === character.id || character.generatingStatus === 'running'}
+                  className="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1.5 bg-purple-600/90 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100 text-xs"
+                  title={character.imageUrl ? '重新生成' : '生成形象'}
+                >
+                  {character.generatingStatus === 'running' || generatingId === character.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3 w-3" />
+                  )}
+                  <span>AI生成形象</span>
+                </button>
                 
                 {/* Loading Overlay - when local state shows generating */}
                 {generatingId === character.id && (
@@ -506,37 +532,14 @@ export default function Characters() {
                   </div>
                 )}
 
-                {/* Actions */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex gap-2">
-                    {/* 生成形象按钮 - 无论是否有图片都显示 */}
-                    <button
-                      onClick={() => generatePortrait(character)}
-                      disabled={generatingId === character.id || character.generatingStatus === 'running'}
-                      className="p-2 text-gray-400 hover:text-primary-600 transition-colors disabled:opacity-50"
-                      title={character.imageUrl ? '重新生成' : '生成形象'}
-                    >
-                      {character.generatingStatus === 'running' ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-primary-600" />
-                      ) : (
-                        <Wand2 className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setEditingCharacter(character)}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="编辑"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(character.id)}
-                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                    title="删除"
+                {/* Actions - 仅保留查看角色按钮 */}
+                <div className="flex items-center justify-end mt-4 pt-4 border-t border-gray-100">
+                  <Link
+                    to={`/characters?novel=${character.novelId}&highlight=${character.id}`}
+                    className="text-xs text-primary-600 hover:text-primary-700"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    查看详情
+                  </Link>
                 </div>
 
                 {/* 生成提示词 */}
