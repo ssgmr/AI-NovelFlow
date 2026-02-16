@@ -1309,9 +1309,9 @@ class ComfyUIService:
                 "message": f"生成失败: {str(e)}"
             }
     
-    async def cancel_prompt(self, prompt_id: str) -> Dict[str, Any]:
+    async def delete_from_queue(self, prompt_id: str) -> Dict[str, Any]:
         """
-        取消 ComfyUI 中正在执行的任务
+        从 ComfyUI 队列中删除等待执行的任务
         
         Args:
             prompt_id: ComfyUI 任务 ID
@@ -1324,41 +1324,84 @@ class ComfyUIService:
         """
         try:
             async with httpx.AsyncClient() as client:
-                # 首先尝试从队列中删除（如果任务还在队列中）
-                try:
-                    delete_response = await client.post(
-                        f"{self.base_url}/queue",
-                        json={"delete": [prompt_id]},
-                        timeout=10.0
-                    )
-                    if delete_response.status_code == 200:
-                        return {
-                            "success": True,
-                            "message": "已从队列中删除任务"
-                        }
-                except Exception as e:
-                    print(f"[ComfyUI] Delete from queue failed: {e}")
-                
-                # 如果删除队列失败，尝试中断当前正在执行的任务
-                # 注意：这会中断所有正在执行的任务，而不仅是指定的任务
+                print(f"[ComfyUI] Deleting prompt {prompt_id} from queue")
                 response = await client.post(
-                    f"{self.base_url}/interrupt",
+                    f"{self.base_url}/queue",
+                    json={"delete": [prompt_id]},
                     timeout=10.0
                 )
+                print(f"[ComfyUI] Delete queue response: {response.status_code}")
                 
                 if response.status_code == 200:
                     return {
                         "success": True,
-                        "message": "已向 ComfyUI 发送终止请求"
+                        "message": "已从队列中删除"
                     }
                 else:
                     return {
                         "success": False,
-                        "message": f"终止请求失败: {response.status_code}"
+                        "message": f"删除失败: {response.status_code}"
                     }
         except Exception as e:
-            print(f"[ComfyUI] Cancel prompt failed: {e}")
+            print(f"[ComfyUI] Delete from queue failed: {e}")
             return {
                 "success": False,
-                "message": f"发送终止请求失败: {str(e)}"
+                "message": f"删除请求失败: {str(e)}"
             }
+    
+    async def interrupt_execution(self) -> Dict[str, Any]:
+        """
+        中断 ComfyUI 当前正在执行的任务
+        
+        Returns:
+            {
+                "success": bool,
+                "message": str
+            }
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                print(f"[ComfyUI] Interrupting current execution")
+                response = await client.post(
+                    f"{self.base_url}/interrupt",
+                    timeout=10.0
+                )
+                print(f"[ComfyUI] Interrupt response: {response.status_code}")
+                
+                if response.status_code == 200:
+                    return {
+                        "success": True,
+                        "message": "已发送中断请求"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": f"中断失败: {response.status_code}"
+                    }
+        except Exception as e:
+            print(f"[ComfyUI] Interrupt failed: {e}")
+            return {
+                "success": False,
+                "message": f"中断请求失败: {str(e)}"
+            }
+    
+    async def cancel_prompt(self, prompt_id: str) -> Dict[str, Any]:
+        """
+        取消 ComfyUI 中正在执行或等待的任务（综合方法）
+        
+        Args:
+            prompt_id: ComfyUI 任务 ID
+            
+        Returns:
+            {
+                "success": bool,
+                "message": str
+            }
+        """
+        # 首先尝试从队列中删除
+        result = await self.delete_from_queue(prompt_id)
+        if result["success"]:
+            return result
+        
+        # 如果删除队列失败，尝试中断当前执行
+        return await self.interrupt_execution()

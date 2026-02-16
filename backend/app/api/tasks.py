@@ -209,34 +209,61 @@ async def cancel_all_tasks(db: Session = Depends(get_db)):
             "cancelled_count": 0
         }
     
+    # 分离 queued 和 running 任务
+    queued_tasks = [t for t in active_tasks if t.status == "pending" and t.comfyui_prompt_id]
+    running_tasks = [t for t in active_tasks if t.status == "running" and t.comfyui_prompt_id]
+    
+    print(f"[CancelAll] Found {len(queued_tasks)} queued tasks and {len(running_tasks)} running tasks")
+    
+    # 1. 首先尝试从 ComfyUI 队列中删除 queued 任务
+    deleted_from_queue = 0
+    for task in queued_tasks:
+        try:
+            result = await comfyui_service.delete_from_queue(task.comfyui_prompt_id)
+            print(f"[CancelAll] Deleted from queue {task.comfyui_prompt_id}: {result}")
+            if result.get("success"):
+                deleted_from_queue += 1
+        except Exception as e:
+            print(f"[CancelAll] Failed to delete from queue {task.comfyui_prompt_id}: {e}")
+    
+    # 2. 如果有 running 任务，调用一次 interrupt（会中断所有正在执行的任务）
+    interrupted = False
+    if running_tasks:
+        try:
+            result = await comfyui_service.interrupt_execution()
+            print(f"[CancelAll] Interrupt execution: {result}")
+            interrupted = result.get("success", False)
+        except Exception as e:
+            print(f"[CancelAll] Failed to interrupt execution: {e}")
+    
+    # 3. 更新所有任务状态为 failed
     cancelled_count = 0
     failed_count = 0
-    
-    # 对 running 状态且有 comfyui_prompt_id 的任务，尝试向 ComfyUI 发送终止请求
     for task in active_tasks:
         try:
-            # 如果任务有 ComfyUI prompt_id 且正在运行，尝试中断
-            if task.status == "running" and task.comfyui_prompt_id:
-                try:
-                    result = await comfyui_service.cancel_prompt(task.comfyui_prompt_id)
-                    print(f"[CancelAll] Cancelled ComfyUI task {task.comfyui_prompt_id}: {result}")
-                except Exception as e:
-                    print(f"[CancelAll] Failed to cancel ComfyUI task {task.comfyui_prompt_id}: {e}")
-            
-            # 更新任务状态为 failed
             task.status = "failed"
             task.error_message = "任务被用户终止"
             task.current_step = "已终止"
             cancelled_count += 1
         except Exception as e:
-            print(f"[CancelAll] Failed to cancel task {task.id}: {e}")
+            print(f"[CancelAll] Failed to update task {task.id}: {e}")
             failed_count += 1
     
     db.commit()
     
+    message_parts = []
+    if cancelled_count > 0:
+        message_parts.append(f"已终止 {cancelled_count} 个任务")
+    if deleted_from_queue > 0:
+        message_parts.append(f"从队列删除 {deleted_from_queue} 个")
+    if interrupted:
+        message_parts.append("已中断运行中任务")
+    if failed_count > 0:
+        message_parts.append(f"{failed_count} 个失败")
+    
     return {
         "success": True,
-        "message": f"已终止 {cancelled_count} 个任务" + (f"，{failed_count} 个任务终止失败" if failed_count > 0 else ""),
+        "message": "；".join(message_parts) if message_parts else "操作完成",
         "cancelled_count": cancelled_count,
         "failed_count": failed_count
     }
