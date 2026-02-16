@@ -8,7 +8,9 @@ import {
   User,
   Wand2,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  X,
+  Images
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Character, Novel } from '../types';
@@ -42,6 +44,16 @@ export default function Characters() {
     isOpen: boolean;
     novelId: string | null;
   }>({ isOpen: false, novelId: null });
+  
+  // 图片预览弹窗状态
+  const [previewImage, setPreviewImage] = useState<{
+    isOpen: boolean;
+    url: string | null;
+    name: string;
+  }>({ isOpen: false, url: null, name: '' });
+  
+  // 批量生成所有角色形象
+  const [generatingAll, setGeneratingAll] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -271,6 +283,94 @@ export default function Characters() {
     }, 3000); // 每3秒检查一次
   };
 
+  // 批量生成所有角色形象
+  const generateAllPortraits = async () => {
+    if (filteredCharacters.length === 0) {
+      toast.warning('当前没有角色需要生成');
+      return;
+    }
+    
+    // 过滤出没有图片且不在生成中的角色
+    const charactersToGenerate = filteredCharacters.filter(
+      c => !c.imageUrl && c.generatingStatus !== 'running'
+    );
+    
+    if (charactersToGenerate.length === 0) {
+      toast.info('所有角色已有形象或正在生成中');
+      return;
+    }
+    
+    if (!confirm(`将为 ${charactersToGenerate.length} 个角色生成形象，是否继续？`)) return;
+    
+    setGeneratingAll(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const character of charactersToGenerate) {
+      try {
+        const res = await fetch(`${API_BASE}/tasks/character/${character.id}/generate-portrait/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.success) {
+          successCount++;
+          // 更新本地状态为生成中
+          setCharacters(prev => prev.map(c => 
+            c.id === character.id ? { ...c, generatingStatus: 'running' } : c
+          ));
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        console.error(`生成角色 ${character.name} 失败:`, error);
+        failCount++;
+      }
+    }
+    
+    setGeneratingAll(false);
+    
+    if (successCount > 0) {
+      toast.success(`已成功创建 ${successCount} 个生成任务`);
+      // 开始轮询所有角色状态
+      pollAllCharactersStatus();
+    }
+    if (failCount > 0) {
+      toast.error(`${failCount} 个角色创建任务失败`);
+    }
+  };
+
+  // 轮询所有生成中的角色状态
+  const pollAllCharactersStatus = () => {
+    const interval = setInterval(async () => {
+      try {
+        await fetchCharacters();
+        
+        // 检查是否还有生成中的角色
+        const generatingChars = characters.filter(
+          c => c.generatingStatus === 'running'
+        );
+        
+        if (generatingChars.length === 0) {
+          clearInterval(interval);
+          toast.success('所有角色形象生成完成！');
+        }
+      } catch (error) {
+        console.error('轮询状态失败:', error);
+      }
+    }, 5000); // 每5秒检查一次
+  };
+
+  // 打开图片预览
+  const openImagePreview = (url: string, name: string) => {
+    setPreviewImage({ isOpen: true, url, name });
+  };
+
+  // 关闭图片预览
+  const closeImagePreview = () => {
+    setPreviewImage({ isOpen: false, url: null, name: '' });
+  };
+
   const filteredCharacters = characters.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -358,13 +458,29 @@ export default function Characters() {
             管理小说角色的详细信息和形象设定
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          新建角色
-        </button>
+        <div className="flex gap-3">
+          {filteredCharacters.length > 0 && (
+            <button
+              onClick={generateAllPortraits}
+              disabled={generatingAll}
+              className="btn-secondary text-purple-600 border-purple-200 hover:bg-purple-50 disabled:opacity-50"
+            >
+              {generatingAll ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Images className="mr-2 h-4 w-4" />
+              )}
+              AI生成所有角色形象
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            新建角色
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -449,7 +565,8 @@ export default function Characters() {
                   <img
                     src={character.imageUrl}
                     alt={character.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => openImagePreview(character.imageUrl!, character.name)}
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -759,6 +876,37 @@ export default function Characters() {
                 确认
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 图片预览弹窗 */}
+      {previewImage.isOpen && previewImage.url && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          onClick={closeImagePreview}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            {/* 关闭按钮 */}
+            <button
+              onClick={closeImagePreview}
+              className="absolute -top-12 right-0 p-2 text-white hover:text-gray-300 transition-colors"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            
+            {/* 角色名称 */}
+            <h3 className="text-white text-lg font-semibold mb-4 text-center">
+              {previewImage.name}
+            </h3>
+            
+            {/* 图片 */}
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              className="w-full h-full object-contain max-h-[80vh] rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}
