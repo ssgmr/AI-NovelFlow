@@ -22,7 +22,11 @@ import {
   Clock,
   Film,
   Settings,
-  Package
+  Package,
+  Code,
+  Plus,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
@@ -140,6 +144,289 @@ function DownloadMaterialsCard({
             </>
           )}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// JSON表格编辑器组件
+interface JsonTableEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string>('');
+  const [activeSection, setActiveSection] = useState<'characters' | 'scenes' | 'shots'>('shots');
+
+  // 解析JSON
+  useEffect(() => {
+    try {
+      if (value.trim()) {
+        const parsed = JSON.parse(value);
+        setData(parsed);
+        setError('');
+      } else {
+        setData(null);
+      }
+    } catch (e) {
+      setError('JSON格式错误，请检查文本模式');
+    }
+  }, [value]);
+
+  // 更新JSON
+  const updateJson = (newData: any) => {
+    setData(newData);
+    onChange(JSON.stringify(newData, null, 2));
+  };
+
+  // 更新角色
+  const updateCharacter = (index: number, value: string) => {
+    if (!data) return;
+    const newCharacters = [...(data.characters || [])];
+    newCharacters[index] = value;
+    updateJson({ ...data, characters: newCharacters });
+  };
+
+  // 添加角色
+  const addCharacter = () => {
+    if (!data) return;
+    const newCharacters = [...(data.characters || []), '新角色'];
+    updateJson({ ...data, characters: newCharacters });
+  };
+
+  // 删除角色
+  const removeCharacter = (index: number) => {
+    if (!data) return;
+    const newCharacters = (data.characters || []).filter((_: any, i: number) => i !== index);
+    updateJson({ ...data, characters: newCharacters });
+  };
+
+  // 更新场景
+  const updateScene = (index: number, value: string) => {
+    if (!data) return;
+    const newScenes = [...(data.scenes || [])];
+    newScenes[index] = value;
+    updateJson({ ...data, scenes: newScenes });
+  };
+
+  // 添加场景
+  const addScene = () => {
+    if (!data) return;
+    const newScenes = [...(data.scenes || []), '新场景'];
+    updateJson({ ...data, scenes: newScenes });
+  };
+
+  // 删除场景
+  const removeScene = (index: number) => {
+    if (!data) return;
+    const newScenes = (data.scenes || []).filter((_: any, i: number) => i !== index);
+    updateJson({ ...data, scenes: newScenes });
+  };
+
+  // 更新分镜
+  const updateShot = (index: number, field: string, value: any) => {
+    if (!data) return;
+    const newShots = [...(data.shots || [])];
+    newShots[index] = { ...newShots[index], [field]: value };
+    updateJson({ ...data, shots: newShots });
+  };
+
+  // 添加分镜
+  const addShot = () => {
+    if (!data) return;
+    const newShot = {
+      id: (data.shots?.length || 0) + 1,
+      description: '新分镜描述',
+      characters: [],
+      scene: '',
+      duration: 4
+    };
+    updateJson({ ...data, shots: [...(data.shots || []), newShot] });
+  };
+
+  // 删除分镜
+  const removeShot = (index: number) => {
+    if (!data) return;
+    const newShots = (data.shots || []).filter((_: any, i: number) => i !== index);
+    // 重新编号
+    newShots.forEach((shot: any, i: number) => { shot.id = i + 1; });
+    updateJson({ ...data, shots: newShots });
+  };
+
+  if (error) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-red-50 rounded-lg border border-red-200">
+        <div className="text-center">
+          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-gray-500 text-xs mt-1">请切换到JSON文本模式检查</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200">
+        <p className="text-gray-400 text-sm">暂无数据，请先进行AI拆分</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-96 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
+      {/* 标签切换 */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveSection('shots')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeSection === 'shots' 
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          分镜 ({data.shots?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveSection('characters')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeSection === 'characters' 
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          角色 ({data.characters?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveSection('scenes')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeSection === 'scenes' 
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          场景 ({data.scenes?.length || 0})
+        </button>
+      </div>
+
+      {/* 内容区域 */}
+      <div className="flex-1 overflow-auto p-4">
+        {activeSection === 'characters' && (
+          <div className="space-y-2">
+            {data.characters?.map((char: string, idx: number) => (
+              <div key={idx} className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={char}
+                  onChange={(e) => updateCharacter(idx, e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <button
+                  onClick={() => removeCharacter(idx)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addCharacter}
+              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              添加角色
+            </button>
+          </div>
+        )}
+
+        {activeSection === 'scenes' && (
+          <div className="space-y-2">
+            {data.scenes?.map((scene: string, idx: number) => (
+              <div key={idx} className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-green-500 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={scene}
+                  onChange={(e) => updateScene(idx, e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <button
+                  onClick={() => removeScene(idx)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addScene}
+              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              添加场景
+            </button>
+          </div>
+        )}
+
+        {activeSection === 'shots' && (
+          <div className="space-y-3">
+            {data.shots?.map((shot: any, idx: number) => (
+              <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">镜{shot.id}</span>
+                  <button
+                    onClick={() => removeShot(idx)}
+                    className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <textarea
+                    value={shot.description}
+                    onChange={(e) => updateShot(idx, 'description', e.target.value)}
+                    placeholder="分镜描述"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={shot.scene}
+                      onChange={(e) => updateShot(idx, 'scene', e.target.value)}
+                      placeholder="场景"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      value={shot.duration}
+                      onChange={(e) => updateShot(idx, 'duration', parseInt(e.target.value) || 4)}
+                      placeholder="时长(秒)"
+                      className="w-24 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={shot.characters?.join(', ')}
+                    onChange={(e) => updateShot(idx, 'characters', e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
+                    placeholder="角色（用逗号分隔）"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={addShot}
+              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              添加分镜
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -436,6 +723,8 @@ export default function ChapterGenerate() {
   const [parsedData, setParsedData] = useState<any>(null);
   // 可编辑的JSON文本
   const [editableJson, setEditableJson] = useState<string>('');
+  // JSON编辑模式：文本或表格
+  const [jsonEditMode, setJsonEditMode] = useState<'text' | 'table'>('text');
   // 角色列表（从角色库获取）
   const [characters, setCharacters] = useState<Character[]>([]);
 
@@ -1529,14 +1818,32 @@ export default function ChapterGenerate() {
       case 'json':
         return (
           <div className="space-y-3">
-            <textarea
-              className="w-full h-64 bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              value={editableJson}
-              onChange={(e) => setEditableJson(e.target.value)}
-              placeholder="点击 AI拆分分镜头 按钮生成数据，或直接输入JSON..."
-              spellCheck={false}
-            />
-            <div className="flex justify-end">
+            {/* 编辑模式切换 */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setJsonEditMode('text')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    jsonEditMode === 'text' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Code className="h-4 w-4" />
+                  JSON文本
+                </button>
+                <button
+                  onClick={() => setJsonEditMode('table')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    jsonEditMode === 'table' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                  表格编辑
+                </button>
+              </div>
               <button
                 onClick={handleSaveJson}
                 disabled={isSavingJson || !editableJson.trim()}
@@ -1549,6 +1856,23 @@ export default function ChapterGenerate() {
                 )}
               </button>
             </div>
+            
+            {jsonEditMode === 'text' ? (
+              /* JSON文本编辑模式 */
+              <textarea
+                className="w-full h-64 bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={editableJson}
+                onChange={(e) => setEditableJson(e.target.value)}
+                placeholder="点击 AI拆分分镜头 按钮生成数据，或直接输入JSON..."
+                spellCheck={false}
+              />
+            ) : (
+              /* 表格编辑模式 */
+              <JsonTableEditor 
+                value={editableJson}
+                onChange={setEditableJson}
+              />
+            )}
           </div>
         );
       case 'characters':
