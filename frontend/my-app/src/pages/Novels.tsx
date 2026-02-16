@@ -200,7 +200,7 @@ export default function Novels() {
           placeholder="搜索小说..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="input-field pl-10 h-10"
+          className="input-field pl-10"
         />
       </div>
 

@@ -19,7 +19,28 @@
     @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors;
   }
   .input-field {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm;
+    @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 sm:text-sm;
+    @apply px-4 py-2.5 border;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:border-gray-400;
+    @apply bg-white;
+  }
+  
+  select.input-field {
+    @apply pr-10;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    appearance: none;
+  }
+  
+  textarea.input-field {
+    @apply min-h-[100px] resize-y leading-relaxed;
+  }
+  
+  input[type='file'].input-field {
+    @apply py-2;
   }
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
