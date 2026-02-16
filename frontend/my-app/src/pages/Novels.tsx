@@ -209,7 +209,7 @@ export default function Novels() {
               key={novel.id}
               className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
             >
-              <div className="aspect-video bg-gray-100 relative">
+              <div className="aspect-video bg-gray-100 relative group">
                 {novel.cover ? (
                   <img
                     src={novel.cover}
@@ -221,6 +221,22 @@ export default function Novels() {
                     <BookOpen className="h-16 w-16 text-gray-300" />
                   </div>
                 )}
+                {/* 删除按钮 - 右上角 */}
+                <button
+                  onClick={() => deleteNovel(novel.id)}
+                  className="absolute top-2 right-2 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                  title="删除"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                {/* 编辑按钮 - 右下角 */}
+                <button
+                  onClick={() => setEditingNovel(novel)}
+                  className="absolute bottom-2 right-2 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                  title="编辑"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
               </div>
               <div className="p-4">
                 <h3 className="text-lg font-semibold text-gray-900 truncate">
@@ -234,11 +250,11 @@ export default function Novels() {
                   <span className="text-sm text-gray-500">
                     {novel.chapterCount} 章节
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => parseCharacters(novel.id)}
                       disabled={parsingNovelId === novel.id}
-                      className="flex items-center justify-center w-9 h-9 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm"
                       title="AI解析角色"
                     >
                       {parsingNovelId === novel.id ? (
@@ -246,6 +262,7 @@ export default function Novels() {
                       ) : (
                         <Sparkles className="h-4 w-4" />
                       )}
+                      <span>AI解析角色</span>
                     </button>
                     <Link
                       to={`/characters?novel=${novel.id}`}
@@ -254,23 +271,9 @@ export default function Novels() {
                     >
                       <Users className="h-4 w-4" />
                     </Link>
-                    <button
-                      onClick={() => setEditingNovel(novel)}
-                      className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                      title="编辑"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteNovel(novel.id)}
-                      className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      title="删除"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                     <Link
                       to={`/novels/${novel.id}`}
-                      className="btn-primary text-sm py-2 px-3 ml-1"
+                      className="btn-primary text-sm py-2 px-3"
                     >
                       <Play className="h-3 w-3 mr-1" />
                       管理章节
