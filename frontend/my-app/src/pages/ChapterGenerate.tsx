@@ -1923,7 +1923,6 @@ export default function ChapterGenerate() {
   const renderTabs = () => (
     <div className="flex gap-4 mb-4 border-b border-gray-200">
       {[
-        { key: 'json', label: 'JSON' },
         { key: 'characters', label: '角色列表' },
         { key: 'scenes', label: '场景列表' },
         { key: 'script', label: '分镜脚本' }
@@ -1943,68 +1942,69 @@ export default function ChapterGenerate() {
     </div>
   );
 
+  // JSON 编辑器组件
+  const renderJsonEditor = () => (
+    <div className="space-y-3">
+      {/* 编辑模式切换 */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setJsonEditMode('text')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              jsonEditMode === 'text' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Code className="h-4 w-4" />
+            JSON文本
+          </button>
+          <button
+            onClick={() => setJsonEditMode('table')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              jsonEditMode === 'table' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Grid3x3 className="h-4 w-4" />
+            表格编辑
+          </button>
+        </div>
+        <button
+          onClick={handleSaveJson}
+          disabled={isSavingJson || !editableJson.trim()}
+          className="btn-primary text-sm py-2 px-4 disabled:opacity-50"
+        >
+          {isSavingJson ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
+          ) : (
+            <><Save className="h-4 w-4 mr-2" />保存修改</>
+          )}
+        </button>
+      </div>
+      
+      {jsonEditMode === 'text' ? (
+        /* JSON文本编辑模式 */
+        <textarea
+          className="w-full h-64 bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          value={editableJson}
+          onChange={(e) => setEditableJson(e.target.value)}
+          placeholder="点击 AI拆分分镜头 按钮生成数据，或直接输入JSON..."
+          spellCheck={false}
+        />
+      ) : (
+        /* 表格编辑模式 */
+        <JsonTableEditor 
+          value={editableJson}
+          onChange={setEditableJson}
+        />
+      )}
+    </div>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'json':
-        return (
-          <div className="space-y-3">
-            {/* 编辑模式切换 */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setJsonEditMode('text')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    jsonEditMode === 'text' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Code className="h-4 w-4" />
-                  JSON文本
-                </button>
-                <button
-                  onClick={() => setJsonEditMode('table')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    jsonEditMode === 'table' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                  表格编辑
-                </button>
-              </div>
-              <button
-                onClick={handleSaveJson}
-                disabled={isSavingJson || !editableJson.trim()}
-                className="btn-primary text-sm py-2 px-4 disabled:opacity-50"
-              >
-                {isSavingJson ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />保存中...</>
-                ) : (
-                  <><Save className="h-4 w-4 mr-2" />保存修改</>
-                )}
-              </button>
-            </div>
-            
-            {jsonEditMode === 'text' ? (
-              /* JSON文本编辑模式 */
-              <textarea
-                className="w-full h-64 bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={editableJson}
-                onChange={(e) => setEditableJson(e.target.value)}
-                placeholder="点击 AI拆分分镜头 按钮生成数据，或直接输入JSON..."
-                spellCheck={false}
-              />
-            ) : (
-              /* 表格编辑模式 */
-              <JsonTableEditor 
-                value={editableJson}
-                onChange={setEditableJson}
-              />
-            )}
-          </div>
-        );
       case 'characters':
         return (
           <div className="space-y-2">
@@ -2107,12 +2107,9 @@ export default function ChapterGenerate() {
             </div>
           </div>
 
-          {/* JSON/角色/场景/脚本 标签页 */}
+          {/* JSON 编辑器 */}
           <div className="card">
-            {renderTabs()}
-            <div className="mt-4 max-h-96 overflow-y-auto">
-              {renderTabContent()}
-            </div>
+            {renderJsonEditor()}
           </div>
 
           {/* 人设图片 */}
