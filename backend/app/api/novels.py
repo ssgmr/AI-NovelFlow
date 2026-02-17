@@ -500,12 +500,40 @@ async def split_chapter(
     if not prompt_template:
         raise HTTPException(status_code=400, detail="未找到章节拆分提示词模板")
     
-    # 调用 DeepSeek API 进行拆分
+    # 获取当前小说的所有角色列表
+    characters = db.query(Character).filter(Character.novel_id == novel_id).all()
+    character_names = [char.name for char in characters]
+    
+    # 获取小说配置的角色提示词模板 style，用于替换 {图像风格} 和 ##STYLE## 占位符
+    style = "anime style, high quality, detailed"  # 默认风格
+    if novel.prompt_template_id:
+        character_prompt_template = db.query(PromptTemplate).filter(
+            PromptTemplate.id == novel.prompt_template_id
+        ).first()
+        if character_prompt_template and character_prompt_template.template:
+            try:
+                import re
+                # 尝试从模板中提取 style 字段
+                template_data = json.loads(character_prompt_template.template)
+                if isinstance(template_data, dict) and "style" in template_data:
+                    style = template_data["style"]
+                else:
+                    style = character_prompt_template.template.replace("{appearance}", "").replace("{description}", "").strip(", ")
+            except json.JSONDecodeError:
+                style = character_prompt_template.template.replace("{appearance}", "").replace("{description}", "").strip(", ")
+                style = re.sub(r',\s*,', ',', style)
+                style = re.sub(r'\s+', ' ', style)
+                style = style.strip(", ")
+            print(f"[SplitChapter] Using style from character prompt template: {style}")
+    
+    # 调用 DeepSeek API 进行拆分，传递 style 参数
     result = await get_llm_service().split_chapter_with_prompt(
         chapter_title=chapter.title,
         chapter_content=chapter.content or "",
         prompt_template=prompt_template.template,
-        word_count=50
+        word_count=50,
+        character_names=character_names,
+        style=style
     )
     
     # 保存解析结果到章节
@@ -737,6 +765,32 @@ async def generate_shot_task(
         # 注意：实际提交的工作流会在调用ComfyUI后保存
         # 这里不保存原始模板，避免运行时看到错误数据
         
+        # 获取小说配置的角色提示词模板 style
+        style = "anime style, high quality, detailed"  # 默认风格
+        if novel.prompt_template_id:
+            prompt_template = db.query(PromptTemplate).filter(
+                PromptTemplate.id == novel.prompt_template_id
+            ).first()
+            if prompt_template and prompt_template.template:
+                # 解析模板内容获取 style
+                try:
+                    import re
+                    # 尝试从模板中提取 style 字段（如果是 JSON 格式）
+                    template_data = json.loads(prompt_template.template)
+                    if isinstance(template_data, dict) and "style" in template_data:
+                        style = template_data["style"]
+                    else:
+                        # 如果不是 JSON，则使用模板内容本身作为 style
+                        style = prompt_template.template.replace("{appearance}", "").replace("{description}", "").strip(", ")
+                except json.JSONDecodeError:
+                    # 如果不是 JSON，则使用模板内容本身作为 style
+                    style = prompt_template.template.replace("{appearance}", "").replace("{description}", "").strip(", ")
+                    # 清理多余的逗号和空格
+                    style = re.sub(r',\s*,', ',', style)  # 去掉多余逗号
+                    style = re.sub(r'\s+', ' ', style)    # 多个空格变一个
+                    style = style.strip(", ")
+            print(f"[ShotTask {task_id}] Using style from prompt template: {style}")
+        
         # 合并角色图片
         character_reference_path = None
         if shot_characters:
@@ -806,12 +860,13 @@ async def generate_shot_task(
                         images.append((char_name, img))
                     
                     # 设置布局参数
-                    max_img_width = 256
-                    max_img_height = 256
-                    name_height = 18  # 文字高度
-                    padding = 10      # 外边距
-                    img_spacing = 5   # 图片之间的间距
-                    text_offset = 0   # 文字与图片的间距（紧贴）
+                    # 使用更大的尺寸保留角色图细节（原图通常是 1088x704 或更大）
+                    max_img_width = 512
+                    max_img_height = 512
+                    name_height = 24  # 文字高度
+                    padding = 15      # 外边距
+                    img_spacing = 10  # 图片之间的间距
+                    text_offset = 5   # 文字与图片的间距
                     
                     # 预先处理所有图片：缩放并记录实际尺寸
                     processed_images = []
@@ -928,7 +983,8 @@ async def generate_shot_task(
             prompt=shot_description,
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
-            aspect_ratio=novel.aspect_ratio or "16:9"
+            aspect_ratio=novel.aspect_ratio or "16:9",
+            style=style
         )
         
         # 保存构建后的完整工作流到任务，让用户可以立即查看
@@ -947,7 +1003,8 @@ async def generate_shot_task(
             node_mapping=node_mapping,
             aspect_ratio=novel.aspect_ratio or "16:9",
             character_reference_path=character_reference_path,
-            workflow=submitted_workflow  # 传递已构建的工作流
+            workflow=submitted_workflow,  # 传递已构建的工作流
+            style=style
         )
         
         print(f"[ShotTask {task_id}] Generation result: {result}")

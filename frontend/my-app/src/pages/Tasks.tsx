@@ -228,7 +228,7 @@ export default function Tasks() {
   const handleCancelAll = async () => {
     const activeCount = tasks.filter(t => t.status === 'pending' || t.status === 'running').length;
     if (activeCount === 0) {
-      toast('没有需要终止的任务', 'info');
+      toast.info('没有需要终止的任务');
       return;
     }
     
@@ -238,14 +238,14 @@ export default function Tasks() {
       const res = await fetch(`${API_BASE}/tasks/cancel-all/`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        toast(data.message, 'success');
+        toast.success(data.message);
         fetchTasks();
       } else {
-        toast(data.message || '终止任务失败', 'error');
+        toast.error(data.message || '终止任务失败');
       }
     } catch (error) {
       console.error('终止任务失败:', error);
-      toast('终止任务失败', 'error');
+      toast.error('终止任务失败');
     }
   };
 

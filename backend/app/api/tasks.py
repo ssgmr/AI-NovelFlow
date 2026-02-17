@@ -621,12 +621,12 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
     Args:
         name: 角色名称
         appearance: 外貌描述
-        description: 角色描述
+        description: 角色描述（已废弃，不再使用）
         template: 提示词模板，包含 {appearance} 和 {description} 占位符
     """
     if template:
-        # 使用模板构建提示词
-        prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "")
+        # 使用模板构建提示词，只使用 appearance，不使用 description
+        prompt = template.replace("{appearance}", appearance or "").replace("{description}", "")
         # 清理多余的逗号和空格
         prompt = " ".join(prompt.split())
         prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
@@ -638,8 +638,9 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
     if appearance:
         base_prompt += appearance + ", "
     
-    if description:
-        base_prompt += description + ", "
+    # 不再使用 description
+    # if description:
+    #     base_prompt += description + ", "
     
     base_prompt += "single character, centered, clean background, professional artwork, 8k"
     

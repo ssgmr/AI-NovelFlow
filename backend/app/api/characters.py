@@ -394,15 +394,15 @@ def build_character_prompt(name: str, appearance: str, description: str, templat
     Args:
         name: 角色名称
         appearance: 外貌描述
-        description: 角色描述
+        description: 角色描述（已废弃，不再使用）
         template: 提示词模板，包含 {appearance} 和 {description} 占位符
     """
     # 根据角色名称检测动物类型，添加英文强调词
     animal_keyword = detect_animal_type(name, appearance)
     
     if template:
-        # 使用模板构建提示词
-        prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "")
+        # 使用模板构建提示词，只使用 appearance，不使用 description
+        prompt = template.replace("{appearance}", appearance or "").replace("{description}", "")
         # 在开头添加动物类型强调
         if animal_keyword:
             prompt = f"{animal_keyword} character, " + prompt

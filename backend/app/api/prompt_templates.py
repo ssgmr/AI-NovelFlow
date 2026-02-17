@@ -14,25 +14,29 @@ SYSTEM_CHARACTER_TEMPLATES = [
     {
         "name": "标准动漫风格",
         "description": "适合大多数动漫角色的标准人设生成",
-        "template": "character portrait, anime style, high quality, detailed, {appearance}, {description}, single character, centered, clean background, professional artwork, 8k",
+        "template": "character portrait, anime style, high quality, detailed, {appearance}, single character, centered, clean background, professional artwork, 8k",
+        "style": "anime style, high quality, detailed, professional artwork",
         "type": "character"
     },
     {
         "name": "写实风格",
         "description": "写实风格的角色人设",
-        "template": "character portrait, realistic style, photorealistic, highly detailed, {appearance}, {description}, single character, centered, professional photography, studio lighting, 8k",
+        "template": "character portrait, realistic style, photorealistic, highly detailed, {appearance}, single character, centered, professional photography, studio lighting, 8k",
+        "style": "realistic style, photorealistic, highly detailed, professional photography",
         "type": "character"
     },
     {
         "name": "Q版卡通",
         "description": "可爱Q版卡通风格",
-        "template": "chibi character, cute cartoon style, kawaii, {appearance}, {description}, single character, centered, colorful, clean background, professional artwork, 4k",
+        "template": "chibi character, cute cartoon style, kawaii, {appearance}, single character, centered, colorful, clean background, professional artwork, 4k",
+        "style": "chibi character, cute cartoon style, kawaii, colorful",
         "type": "character"
     },
     {
         "name": "水墨风格",
         "description": "中国传统水墨画风格",
-        "template": "character portrait, Chinese ink painting style, traditional art, {appearance}, {description}, single character, centered, elegant, artistic, high quality",
+        "template": "character portrait, Chinese ink painting style, traditional art, {appearance}, single character, centered, elegant, artistic, high quality",
+        "style": "Chinese ink painting style, traditional art, elegant, artistic",
         "type": "character"
     }
 ]

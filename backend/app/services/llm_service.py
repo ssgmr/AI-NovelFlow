@@ -331,13 +331,27 @@ class LLMService:
         default_prompt = """你是一个专业的小说解析助手。请分析提供的小说文本，提取以下信息并以JSON格式返回：
 
 1. characters: 角色列表，每个角色包含 name（姓名）、description（描述）、appearance（外貌特征）
-2. scenes: 场景列表，每个场景包含 title（标题）、description（描述）
-3. shots: 分镜列表，每个分镜包含 scene_id（所属场景）、description（画面描述）、camera_angle（镜头角度）
+- 角色命名(name（姓名）、description（描述）、appearance（外貌特征）)必须全程保持唯一且一致：所有角色名称必须在首次解析时确定为唯一标准名称，并在后续所有步骤中严格复用该名称；若同类型角色存在多个且无真实姓名，必须按照首次出场顺序使用阿拉伯数字编号命名（如"骗子1""骗子2"），禁止使用"甲/乙""A/B""其中一人""另一人"等变体；一旦名称确定，不得在后续输出中更改、简化或替换，所有角色引用必须完全一致。
+
+【群体称谓抽取规则（必须执行）】
+当正文出现以下群体称谓：众人/群臣/士兵/百姓/侍从/随从/围观者/人群（含同义词，如"大家""围观的人""侍卫""兵丁""宫人""下人""臣子们"等），必须将其作为可出镜角色类型提取进 characters。
+规则：
+1) 不允许直接输出未编号的群体名称（禁止：众人、群臣、士兵、百姓、侍从、随从、围观者、人群）。
+2) 必须按首次出场顺序拆分并编号命名为具体角色（默认2个；若文本明确人数更多，可输出到3-5个，最多不超过5个）：
+   - 群臣1、群臣2…
+   - 士兵1、士兵2…
+   - 百姓1、百姓2…
+   - 侍从1、侍从2…
+   - 随从1、随从2…
+   - 围观者1、围观者2…
+3) 若同一段落同时出现多个群体称谓，必须分别建立编号角色（例如既有群臣又有侍从，则输出 群臣1/2 + 侍从1/2）。
+4) 每个群体编号角色也必须给出 description 与 appearance（可共享基础模板，但必须用细节区分：年龄/体型/服饰配色/站位/表情等），确保可用于AI绘图。
+5) 这些编号角色一旦生成，后续输出必须始终复用同名，不得改名、合并或替换。
 
 注意：
 - 角色外貌特征要详细，用于AI绘图
-- 分镜描述要具体，包含画面构图、角色动作、环境细节
 - 返回必须是合法的JSON格式
+- 不得输出任何解释性文字，只返回JSON
 """
         
         # 获取当前配置
@@ -375,17 +389,26 @@ class LLMService:
         prompt_template: str,
         word_count: int = 50,
         novel_id: str = None,
-        chapter_id: str = None
+        chapter_id: str = None,
+        character_names: list = None,
+        style: str = "anime style, high quality, detailed"
     ) -> Dict[str, Any]:
         """使用自定义提示词将章节拆分为分镜数据结构"""
         
         system_prompt = prompt_template.replace(
             "{每个分镜对应拆分故事字数}", str(word_count)
         ).replace(
-            "{图像风格}", "anime style, high quality, detailed"
+            "{图像风格}", style
+        ).replace(
+            "##STYLE##", style
         )
         
-        user_content = f"""章节标题：{chapter_title}
+        # 构建 allowed_characters 行
+        allowed_characters_line = ""
+        if character_names:
+            allowed_characters_line = f"allowed_characters: {', '.join(character_names)}\n\n"
+        
+        user_content = f"""{allowed_characters_line}章节标题：{chapter_title}
 
 章节内容：
 {chapter_content[:15000]}

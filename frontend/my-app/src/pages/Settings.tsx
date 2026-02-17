@@ -142,7 +142,7 @@ export default function Settings() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loadingWorkflows, setLoadingWorkflows] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadType, setUploadType] = useState<'character' | 'shot' | 'video'>('character');
+  const [uploadType, setUploadType] = useState<'character' | 'shot' | 'video' | 'transition'>('character');
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null });
   const [uploading, setUploading] = useState(false);
   
@@ -426,7 +426,9 @@ export default function Settings() {
                 videoSaveNodeId: mapping.video_save_node_id || '',
                 maxSideNodeId: mapping.max_side_node_id || '',
                 referenceImageNodeId: mapping.reference_image_node_id || '',
-                frameCountNodeId: mapping.frame_count_node_id || ''
+                frameCountNodeId: mapping.frame_count_node_id || '',
+                firstImageNodeId: '',
+                lastImageNodeId: ''
               });
             } else if (workflow.type === 'transition') {
               setMappingForm({
@@ -437,7 +439,7 @@ export default function Settings() {
                 videoSaveNodeId: mapping.video_save_node_id || '',
                 maxSideNodeId: '',
                 referenceImageNodeId: '',
-                frameCountNodeId: mapping.frame_count_node_id || '',
+                frameCountNodeId: '',
                 firstImageNodeId: mapping.first_image_node_id || '',
                 lastImageNodeId: mapping.last_image_node_id || ''
               });

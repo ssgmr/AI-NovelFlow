@@ -866,7 +866,8 @@ class ComfyUIService:
         workflow_json: str,
         node_mapping: Dict[str, str],
         aspect_ratio: str = "16:9",
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        style: str = "anime style, high quality, detailed"
     ) -> Dict[str, Any]:
         """
         构建分镜图片工作流（注入参数后的完整工作流，不含图片上传）
@@ -877,12 +878,23 @@ class ComfyUIService:
             node_mapping: 节点映射配置
             aspect_ratio: 画面比例
             seed: 随机种子
+            style: 风格描述，用于替换 ##STYLE## 占位符
             
         Returns:
             构建好的工作流字典
         """
         # 解析工作流
         workflow = json.loads(workflow_json)
+        
+        # 遍历工流，替换 ##STYLE## 占位符
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            for key, value in inputs.items():
+                if isinstance(value, str) and "##STYLE##" in value:
+                    inputs[key] = value.replace("##STYLE##", style)
+                    print(f"[Workflow] Replaced ##STYLE## with '{style}' in node {node_id}.{key}")
         
         # 获取宽高
         width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
@@ -939,7 +951,8 @@ class ComfyUIService:
         aspect_ratio: str = "16:9",
         character_reference_path: Optional[str] = None,
         seed: Optional[int] = None,
-        workflow: Dict[str, Any] = None
+        workflow: Dict[str, Any] = None,
+        style: str = "anime style, high quality, detailed"
     ) -> Dict[str, Any]:
         """
         使用指定工作流生成分镜图片
@@ -952,6 +965,7 @@ class ComfyUIService:
             character_reference_path: 角色参考图本地路径（合并后的角色图）
             seed: 随机种子
             workflow: 预构建的工作流（可选，如果提供则直接使用）
+            style: 风格描述，用于替换 ##STYLE## 占位符
             
         Returns:
             {
@@ -968,7 +982,8 @@ class ComfyUIService:
                     workflow_json=workflow_json,
                     node_mapping=node_mapping,
                     aspect_ratio=aspect_ratio,
-                    seed=seed
+                    seed=seed,
+                    style=style
                 )
             
             # 获取节点映射中的 save_image_node_id

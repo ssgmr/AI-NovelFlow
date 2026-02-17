@@ -771,9 +771,6 @@ export default function Characters() {
                     {aspectRatio}
                   </span>
                 </div>
-                <p className="text-xs text-primary-600 mt-1">
-                  {getNovelName(character.novelId)}
-                </p>
                 
                 {/* 角色描述 - 可滚动显示完整内容 */}
                 {character.description && (

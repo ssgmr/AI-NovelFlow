@@ -51,6 +51,7 @@ export default function LLMLogs() {
     task_types: [] as string[]
   });
   const [selectedLog, setSelectedLog] = useState<LLMLog | null>(null);
+  const [activePromptTab, setActivePromptTab] = useState<'system' | 'user' | 'response'>('user');
 
   useEffect(() => {
     fetchLogs();
@@ -330,7 +331,10 @@ export default function LLMLogs() {
                 <p className="text-sm text-gray-500">{formatDate(selectedLog.created_at)}</p>
               </div>
               <button
-                onClick={() => setSelectedLog(null)}
+                onClick={() => {
+                  setSelectedLog(null);
+                  setActivePromptTab('user');
+                }}
                 className="p-1 text-gray-400 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
@@ -354,28 +358,60 @@ export default function LLMLogs() {
                 </div>
               )}
 
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">System Prompt</h4>
-                <pre className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                  {selectedLog.system_prompt || '-'}
-                </pre>
+              {/* Tab 切换 */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  onClick={() => setActivePromptTab('system')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    activePromptTab === 'system'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  System Prompt
+                </button>
+                <button
+                  onClick={() => setActivePromptTab('user')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    activePromptTab === 'user'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  User Prompt
+                </button>
+                {selectedLog.response && (
+                  <button
+                    onClick={() => setActivePromptTab('response')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      activePromptTab === 'response'
+                        ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    LLM 响应
+                  </button>
+                )}
               </div>
 
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">User Prompt</h4>
-                <pre className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                  {selectedLog.user_prompt}
-                </pre>
-              </div>
-
-              {selectedLog.response && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">LLM 响应</h4>
-                  <pre className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto max-h-96">
+              {/* Tab 内容 */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                {activePromptTab === 'system' && (
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                    {selectedLog.system_prompt || '-'}
+                  </pre>
+                )}
+                {activePromptTab === 'user' && (
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto">
+                    {selectedLog.user_prompt}
+                  </pre>
+                )}
+                {activePromptTab === 'response' && selectedLog.response && (
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto max-h-96">
                     {selectedLog.response}
                   </pre>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -50,7 +50,7 @@ function DownloadMaterialsCard({
 
   const handleDownload = async () => {
     if (!novelId || !chapterId) {
-      toast('章节信息不完整', 'error');
+      toast.error('章节信息不完整');
       return;
     }
 
@@ -62,9 +62,9 @@ function DownloadMaterialsCard({
 
       if (!response.ok) {
         if (response.status === 404) {
-          toast('章节素材不存在', 'error');
+          toast.error('章节素材不存在');
         } else {
-          toast('下载失败', 'error');
+          toast.error('下载失败');
         }
         return;
       }
@@ -90,10 +90,10 @@ function DownloadMaterialsCard({
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast('素材包下载成功', 'success');
+      toast.success('素材包下载成功');
     } catch (error) {
       console.error('Download error:', error);
-      toast('下载失败', 'error');
+      toast.error('下载失败');
     } finally {
       setIsDownloading(false);
     }
@@ -163,6 +163,8 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
   const [activeSection, setActiveSection] = useState<'characters' | 'scenes' | 'shots'>('shots');
   // 存储角色输入的临时值（key: shotIndex, value: 输入字符串）
   const [characterInputs, setCharacterInputs] = useState<Record<number, string>>({});
+  // 当前选中的分镜索引
+  const [activeShotIndex, setActiveShotIndex] = useState<number>(0);
 
   // 解析JSON
   useEffect(() => {
@@ -379,86 +381,139 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
         )}
 
         {activeSection === 'shots' && (
-          <div className="space-y-3">
-            {data.shots?.map((shot: any, idx: number) => (
-              <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm">镜{shot.id}</span>
+          <div className="space-y-3 h-full flex flex-col">
+            {/* 分镜 Tab 列表 */}
+            {data.shots?.length > 0 && (
+              <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-2">
+                {data.shots.map((shot: any, idx: number) => (
                   <button
-                    onClick={() => removeShot(idx)}
-                    className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                    key={idx}
+                    onClick={() => setActiveShotIndex(idx)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md transition-colors ${
+                      activeShotIndex === idx
+                        ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    镜{shot.id}
                   </button>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">分镜描述（生图用）</label>
-                    <textarea
-                      value={shot.description}
-                      onChange={(e) => updateShot(idx, 'description', e.target.value)}
-                      placeholder="分镜描述 - 用于生成分镜图片"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">视频描述（生视频用）</label>
-                    <textarea
-                      value={shot.video_description || ''}
-                      onChange={(e) => updateShot(idx, 'video_description', e.target.value)}
-                      placeholder="视频描述 - 用于生成分镜视频，如果为空则使用分镜描述"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-                      rows={4}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={shot.scene}
-                      onChange={(e) => updateShot(idx, 'scene', e.target.value)}
-                      placeholder="场景"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    <input
-                      type="number"
-                      value={shot.duration}
-                      onChange={(e) => updateShot(idx, 'duration', parseInt(e.target.value) || 4)}
-                      placeholder="时长(秒)"
-                      className="w-24 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={characterInputs[idx] !== undefined ? characterInputs[idx] : shot.characters?.join(', ')}
-                    onChange={(e) => {
-                      // 只更新本地输入状态，不立即分割
-                      setCharacterInputs(prev => ({ ...prev, [idx]: e.target.value }));
-                    }}
-                    onBlur={(e) => {
-                      // 失去焦点时才分割并更新数据
-                      const chars = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean);
-                      updateShot(idx, 'characters', chars);
-                      // 清除本地临时状态
-                      setCharacterInputs(prev => {
-                        const newState = { ...prev };
-                        delete newState[idx];
-                        return newState;
-                      });
-                    }}
-                    placeholder="角色（用逗号分隔）"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
+                ))}
+                <button
+                  onClick={addShot}
+                  className="px-2 py-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-t-md transition-colors"
+                  title="添加分镜"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
-            ))}
-            <button
-              onClick={addShot}
-              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              添加分镜
-            </button>
+            )}
+            
+            {/* 当前选中的分镜编辑区域 */}
+            {data.shots?.length > 0 && activeShotIndex < data.shots.length ? (
+              <div className="flex-1 overflow-auto">
+                {(() => {
+                  const idx = activeShotIndex;
+                  const shot = data.shots[idx];
+                  return (
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-sm text-gray-700">镜{shot.id} / 共{data.shots.length}镜</span>
+                        <div className="flex gap-2">
+                          {activeShotIndex > 0 && (
+                            <button
+                              onClick={() => setActiveShotIndex(activeShotIndex - 1)}
+                              className="px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              ← 上一镜
+                            </button>
+                          )}
+                          {activeShotIndex < data.shots.length - 1 && (
+                            <button
+                              onClick={() => setActiveShotIndex(activeShotIndex + 1)}
+                              className="px-2 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              下一镜 →
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              removeShot(idx);
+                              if (activeShotIndex >= data.shots.length - 1) {
+                                setActiveShotIndex(Math.max(0, data.shots.length - 2));
+                              }
+                            }}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                            title="删除此分镜"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">分镜描述（生图用）</label>
+                          <textarea
+                            value={shot.description}
+                            onChange={(e) => updateShot(idx, 'description', e.target.value)}
+                            placeholder="分镜描述 - 用于生成分镜图片"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                            rows={8}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">视频描述（生视频用）</label>
+                          <textarea
+                            value={shot.video_description || ''}
+                            onChange={(e) => updateShot(idx, 'video_description', e.target.value)}
+                            placeholder="视频描述 - 用于生成分镜视频，如果为空则使用分镜描述"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                            rows={8}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={shot.scene}
+                            onChange={(e) => updateShot(idx, 'scene', e.target.value)}
+                            placeholder="场景"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                          <input
+                            type="number"
+                            value={shot.duration}
+                            onChange={(e) => updateShot(idx, 'duration', parseInt(e.target.value) || 4)}
+                            placeholder="时长(秒)"
+                            className="w-24 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          value={characterInputs[idx] !== undefined ? characterInputs[idx] : shot.characters?.join(', ')}
+                          onChange={(e) => {
+                            setCharacterInputs(prev => ({ ...prev, [idx]: e.target.value }));
+                          }}
+                          onBlur={(e) => {
+                            const chars = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean);
+                            updateShot(idx, 'characters', chars);
+                            setCharacterInputs(prev => {
+                              const newState = { ...prev };
+                              delete newState[idx];
+                              return newState;
+                            });
+                          }}
+                          placeholder="角色（用逗号分隔）"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+                暂无分镜数据
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -472,13 +527,15 @@ function MergeVideosCard({
   chapterId,
   shotVideos,
   transitionVideos,
-  chapter
+  chapter,
+  aspectRatio = '16:9'
 }: {
   novelId: string;
   chapterId: string;
   shotVideos: Record<number, string>;
   transitionVideos: Record<string, string>;
   chapter: Chapter | null;
+  aspectRatio?: string;
 }) {
   const [isMerging, setIsMerging] = useState(false);
   const [mergedVideoUrl, setMergedVideoUrl] = useState<string | null>(null);
@@ -490,7 +547,7 @@ function MergeVideosCard({
 
   const handleMerge = async () => {
     if (!novelId || !chapterId || videoList.length === 0) {
-      toast('没有可合并的视频', 'error');
+      toast.error('没有可合并的视频');
       return;
     }
 
@@ -509,13 +566,13 @@ function MergeVideosCard({
       
       if (data.success) {
         setMergedVideoUrl(data.video_url);
-        toast('视频合并成功', 'success');
+        toast.success('视频合并成功');
       } else {
-        toast(data.message || '合并失败', 'error');
+        toast.error(data.message || '合并失败');
       }
     } catch (error) {
       console.error('Merge error:', error);
-      toast('合并失败', 'error');
+      toast.error('合并失败');
     } finally {
       setIsMerging(false);
     }
@@ -591,7 +648,7 @@ function MergeVideosCard({
                   src={mergedVideoUrl}
                   controls
                   className="w-full rounded-lg bg-gray-900"
-                  style={{ aspectRatio: chapter?.novel?.aspectRatio === '9:16' ? '9/16' : '16/9' }}
+                  style={{ aspectRatio: aspectRatio === '9:16' ? '9/16' : '16/9' }}
                 />
               </div>
             )}
@@ -767,6 +824,8 @@ export default function ChapterGenerate() {
   const [jsonEditMode, setJsonEditMode] = useState<'text' | 'table'>('text');
   // 角色列表（从角色库获取）
   const [characters, setCharacters] = useState<Character[]>([]);
+  // 编辑器刷新key，用于强制重新挂载表格编辑器（重置内部状态）
+  const [editorKey, setEditorKey] = useState<number>(0);
 
   // 小说数据
   const [novel, setNovel] = useState<Novel | null>(null);
@@ -823,7 +882,7 @@ export default function ChapterGenerate() {
           return next;
         });
         // 同时清除 parsedData 中的 image_url，确保显示"未生成分镜图"占位符
-        setParsedData(prev => {
+        setParsedData((prev: any) => {
           if (!prev) return prev;
           const newShots = [...prev.shots];
           if (newShots[shotIndex - 1]) {
@@ -1107,7 +1166,7 @@ export default function ChapterGenerate() {
   
   // 图片预览导航
   const navigateImagePreview = (direction: 'prev' | 'next') => {
-    const allImages = parsedData?.shots?.map((_, idx) => {
+    const allImages = parsedData?.shots?.map((_shot: any, idx: number) => {
       const shotNum = idx + 1;
       return shotImages[shotNum] || parsedData.shots[idx]?.image_url;
     }).filter(Boolean) || [];
@@ -1132,7 +1191,7 @@ export default function ChapterGenerate() {
     if (!cid || !id) return;
     
     let isRunning = false;
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     
     // 递归轮询，确保上一个请求完成后再等待 3 秒
     const poll = async () => {
@@ -1852,6 +1911,8 @@ export default function ChapterGenerate() {
         setMergedImage(null);
         setParsedData(data.data);
         setEditableJson(JSON.stringify(data.data, null, 2));
+        // 递增editorKey以强制重新挂载表格编辑器，重置分镜Tab索引等状态
+        setEditorKey(prev => prev + 1);
         // 自动切换到 JSON 标签页查看结果
         setActiveTab('json');
         toast.success('拆分成功');
@@ -2010,6 +2071,7 @@ export default function ChapterGenerate() {
       ) : (
         /* 表格编辑模式 */
         <JsonTableEditor 
+          key={editorKey}  // 使用editorKey强制重新挂载，重置内部状态
           value={editableJson}
           onChange={setEditableJson}
         />
@@ -2634,17 +2696,18 @@ export default function ChapterGenerate() {
             
             {/* 合并视频 */}
             <MergeVideosCard
-              novelId={id}
-              chapterId={cid}
+              novelId={id || ''}
+              chapterId={cid || ''}
               shotVideos={shotVideos}
               transitionVideos={transitionVideos}
               chapter={chapter}
+              aspectRatio={novel?.aspectRatio || '16:9'}
             />
             
             {/* 章节素材下载 */}
             <DownloadMaterialsCard 
-              novelId={id} 
-              chapterId={cid}
+              novelId={id || ''} 
+              chapterId={cid || ''}
               chapterTitle={chapter?.title || '未命名章节'}
             />
           </div>
@@ -2773,7 +2836,7 @@ export default function ChapterGenerate() {
                     <kbd className="px-2 py-1 bg-gray-700 rounded text-xs">→</kbd>
                     <span>键盘左右键切换</span>
                     <span className="mx-2">|</span>
-                    <span>{previewImageIndex + 1} / {parsedData?.shots?.filter((_, idx) => shotImages[idx + 1] || parsedData.shots[idx]?.image_url).length || 0}</span>
+                    <span>{previewImageIndex + 1} / {parsedData?.shots?.filter((_shot: any, idx: number) => shotImages[idx + 1] || parsedData.shots[idx]?.image_url).length || 0}</span>
                   </span>
                 </div>
               </div>
