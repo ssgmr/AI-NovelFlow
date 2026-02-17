@@ -10,6 +10,7 @@ import Characters from './pages/Characters';
 import Tasks from './pages/Tasks';
 import TestCases from './pages/TestCases';
 import PromptConfig from './pages/PromptConfig';
+import LLMLogs from './pages/LLMLogs';
 import { ToastContainer } from './components/Toast';
 import { useToastStore } from './stores/toastStore';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -32,6 +33,7 @@ function App() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="test-cases" element={<TestCases />} />
           <Route path="prompt-config" element={<PromptConfig />} />
+          <Route path="llm-logs" element={<LLMLogs />} />
         </Route>
       </Routes>
       <ToastContainer toasts={toasts} onRemove={removeToast} />

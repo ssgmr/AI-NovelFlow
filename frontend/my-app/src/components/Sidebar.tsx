@@ -7,7 +7,8 @@ import {
   Users,
   Sparkles,
   FlaskConical,
-  FileText
+  FileText,
+  ScrollText
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: '测试用例', href: '/test-cases', icon: FlaskConical },
   { name: '系统配置', href: '/settings', icon: Settings },
   { name: '提示词配置', href: '/prompt-config', icon: FileText, highlight: true },
+  { name: 'JSON解析日志', href: '/llm-logs', icon: ScrollText },
 ];
 
 export default function Sidebar() {

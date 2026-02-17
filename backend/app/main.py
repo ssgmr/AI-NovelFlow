@@ -2,13 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.api import novels, characters, tasks, config, health, test_cases, workflows, files, prompt_templates
+from app.api import novels, characters, tasks, config, health, test_cases, workflows, files, prompt_templates, llm_logs
 from app.core.database import engine, Base
 # 导入所有模型以确保创建表
 from app.models.novel import Novel, Chapter, Character
 from app.models.task import Task
 from app.models.test_case import TestCase
 from app.models.prompt_template import PromptTemplate
+from app.models.llm_log import LLMLog
 from app.models.system_config import SystemConfig  # 导入系统配置模型
 
 
@@ -71,6 +72,7 @@ app.include_router(test_cases.router, prefix="/api/test-cases", tags=["test-case
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(prompt_templates.router, prefix="/api/prompt-templates", tags=["prompt-templates"])
+app.include_router(llm_logs.router, prefix="/api/llm-logs", tags=["llm-logs"])
 
 
 @app.get("/")

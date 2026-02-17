@@ -9,6 +9,47 @@ from app.core.config import get_settings
 settings = get_settings()
 
 
+def save_llm_log(
+    provider: str,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    response: str = None,
+    status: str = "success",
+    error_message: str = None,
+    task_type: str = None,
+    novel_id: str = None,
+    chapter_id: str = None,
+    character_id: str = None
+):
+    """保存LLM调用日志到数据库（异步执行，不阻塞主流程）"""
+    try:
+        from app.core.database import SessionLocal
+        from app.models.llm_log import LLMLog
+        
+        db = SessionLocal()
+        try:
+            log = LLMLog(
+                provider=provider,
+                model=model,
+                system_prompt=system_prompt[:10000] if system_prompt else None,  # 限制长度
+                user_prompt=user_prompt[:20000] if user_prompt else None,  # 限制长度
+                response=response[:20000] if response else None,  # 限制长度
+                status=status,
+                error_message=error_message[:5000] if error_message else None,
+                task_type=task_type,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                character_id=character_id
+            )
+            db.add(log)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[LLM Log] 保存日志失败: {e}")
+
+
 class LLMService:
     """多厂商 LLM API 服务封装"""
     
@@ -162,7 +203,11 @@ class LLMService:
         user_content: str,
         temperature: float = 0.7,
         max_tokens: int = 4000,
-        response_format: Optional[str] = None
+        response_format: Optional[str] = None,
+        task_type: str = None,
+        novel_id: str = None,
+        chapter_id: str = None,
+        character_id: str = None
     ) -> Dict[str, Any]:
         """
         发送对话请求
@@ -196,6 +241,21 @@ class LLMService:
                 if response.status_code == 200:
                     data = response.json()
                     content = self._parse_response(data)
+                    
+                    # 记录成功日志
+                    save_llm_log(
+                        provider=self.provider,
+                        model=self.model,
+                        system_prompt=system_prompt,
+                        user_prompt=user_content,
+                        response=content,
+                        status="success",
+                        task_type=task_type,
+                        novel_id=novel_id,
+                        chapter_id=chapter_id,
+                        character_id=character_id
+                    )
+                    
                     return {
                         "success": True,
                         "content": content,
@@ -203,6 +263,21 @@ class LLMService:
                     }
                 else:
                     error_msg = f"API 错误 ({response.status_code}): {response.text}"
+                    
+                    # 记录失败日志
+                    save_llm_log(
+                        provider=self.provider,
+                        model=self.model,
+                        system_prompt=system_prompt,
+                        user_prompt=user_content,
+                        status="error",
+                        error_message=error_msg,
+                        task_type=task_type,
+                        novel_id=novel_id,
+                        chapter_id=chapter_id,
+                        character_id=character_id
+                    )
+                    
                     return {
                         "success": False,
                         "error": error_msg,
@@ -210,9 +285,25 @@ class LLMService:
                     }
                     
         except Exception as e:
+            error_msg = f"请求异常: {str(e)}"
+            
+            # 记录异常日志
+            save_llm_log(
+                provider=self.provider,
+                model=self.model,
+                system_prompt=system_prompt,
+                user_prompt=user_content,
+                status="error",
+                error_message=error_msg,
+                task_type=task_type,
+                novel_id=novel_id,
+                chapter_id=chapter_id,
+                character_id=character_id
+            )
+            
             return {
                 "success": False,
-                "error": f"请求异常: {str(e)}",
+                "error": error_msg,
                 "content": ""
             }
     
@@ -234,7 +325,7 @@ class LLMService:
     
     # ============== 业务方法 ==============
     
-    async def parse_novel_text(self, text: str) -> Dict[str, Any]:
+    async def parse_novel_text(self, text: str, novel_id: str = None) -> Dict[str, Any]:
         """解析小说文本，提取角色、场景、分镜信息"""
         system_prompt = """你是一个专业的小说解析助手。请分析提供的小说文本，提取以下信息并以JSON格式返回：
 
@@ -253,7 +344,9 @@ class LLMService:
             user_content=f"请解析以下小说文本：\n\n{text[:8000]}",
             temperature=0.7,
             max_tokens=4000,
-            response_format="json_object"
+            response_format="json_object",
+            task_type="parse_characters",
+            novel_id=novel_id
         )
         
         if result["success"]:
@@ -274,7 +367,9 @@ class LLMService:
         chapter_title: str,
         chapter_content: str,
         prompt_template: str,
-        word_count: int = 50
+        word_count: int = 50,
+        novel_id: str = None,
+        chapter_id: str = None
     ) -> Dict[str, Any]:
         """使用自定义提示词将章节拆分为分镜数据结构"""
         
@@ -296,7 +391,10 @@ class LLMService:
             user_content=user_content,
             temperature=0.7,
             max_tokens=8000,
-            response_format="json_object"
+            response_format="json_object",
+            task_type="split_chapter",
+            novel_id=novel_id,
+            chapter_id=chapter_id
         )
         
         if result["success"]:
@@ -330,7 +428,9 @@ class LLMService:
         self,
         character_name: str,
         description: str,
-        style: str = "anime"
+        style: str = "anime",
+        novel_id: str = None,
+        character_id: str = None
     ) -> str:
         """生成角色外貌描述"""
         system_prompt = f"""你是一个专业的角色设定助手。请根据提供的角色信息，生成一段详细的外貌描述，用于AI绘图生成角色形象。
@@ -348,7 +448,10 @@ Young female character, long flowing silver hair with blue highlights, sharp blu
             system_prompt=system_prompt,
             user_content=f"角色名称：{character_name}\n角色描述：{description}\n\n请生成详细的外貌描述：",
             temperature=0.8,
-            max_tokens=1000
+            max_tokens=1000,
+            task_type="generate_character_appearance",
+            novel_id=novel_id,
+            character_id=character_id
         )
         
         if result["success"]:
