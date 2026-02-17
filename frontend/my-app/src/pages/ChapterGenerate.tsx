@@ -245,6 +245,7 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
     const newShot = {
       id: (data.shots?.length || 0) + 1,
       description: '新分镜描述',
+      video_description: '',
       characters: [],
       scene: '',
       duration: 4
@@ -390,14 +391,27 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="space-y-2">
-                  <textarea
-                    value={shot.description}
-                    onChange={(e) => updateShot(idx, 'description', e.target.value)}
-                    placeholder="分镜描述"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-                    rows={2}
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">分镜描述（生图用）</label>
+                    <textarea
+                      value={shot.description}
+                      onChange={(e) => updateShot(idx, 'description', e.target.value)}
+                      placeholder="分镜描述 - 用于生成分镜图片"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">视频描述（生视频用）</label>
+                    <textarea
+                      value={shot.video_description || ''}
+                      onChange={(e) => updateShot(idx, 'video_description', e.target.value)}
+                      placeholder="视频描述 - 用于生成分镜视频，如果为空则使用分镜描述"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                      rows={4}
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="text"

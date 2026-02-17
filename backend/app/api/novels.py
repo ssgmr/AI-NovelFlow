@@ -1286,7 +1286,8 @@ async def generate_shot_video_task(
         parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
         shots = parsed_data.get("shots", [])
         shot = shots[shot_index - 1]
-        shot_description = shot.get("description", "")
+        # 使用 video_description 作为视频生成的提示词，如果不存在则回退到 description
+        shot_description = shot.get("video_description") or shot.get("description", "")
         
         # 保存提示词到任务
         task.prompt_text = shot_description
