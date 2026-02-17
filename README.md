@@ -50,6 +50,10 @@ AI-NovelFlow/
 │       │   ├── stores/      # 状态管理
 │       │   └── types/       # TypeScript 类型
 │       └── package.json
+├── windows_gpu_monitor/ # Windows GPU 监控服务（可选）
+│   ├── gpu_monitor.py   # GPU 监控服务
+│   ├── requirements.txt # 依赖
+│   └── start.bat        # Windows 启动脚本
 └── README.md
 ```
 
@@ -101,7 +105,34 @@ npm run dev
   - 分镜生视频: 提示词节点 + 视频保存节点 + 参考图节点
   - 转场视频: 首帧图节点 + 尾帧图节点 + 视频保存节点
 
-### 3. 提示词模板配置
+### 3. Windows GPU 监控（可选）
+
+如果 ComfyUI 运行在远程 Windows 服务器上，可以部署 `windows_gpu_monitor` 服务来获取实时 GPU 状态。
+
+**功能**：
+- 实时监控 GPU 使用率、温度、显存占用
+- 监控内存使用情况
+- 显示队列任务数量
+
+**部署步骤**：
+
+```bash
+cd windows_gpu_monitor
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 启动服务
+start.bat
+```
+
+服务默认运行在 http://localhost:5000
+
+**访问测试**：
+- 主页: http://localhost:5000/
+- GPU 状态: http://localhost:5000/gpu-stats
+
+### 4. 提示词模板配置
 
 支持自定义：
 - AI 解析角色系统提示词
