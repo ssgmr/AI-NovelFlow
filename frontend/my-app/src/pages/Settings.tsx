@@ -67,6 +67,58 @@ const typeNames = {
   transition: '分镜生转场视频'
 };
 
+// 检查工作流映射配置是否完整
+const checkWorkflowMappingComplete = (workflow: Workflow): boolean => {
+  if (!workflow.nodeMapping) return false;
+  
+  const mapping = workflow.nodeMapping;
+  
+  switch (workflow.type) {
+    case 'character':
+      return !!(
+        mapping.prompt_node_id &&
+        mapping.prompt_node_id !== 'auto' &&
+        mapping.save_image_node_id &&
+        mapping.save_image_node_id !== 'auto'
+      );
+    case 'shot':
+      return !!(
+        mapping.prompt_node_id &&
+        mapping.prompt_node_id !== 'auto' &&
+        mapping.save_image_node_id &&
+        mapping.save_image_node_id !== 'auto' &&
+        mapping.width_node_id &&
+        mapping.width_node_id !== 'auto' &&
+        mapping.height_node_id &&
+        mapping.height_node_id !== 'auto'
+      );
+    case 'video':
+      // 视频类型需要特殊字段
+      const videoMapping = mapping as any;
+      return !!(
+        mapping.prompt_node_id &&
+        mapping.prompt_node_id !== 'auto' &&
+        videoMapping.video_save_node_id &&
+        videoMapping.video_save_node_id !== 'auto' &&
+        videoMapping.reference_image_node_id &&
+        videoMapping.reference_image_node_id !== 'auto'
+      );
+    case 'transition':
+      // 转场类型需要特殊字段
+      const transitionMapping = mapping as any;
+      return !!(
+        transitionMapping.first_image_node_id &&
+        transitionMapping.first_image_node_id !== 'auto' &&
+        transitionMapping.last_image_node_id &&
+        transitionMapping.last_image_node_id !== 'auto' &&
+        transitionMapping.video_save_node_id &&
+        transitionMapping.video_save_node_id !== 'auto'
+      );
+    default:
+      return false;
+  }
+};
+
 export default function Settings() {
   const config = useConfigStore();
   
@@ -935,10 +987,20 @@ export default function Settings() {
                           <button
                             type="button"
                             onClick={() => handleOpenMapping(workflow)}
-                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 rounded transition-colors"
-                            title="映射配置"
+                            className={`p-1.5 rounded transition-colors relative ${
+                              checkWorkflowMappingComplete(workflow)
+                                ? 'text-gray-400 hover:text-purple-600 hover:bg-purple-100'
+                                : 'text-amber-500 hover:text-amber-600 hover:bg-amber-100'
+                            }`}
+                            title={checkWorkflowMappingComplete(workflow) ? '映射配置' : '映射配置不完整，请点击配置'}
                           >
                             <Server className="h-4 w-4" />
+                            {!checkWorkflowMappingComplete(workflow) && (
+                              <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 text-[8px] text-white items-center justify-center font-bold">!</span>
+                              </span>
+                            )}
                           </button>
                           <button
                             type="button"

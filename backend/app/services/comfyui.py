@@ -39,6 +39,39 @@ class ComfyUIService:
             "shot_video": "ltx-2"
         }
     
+    def build_character_workflow(self, prompt: str, workflow_json: str = None, novel_id: str = None, character_name: str = None, aspect_ratio: str = None, node_mapping: Dict[str, str] = None, **kwargs) -> Dict[str, Any]:
+        """
+        构建角色人设图工作流（注入参数后的完整工作流）
+        
+        Args:
+            prompt: 提示词
+            workflow_json: 工作流 JSON 字符串（可选，不提供则使用默认工作流）
+            novel_id: 小说ID，用于设置保存路径
+            character_name: 角色名称，用于设置保存路径
+            aspect_ratio: 画面比例
+            node_mapping: 节点映射配置
+            
+        Returns:
+            构建好的工作流字典
+        """
+        # 使用提供的工作流或构建默认工作流
+        if workflow_json:
+            workflow = json.loads(workflow_json)
+            # 在工作流中查找并替换 prompt
+            workflow = self._inject_prompt_to_workflow(workflow, prompt, novel_id, character_name, aspect_ratio, node_mapping)
+        else:
+            # 构建 z-image 工作流提示
+            width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
+            workflow = self._build_z_image_workflow(
+                prompt=prompt,
+                width=width,
+                height=height,
+                seed=kwargs.get('seed'),
+                novel_id=novel_id,
+                character_name=character_name
+            )
+        return workflow
+
     async def generate_character_image(self, prompt: str, workflow_json: str = None, novel_id: str = None, character_name: str = None, aspect_ratio: str = None, node_mapping: Dict[str, str] = None, **kwargs) -> Dict[str, Any]:
         """
         使用指定工作流生成角色人设图
@@ -62,22 +95,16 @@ class ComfyUIService:
             }
         """
         try:
-            # 使用提供的工作流或构建默认工作流
-            if workflow_json:
-                workflow = json.loads(workflow_json)
-                # 在工作流中查找并替换 prompt（根据常见的 ComfyUI 节点结构）
-                workflow = self._inject_prompt_to_workflow(workflow, prompt, novel_id, character_name, aspect_ratio, node_mapping)
-            else:
-                # 构建 z-image 工作流提示
-                width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
-                workflow = self._build_z_image_workflow(
-                    prompt=prompt,
-                    width=width,
-                    height=height,
-                    seed=kwargs.get('seed'),
-                    novel_id=novel_id,
-                    character_name=character_name
-                )
+            # 构建工作流（使用预构建的或重新构建）
+            workflow = kwargs.get('workflow') or self.build_character_workflow(
+                prompt=prompt,
+                workflow_json=workflow_json,
+                novel_id=novel_id,
+                character_name=character_name,
+                aspect_ratio=aspect_ratio,
+                node_mapping=node_mapping,
+                **{k: v for k, v in kwargs.items() if k != 'workflow'}
+            )
             
             # 提交任务到 ComfyUI
             queue_result = await self._queue_prompt(workflow)
@@ -833,6 +860,77 @@ class ComfyUIService:
         
         return api_workflow
     
+    def build_shot_workflow(
+        self,
+        prompt: str,
+        workflow_json: str,
+        node_mapping: Dict[str, str],
+        aspect_ratio: str = "16:9",
+        seed: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        构建分镜图片工作流（注入参数后的完整工作流，不含图片上传）
+        
+        Args:
+            prompt: 分镜描述提示词
+            workflow_json: 工作流 JSON 字符串
+            node_mapping: 节点映射配置
+            aspect_ratio: 画面比例
+            seed: 随机种子
+            
+        Returns:
+            构建好的工作流字典
+        """
+        # 解析工作流
+        workflow = json.loads(workflow_json)
+        
+        # 获取宽高
+        width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
+        
+        # 根据节点映射修改工作流
+        prompt_node_id = node_mapping.get("prompt_node_id")
+        save_image_node_id = node_mapping.get("save_image_node_id")
+        width_node_id = node_mapping.get("width_node_id")
+        height_node_id = node_mapping.get("height_node_id")
+        
+        # 1. 设置提示词
+        if prompt_node_id and prompt_node_id in workflow:
+            node = workflow[prompt_node_id]
+            if node.get("class_type") == "CLIPTextEncode":
+                workflow[prompt_node_id]["inputs"]["text"] = prompt
+                print(f"[ComfyUI] Set prompt to CLIPTextEncode node {prompt_node_id}")
+            elif node.get("class_type") == "CR Text":
+                workflow[prompt_node_id]["inputs"]["text"] = prompt
+                print(f"[ComfyUI] Set prompt to CR Text node {prompt_node_id}")
+        
+        # 2. 设置宽高
+        if width_node_id and width_node_id in workflow:
+            workflow[width_node_id]["inputs"]["value"] = width
+            print(f"[ComfyUI] Set width {width} to node {width_node_id}")
+        
+        if height_node_id and height_node_id in workflow:
+            workflow[height_node_id]["inputs"]["value"] = height
+            print(f"[ComfyUI] Set height {height} to node {height_node_id}")
+        
+        # 3. 设置随机种子
+        if seed is None:
+            seed = random.randint(1, 2**32)
+        for node_id, node in workflow.items():
+            if node.get("class_type") in ["RandomNoise", "KSampler"]:
+                if "seed" in node.get("inputs", {}):
+                    workflow[node_id]["inputs"]["seed"] = seed
+                if "noise_seed" in node.get("inputs", {}):
+                    workflow[node_id]["inputs"]["noise_seed"] = seed
+        
+        # 4. 设置保存路径前缀
+        if save_image_node_id and save_image_node_id in workflow:
+            save_node = workflow[save_image_node_id]
+            if save_node.get("class_type") == "SaveImage":
+                current_prefix = save_node["inputs"].get("filename_prefix", "")
+                print(f"[ComfyUI] SaveImage node {save_image_node_id} current prefix: {current_prefix}")
+        
+        return workflow
+
     async def generate_shot_image_with_workflow(
         self,
         prompt: str,
@@ -840,7 +938,8 @@ class ComfyUIService:
         node_mapping: Dict[str, str],
         aspect_ratio: str = "16:9",
         character_reference_path: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        workflow: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         使用指定工作流生成分镜图片
@@ -852,6 +951,7 @@ class ComfyUIService:
             aspect_ratio: 画面比例 (16:9, 9:16, 4:3, 3:4, 1:1)
             character_reference_path: 角色参考图本地路径（合并后的角色图）
             seed: 随机种子
+            workflow: 预构建的工作流（可选，如果提供则直接使用）
             
         Returns:
             {
@@ -861,42 +961,21 @@ class ComfyUIService:
             }
         """
         try:
-            # 解析工作流
-            workflow = json.loads(workflow_json)
+            # 使用预构建的工作流或重新构建
+            if workflow is None:
+                workflow = self.build_shot_workflow(
+                    prompt=prompt,
+                    workflow_json=workflow_json,
+                    node_mapping=node_mapping,
+                    aspect_ratio=aspect_ratio,
+                    seed=seed
+                )
             
-            # 获取宽高
-            width, height = self._get_aspect_ratio_dimensions(aspect_ratio)
-            
-            # 根据节点映射修改工作流
-            prompt_node_id = node_mapping.get("prompt_node_id")
+            # 获取节点映射中的 save_image_node_id
             save_image_node_id = node_mapping.get("save_image_node_id")
-            width_node_id = node_mapping.get("width_node_id")
-            height_node_id = node_mapping.get("height_node_id")
             
-            # 1. 设置提示词
-            if prompt_node_id and prompt_node_id in workflow:
-                node = workflow[prompt_node_id]
-                if node.get("class_type") == "CLIPTextEncode":
-                    # CLIPTextEncode 节点直接设置 text
-                    workflow[prompt_node_id]["inputs"]["text"] = prompt
-                    print(f"[ComfyUI] Set prompt to CLIPTextEncode node {prompt_node_id}")
-                elif node.get("class_type") == "CR Text":
-                    # CR Text 节点
-                    workflow[prompt_node_id]["inputs"]["text"] = prompt
-                    print(f"[ComfyUI] Set prompt to CR Text node {prompt_node_id}")
-            
-            # 2. 设置宽高
-            if width_node_id and width_node_id in workflow:
-                workflow[width_node_id]["inputs"]["value"] = width
-                print(f"[ComfyUI] Set width {width} to node {width_node_id}")
-            
-            if height_node_id and height_node_id in workflow:
-                workflow[height_node_id]["inputs"]["value"] = height
-                print(f"[ComfyUI] Set height {height} to node {height_node_id}")
-            
-            # 3. 上传并设置角色参考图（如果提供）
+            # 上传并设置角色参考图（如果提供）
             if character_reference_path:
-                # 先上传图片到 ComfyUI
                 print(f"[ComfyUI] Uploading character reference image: {character_reference_path}")
                 upload_result = await self._upload_image(character_reference_path)
                 
@@ -912,24 +991,6 @@ class ComfyUIService:
                             break
                 else:
                     print(f"[ComfyUI] Failed to upload image: {upload_result.get('message')}")
-            
-            # 4. 设置随机种子
-            if seed is None:
-                seed = random.randint(1, 2**32)
-            for node_id, node in workflow.items():
-                if node.get("class_type") in ["RandomNoise", "KSampler"]:
-                    if "seed" in node.get("inputs", {}):
-                        workflow[node_id]["inputs"]["seed"] = seed
-                    if "noise_seed" in node.get("inputs", {}):
-                        workflow[node_id]["inputs"]["noise_seed"] = seed
-            
-            # 5. 设置保存路径前缀
-            if save_image_node_id and save_image_node_id in workflow:
-                # SaveImage 节点的 filename_prefix
-                save_node = workflow[save_image_node_id]
-                if save_node.get("class_type") == "SaveImage":
-                    current_prefix = save_node["inputs"].get("filename_prefix", "")
-                    print(f"[ComfyUI] SaveImage node {save_image_node_id} current prefix: {current_prefix}")
             
             # 提交任务
             print(f"[ComfyUI] Submitting shot generation task with seed {seed}")

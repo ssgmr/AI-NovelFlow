@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
@@ -161,6 +161,21 @@ async def delete_character(character_id: str, db: Session = Depends(get_db)):
     db.commit()
     
     return {"success": True, "message": "删除成功"}
+
+
+@router.delete("/")
+async def delete_characters_by_novel(novel_id: str = Query(..., description="小说ID"), db: Session = Depends(get_db)):
+    """删除指定小说的所有角色"""
+    # 检查小说是否存在
+    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+    
+    # 删除该小说的所有角色
+    result = db.query(Character).filter(Character.novel_id == novel_id).delete()
+    db.commit()
+    
+    return {"success": True, "message": f"已删除 {result} 个角色", "deleted_count": result}
 
 
 @router.post("/{character_id}/generate-portrait")

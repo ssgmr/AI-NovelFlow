@@ -30,12 +30,10 @@ const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}
 const DEFAULT_PARSE_CHARACTERS_PROMPT = `你是一个专业的小说解析助手。请分析提供的小说文本，提取以下信息并以JSON格式返回：
 
 1. characters: 角色列表，每个角色包含 name（姓名）、description（描述）、appearance（外貌特征）
-2. scenes: 场景列表，每个场景包含 title（标题）、description（描述）
-3. shots: 分镜列表，每个分镜包含 scene_id（所属场景）、description（画面描述）、camera_angle（镜头角度）
+- 角色命名(name（姓名）、description（描述）、appearance（外貌特征）)必须全程保持唯一且一致：所有角色名称必须在首次解析时确定为唯一标准名称，并在后续所有步骤中严格复用该名称；若同类型角色存在多个且无真实姓名，必须按照首次出场顺序使用阿拉伯数字编号命名（如"骗子1""骗子2"），禁止使用"甲/乙""A/B""其中一人""另一人"等变体；一旦名称确定，不得在后续输出中更改、简化或替换，所有角色引用必须完全一致。
 
 注意：
 - 角色外貌特征要详细，用于AI绘图
-- 分镜描述要具体，包含画面构图、角色动作、环境细节
 - 返回必须是合法的JSON格式`;
 
 // 默认人设提示词模板

@@ -2117,12 +2117,21 @@ export default function ChapterGenerate() {
 
           {/* 人设图片 */}
           <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-4">
-              人设图片 
-              <span className="text-xs font-normal text-gray-500 ml-2">
-                ({novel?.aspectRatio || '16:9'})
-              </span>
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-gray-900">
+                人设图片 
+                <span className="text-xs font-normal text-gray-500 ml-2">
+                  ({novel?.aspectRatio || '16:9'})
+                </span>
+              </h3>
+              <Link 
+                to={`/characters?novel=${id}`}
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+              >
+                <Sparkles className="h-4 w-4" />
+                AI生成角色形象
+              </Link>
+            </div>
             <div className="flex gap-4 flex-wrap">
               {(() => {
                 // 获取当前选中的分镜

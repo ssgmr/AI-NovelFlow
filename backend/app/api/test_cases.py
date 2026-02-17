@@ -248,6 +248,10 @@ async def init_preset_test_cases(db: Session):
     # 2. 创建小红帽测试用例
     if "小红帽 - 完整流程测试" not in existing_names:
         await _create_redridinghood_test_case(db, default_template)
+    
+    # 3. 创建皇帝的新装测试用例
+    if "皇帝的新装 - 完整流程测试" not in existing_names:
+        await _create_emperor_test_case(db, default_template)
 
 
 async def _create_xiaoma_test_case(db: Session, default_template):
@@ -600,6 +604,262 @@ async def _create_redridinghood_test_case(db: Session, default_template):
         expected_character_count=5,
         expected_shot_count=5,
         notes="主要角色：小红帽、外婆、大灰狼、猎人、妈妈",
+    )
+    db.add(test_case)
+    db.commit()
+    
+    print(f"[初始化] 已创建预设测试用例: {test_case.name}")
+
+
+async def _create_emperor_test_case(db: Session, default_template):
+    """创建皇帝的新装测试用例"""
+    novel = Novel(
+        title="《皇帝的新装》章回体改写",
+        author="AI测试用例",
+        description="经典安徒生童话，包含5个主要角色，5个章节，用于测试AI解析、角色生成、分镜生成和视频合成流程",
+        is_preset=True,
+        prompt_template_id=default_template.id if default_template else None,
+    )
+    db.add(novel)
+    db.commit()
+    db.refresh(novel)
+    
+    # 创建5个章节
+    chapters_data = [
+        {
+            "title": "第一回 好虚荣皇帝迷华服 两骗子巧言入宫门",
+            "content": """从前有一位皇帝。
+
+他不爱国家政事，
+不爱军队操练，
+只爱华丽的新衣。
+
+一天到晚换衣服。
+
+城里人都知道：
+
+"这位皇帝，最爱新装。"
+
+忽然有两名骗子来到城中。
+
+他们自称：
+
+"能织出世上最神奇的布。"
+
+这种布有一个特别之处——
+
+愚蠢的人，或不称职的人，
+都看不见它。
+
+消息传到宫中。
+
+皇帝大喜。
+
+"这正好可以分辨谁聪明，谁无能！"
+
+骗子被召入宫。
+
+骗局，就此开始。"""
+        },
+        {
+            "title": "第二回 空织机日夜作戏 真布匹从未现形",
+            "content": """骗子进了宫。
+
+要来金丝与绸缎。
+
+却偷偷藏进自己口袋。
+
+他们在空空的织机前忙碌着。
+
+手不停摆动。
+
+嘴里念念有词。
+
+可织机上——
+
+什么也没有。
+
+皇帝心中好奇。
+
+却又不敢亲自前往。
+
+"若我看不见，岂不是显得愚蠢？"
+
+于是派一位老大臣前去查看。"""
+        },
+        {
+            "title": "第三回 老臣心惊不敢言 众人附和皆称奇",
+            "content": """老大臣来到织房。
+
+他睁大眼睛。
+
+却什么也没看见。
+
+心里顿时发慌。
+
+"难道我是愚蠢之人？"
+
+他不敢承认。
+
+于是赞叹：
+
+"真是花纹精美！色彩华丽！"
+
+骗子笑着附和。
+
+不久，又有另一位官员前来。
+
+结果一样。
+
+人人看不见。
+
+却人人称赞。
+
+消息传回皇帝耳中。
+
+皇帝终于决定亲自去看。"""
+        },
+        {
+            "title": "第四回 皇帝亲临织房 明知无物却强撑",
+            "content": """皇帝来到织机前。
+
+他看了又看。
+
+仍旧什么都没有。
+
+额头冒出冷汗。
+
+"难道我不配当皇帝？"
+
+他心中惊惧。
+
+却仍然高声称赞：
+
+"妙极了！妙极了！"
+
+群臣齐声附和。
+
+骗子趁机说：
+
+"衣服已成，请陛下试穿。"
+
+他们假装为皇帝穿衣。
+
+整理衣袖。
+
+抚平衣摆。
+
+实际上——
+
+皇帝身上一丝不挂。"""
+        },
+        {
+            "title": "第五回 空衣巡游全城 孩童一语惊天下",
+            "content": """大典之日。
+
+皇帝在百官簇拥下游行。
+
+百姓挤满街道。
+
+人人张望。
+
+人人看见——
+
+皇帝什么也没穿。
+
+可谁都不敢说。
+
+"衣服真美啊！"
+
+"花纹真精致！"
+
+忽然，一个小孩大声喊：
+
+"皇帝什么都没穿！"
+
+人群一阵骚动。
+
+低语传开。
+
+"他确实没穿衣服……"
+
+声音越来越大。
+
+皇帝脸色苍白。
+
+他知道真相。
+
+却仍强撑着走完游行。
+
+骗子早已逃之夭夭。
+
+故事到此结束。"""
+        },
+    ]
+    
+    for idx, ch_data in enumerate(chapters_data, 1):
+        chapter = Chapter(
+            novel_id=novel.id,
+            number=idx,
+            title=ch_data["title"],
+            content=ch_data["content"],
+        )
+        db.add(chapter)
+    
+    novel.chapter_count = len(chapters_data)
+    db.commit()
+    
+    # 创建预设角色
+    preset_characters = [
+        {
+            "name": "皇帝",
+            "description": "一位沉迷于华丽新衣、不关心国家政事的虚荣皇帝",
+            "appearance": "中年男子，体态微胖，喜欢穿着华丽的服饰，头戴皇冠，面容略显虚荣和自负"
+        },
+        {
+            "name": "骗子甲",
+            "description": "自称能织出神奇布料的骗子之一，狡猾且善于言辞",
+            "appearance": "狡猾的中年男子，穿着破旧但故作神秘，眼神闪烁，善于表演"
+        },
+        {
+            "name": "骗子乙",
+            "description": "骗子甲的同伙，配合骗子甲进行骗局",
+            "appearance": "与骗子甲相似的中年男子，同样穿着破旧，配合骗子甲演戏"
+        },
+        {
+            "name": "老大臣",
+            "description": "皇帝派去查看织布进度的老官员，因害怕被认为愚蠢而撒谎",
+            "appearance": "年迈的老官员，白发苍苍，穿着朝服，面容带着恐惧和犹豫"
+        },
+        {
+            "name": "小孩",
+            "description": "在游行中敢于说出真相的天真孩童",
+            "appearance": "天真可爱的孩童，穿着朴素的衣服，表情纯真无邪"
+        }
+    ]
+    
+    for char_data in preset_characters:
+        character = Character(
+            novel_id=novel.id,
+            name=char_data["name"],
+            description=char_data["description"],
+            appearance=char_data["appearance"],
+        )
+        db.add(character)
+    
+    db.commit()
+    
+    # 创建测试用例
+    test_case = TestCase(
+        name="皇帝的新装 - 完整流程测试",
+        description="经典安徒生童话，包含5个主要角色，5个章节，用于测试AI解析、角色生成、分镜生成和视频合成流程",
+        novel_id=novel.id,
+        type="full",
+        is_preset=True,
+        is_active=True,
+        expected_character_count=5,
+        expected_shot_count=5,
+        notes="主要角色：皇帝、骗子甲、骗子乙、老大臣、小孩",
     )
     db.add(test_case)
     db.commit()

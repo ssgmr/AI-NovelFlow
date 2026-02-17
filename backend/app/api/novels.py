@@ -15,6 +15,7 @@ from app.schemas.novel import NovelCreate, NovelResponse, ChapterCreate, Chapter
 from app.services.llm_service import LLMService
 from app.services.comfyui import ComfyUIService
 from app.services.file_storage import file_storage
+from app.api.tasks import validate_workflow_node_mapping
 
 # 注意：不要在模块级别创建 LLMService 实例
 # 因为配置可能在运行时更新，每次使用时应创建新实例
@@ -590,6 +591,11 @@ async def generate_shot_image(
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置分镜生图工作流")
     
+    # 验证工作流节点映射配置
+    is_valid, error_msg = validate_workflow_node_mapping(workflow, "shot")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     # 清除旧的图片数据，避免前端显示旧图
     shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
     if isinstance(shot_images, list) and len(shot_images) >= shot_index:
@@ -914,6 +920,22 @@ async def generate_shot_task(
                     task.current_step = "角色图片合并失败，继续生成..."
                     db.commit()
         
+        # 构建实际提交给ComfyUI的完整工作流（提前构建并保存，让用户可以查看）
+        task.current_step = "构建工作流..."
+        db.commit()
+        
+        submitted_workflow = comfyui_service.build_shot_workflow(
+            prompt=shot_description,
+            workflow_json=workflow.workflow_json,
+            node_mapping=node_mapping,
+            aspect_ratio=novel.aspect_ratio or "16:9"
+        )
+        
+        # 保存构建后的完整工作流到任务，让用户可以立即查看
+        task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+        db.commit()
+        print(f"[ShotTask {task_id}] Saved submitted workflow to task")
+        
         # 调用 ComfyUI 生成图片
         task.current_step = "正在调用 ComfyUI 生成图片..."
         task.progress = 30
@@ -924,7 +946,8 @@ async def generate_shot_task(
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
             aspect_ratio=novel.aspect_ratio or "16:9",
-            character_reference_path=character_reference_path
+            character_reference_path=character_reference_path,
+            workflow=submitted_workflow  # 传递已构建的工作流
         )
         
         print(f"[ShotTask {task_id}] Generation result: {result}")
@@ -933,12 +956,6 @@ async def generate_shot_task(
         if result.get("prompt_id"):
             task.comfyui_prompt_id = result["prompt_id"]
             print(f"[ShotTask {task_id}] Saved ComfyUI prompt_id: {result['prompt_id']}")
-        
-        # 保存实际提交给ComfyUI的工作流（替换参数后的）
-        if result.get("submitted_workflow"):
-            task.workflow_json = json.dumps(result["submitted_workflow"], ensure_ascii=False, indent=2)
-            db.commit()
-            print(f"[ShotTask {task_id}] Saved submitted workflow to task")
         
         if not result.get("success"):
             task.status = "failed"
@@ -1160,6 +1177,11 @@ async def generate_shot_video(
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置视频生成工作流，请在系统设置中配置")
+    
+    # 验证工作流节点映射配置
+    is_valid, error_msg = validate_workflow_node_mapping(workflow, "video")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # 创建任务记录
     task = Task(
@@ -1479,6 +1501,11 @@ async def generate_transition_video(
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置转场视频工作流，请在系统设置中配置")
+    
+    # 验证工作流节点映射配置
+    is_valid, error_msg = validate_workflow_node_mapping(workflow, "transition")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # 创建任务记录
     task = Task(

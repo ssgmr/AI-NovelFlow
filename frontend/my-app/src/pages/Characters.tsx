@@ -12,7 +12,8 @@ import {
   X,
   Image,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Character, Novel } from '../types';
@@ -31,8 +32,8 @@ export default function Characters() {
   const [novels, setNovels] = useState<Novel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  // 支持 novel 或 novel_id 参数
-  const novelIdFromUrl = searchParams.get('novel') || searchParams.get('novel_id') || 'all';
+  // 支持 novel 或 novel_id 参数（不再支持 'all'，必须选择具体小说）
+  const novelIdFromUrl = searchParams.get('novel') || searchParams.get('novel_id') || '';
   const highlightId = searchParams.get('highlight');
   const [selectedNovel, setSelectedNovel] = useState<string>(novelIdFromUrl);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,6 +47,11 @@ export default function Characters() {
     isOpen: boolean;
     novelId: string | null;
   }>({ isOpen: false, novelId: null });
+  
+  // 删除所有角色确认对话框状态
+  const [deleteAllConfirmDialog, setDeleteAllConfirmDialog] = useState<{
+    isOpen: boolean;
+  }>({ isOpen: false });
   
   // 图片预览弹窗状态
   const [previewImage, setPreviewImage] = useState<{
@@ -106,11 +112,16 @@ export default function Characters() {
   }, [previewImage.isOpen, previewImage.characterId]);
 
   const fetchCharacters = async () => {
+    // 如果没有选择小说，不获取角色
+    if (!selectedNovel) {
+      setCharacters([]);
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      const url = selectedNovel !== 'all' 
-        ? `${API_BASE}/characters?novel_id=${selectedNovel}` 
-        : `${API_BASE}/characters`;
+      const url = `${API_BASE}/characters?novel_id=${selectedNovel}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -151,7 +162,15 @@ export default function Characters() {
       const res = await fetch(`${API_BASE}/novels/`);
       const data = await res.json();
       if (data.success) {
-        setNovels(data.data || []);
+        const novelsList = data.data || [];
+        setNovels(novelsList);
+        
+        // 如果没有选择小说，默认选择第一个
+        if (!selectedNovel && novelsList.length > 0) {
+          const firstNovelId = novelsList[0].id;
+          setSelectedNovel(firstNovelId);
+          setSearchParams({ novel: firstNovelId });
+        }
       }
     } catch (error) {
       console.error('获取小说失败:', error);
@@ -205,6 +224,32 @@ export default function Characters() {
       setCharacters(characters.filter(c => c.id !== id));
     } catch (error) {
       console.error('删除角色失败:', error);
+    }
+  };
+
+  // 删除当前小说的所有角色
+  const handleDeleteAllCharacters = async () => {
+    if (!selectedNovel) {
+      toast.error('请先选择小说');
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API_BASE}/characters/?novel_id=${selectedNovel}`, { 
+        method: 'DELETE' 
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(data.message || '删除成功');
+        setCharacters([]); // 清空本地角色列表
+        setDeleteAllConfirmDialog({ isOpen: false });
+      } else {
+        toast.error(data.message || '删除失败');
+      }
+    } catch (error) {
+      console.error('批量删除角色失败:', error);
+      toast.error('删除失败');
     }
   };
 
@@ -382,12 +427,13 @@ export default function Characters() {
 
   // 轮询所有生成中的角色状态
   const pollAllCharactersStatus = () => {
+    // 如果没有选择小说，不启动轮询
+    if (!selectedNovel) return;
+    
     const interval = setInterval(async () => {
       try {
         // 直接获取最新角色列表，避免 state 闭包问题
-        const url = selectedNovel !== 'all' 
-          ? `${API_BASE}/characters?novel_id=${selectedNovel}` 
-          : `${API_BASE}/characters`;
+        const url = `${API_BASE}/characters?novel_id=${selectedNovel}`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.success) {
@@ -548,6 +594,15 @@ export default function Characters() {
               AI生成所有角色形象
             </button>
           )}
+          {selectedNovel && characters.length > 0 && (
+            <button
+              onClick={() => setDeleteAllConfirmDialog({ isOpen: true })}
+              className="btn-secondary text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              删除当前小说所有角色
+            </button>
+          )}
           <button
             onClick={() => setShowCreateModal(true)}
             className="btn-primary"
@@ -574,15 +629,10 @@ export default function Characters() {
           value={selectedNovel}
           onChange={(e) => {
             setSelectedNovel(e.target.value);
-            if (e.target.value !== 'all') {
-              setSearchParams({ novel: e.target.value });
-            } else {
-              setSearchParams({});
-            }
+            setSearchParams({ novel: e.target.value });
           }}
           className="input-field flex-1"
         >
-          <option value="all">所有小说</option>
           {novels.map(novel => (
             <option key={novel.id} value={novel.id}>{novel.title}</option>
           ))}
@@ -601,7 +651,7 @@ export default function Characters() {
           <p className="mt-1 text-sm text-gray-500">
             点击"新建角色"创建你的第一个角色或者"AI解析角色"
           </p>
-          {selectedNovel !== 'all' && (
+          {selectedNovel && (
             <div className="mt-4">
               <button
                 onClick={() => openParseConfirm(selectedNovel)}
@@ -949,6 +999,40 @@ export default function Characters() {
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
               >
                 确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除所有角色确认对话框 */}
+      {deleteAllConfirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">删除所有角色</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              确定要删除当前小说《{novels.find(n => n.id === selectedNovel)?.title}》的所有角色吗？
+            </p>
+            <p className="text-sm text-red-500 mb-6">
+              警告：此操作不可恢复，将删除该小说下的所有角色数据！
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteAllConfirmDialog({ isOpen: false })}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteAllCharacters}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                确认删除
               </button>
             </div>
           </div>

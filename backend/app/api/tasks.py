@@ -1,16 +1,75 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+import json
 
 from app.core.database import get_db
 from app.models.task import Task
 from app.models.novel import Character, Chapter, Novel
 from app.models.prompt_template import PromptTemplate
+from app.models.workflow import Workflow
 from app.services.comfyui import ComfyUIService
 
 router = APIRouter()
 comfyui_service = ComfyUIService()
+
+
+def validate_workflow_node_mapping(workflow: Workflow, task_type: str) -> tuple[bool, str]:
+    """
+    验证工作流的节点映射配置是否完整
+    
+    Args:
+        workflow: 工作流对象
+        task_type: 任务类型 (character, shot, video, transition)
+        
+    Returns:
+        (是否有效, 错误信息)
+    """
+    if not workflow:
+        # 使用默认工作流，不需要验证
+        return True, ""
+    
+    # 解析节点映射
+    node_mapping = {}
+    if workflow.node_mapping:
+        try:
+            node_mapping = json.loads(workflow.node_mapping)
+        except Exception:
+            return False, f"工作流 '{workflow.name}' 的节点映射配置格式无效"
+    
+    # 根据任务类型检查必需的字段
+    required_fields = {
+        "character": ["prompt_node_id", "save_image_node_id"],
+        "shot": ["prompt_node_id", "save_image_node_id", "width_node_id", "height_node_id"],
+        "video": ["prompt_node_id", "video_save_node_id", "reference_image_node_id"],
+        "transition": ["first_image_node_id", "last_image_node_id", "video_save_node_id"]
+    }
+    
+    fields = required_fields.get(task_type)
+    if not fields:
+        return True, ""
+    
+    missing_fields = []
+    field_names = {
+        "prompt_node_id": "提示词输入节点",
+        "save_image_node_id": "图片保存节点",
+        "video_save_node_id": "视频保存节点",
+        "width_node_id": "宽度节点",
+        "height_node_id": "高度节点",
+        "reference_image_node_id": "参考图片节点",
+        "first_image_node_id": "第一张图片节点",
+        "last_image_node_id": "最后一张图片节点"
+    }
+    
+    for field in fields:
+        if not node_mapping.get(field):
+            missing_fields.append(field_names.get(field, field))
+    
+    if missing_fields:
+        return False, f"工作流 '{workflow.name}' 的映射配置不完整，缺少以下必需字段：{', '.join(missing_fields)}。请在【系统配置-ComfyUI工作流】中配置完整后再试。"
+    
+    return True, ""
 
 
 @router.get("/", response_model=dict)
@@ -137,6 +196,19 @@ async def generate_character_portrait(
         return {
             "success": False,
             "message": "该角色正在生成形象中，请稍后再试"
+        }
+    
+    # 验证工作流配置
+    workflow = db.query(Workflow).filter(
+        Workflow.type == "character",
+        Workflow.is_active == True
+    ).first()
+    
+    is_valid, error_msg = validate_workflow_node_mapping(workflow, "character")
+    if not is_valid:
+        return {
+            "success": False,
+            "message": error_msg
         }
     
     # 创建任务
@@ -333,7 +405,6 @@ async def get_task_workflow(task_id: str, db: Session = Depends(get_db)):
     # 如果任务保存了工作流JSON，直接返回
     if task.workflow_json:
         try:
-            import json
             workflow_obj = json.loads(task.workflow_json)
             return {
                 "success": True,
@@ -431,27 +502,25 @@ async def generate_portrait_task(
         task.prompt_text = prompt
         db.commit()
         
-        # 获取工作流JSON字符串（不保存到task，等ComfyUI返回实际提交版本）
+        # 获取工作流JSON字符串
         workflow_json_str = workflow.workflow_json if workflow else None
         print(f"[Task] Workflow JSON available: {workflow_json_str is not None}, length: {len(workflow_json_str) if workflow_json_str else 0}")
-        
-        # 调用 ComfyUI 生成图片（使用指定的工作流）
-        print(f"[Task] Generating image with workflow: {workflow.name if workflow else 'default'}")
-        print(f"[Task] Workflow JSON length: {len(workflow_json_str) if workflow_json_str else 0}")
-        print(f"[Task] Novel ID: {task.novel_id}, Character: {name}")
         
         # 获取工作流的节点映射配置
         node_mapping = None
         if workflow and workflow.node_mapping:
             try:
-                import json
                 node_mapping = json.loads(workflow.node_mapping)
                 print(f"[Task] Using node mapping: {node_mapping}")
             except Exception as e:
                 print(f"[Task] Failed to parse node_mapping: {e}")
         
-        result = await comfyui_service.generate_character_image(
-            prompt, 
+        # 构建实际提交给ComfyUI的完整工作流（注入参数后）
+        print(f"[Task] Building workflow with: {workflow.name if workflow else 'default'}")
+        print(f"[Task] Novel ID: {task.novel_id}, Character: {name}")
+        
+        submitted_workflow = comfyui_service.build_character_workflow(
+            prompt=prompt,
             workflow_json=workflow_json_str,
             novel_id=task.novel_id,
             character_name=name,
@@ -459,13 +528,23 @@ async def generate_portrait_task(
             node_mapping=node_mapping
         )
         
-        print(f"[Task] Generation result: {result}")
+        # 保存构建后的完整工作流到任务，让用户可以立即查看
+        task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+        db.commit()
+        print(f"[Task] Saved submitted workflow to task")
         
-        # 保存实际提交给ComfyUI的工作流（替换参数后的）
-        if result.get("submitted_workflow"):
-            task.workflow_json = json.dumps(result["submitted_workflow"], ensure_ascii=False, indent=2)
-            db.commit()
-            print(f"[Task] Saved submitted workflow to task")
+        # 调用 ComfyUI 生成图片（使用已构建的工作流）
+        result = await comfyui_service.generate_character_image(
+            prompt, 
+            workflow_json=workflow_json_str,
+            novel_id=task.novel_id,
+            character_name=name,
+            aspect_ratio=novel.aspect_ratio if novel else None,
+            node_mapping=node_mapping,
+            workflow=submitted_workflow  # 传递已构建的工作流，避免重复构建
+        )
+        
+        print(f"[Task] Generation result: {result}")
         
         if result.get("success"):
             image_url = result.get("image_url")
