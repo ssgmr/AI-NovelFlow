@@ -114,9 +114,11 @@ export default function LLMLogs() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    // 使用用户的时区和语言格式化时间
-    return date.toLocaleString(i18n.language, { 
+    // 后端返回的是 UTC 时间（带Z后缀或不带），需要正确处理
+    // 确保 dateStr 被当作 UTC 时间处理
+    const utcDate = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
+    // 转换为指定时区的时间字符串
+    const options: Intl.DateTimeFormatOptions = {
       timeZone: i18n.timezone,
       year: 'numeric',
       month: '2-digit',
@@ -124,8 +126,15 @@ export default function LLMLogs() {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false // 使用 24 小时制
-    });
+      hour12: false
+    };
+    // 使用 en-GB 格式 (DD/MM/YYYY) 然后替换为 YYYY/MM/DD
+    const formatted = utcDate.toLocaleString('en-GB', options);
+    // en-GB 格式: DD/MM/YYYY, HH:mm:ss
+    // 转换为: YYYY/MM/DD HH:mm:ss
+    const [datePart, timePart] = formatted.split(', ');
+    const [day, month, year] = datePart.split('/');
+    return `${year}/${month}/${day} ${timePart}`;
   };
 
   const truncateText = (text: string, maxLength: number = 100) => {
