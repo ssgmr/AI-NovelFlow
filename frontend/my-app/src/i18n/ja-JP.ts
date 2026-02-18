@@ -5,7 +5,7 @@ export default {
   ...enUS,
   common: {
     ...enUS.common,
-    save: '保存',
+    save: '設定を保存',
     saving: '保存中...',
     cancel: 'キャンセル',
     confirm: '確認',
