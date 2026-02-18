@@ -18,17 +18,16 @@ def to_shanghai_time(dt: datetime) -> str:
     """将时间转换为上海时间字符串
     
     处理各种时区情况：
-    - SQLite 的 func.now() 返回的是本地时间（无时区）
-    - 如果时间是 naive（无时区），直接添加上海时区（假设就是本地时间）
+    - SQLite 的 func.now() 返回的是 UTC 时间（无时区）
+    - 如果时间是 naive（无时区），假设为 UTC 时间，然后转为上海时间
     - 如果时间是 aware（有时区），直接转为上海时间
     """
     if not dt:
         return None
     
     if dt.tzinfo is None:
-        # Naive 时间，直接添加上海时区（假设存储的就是本地时间）
-        dt = dt.replace(tzinfo=SHANGHAI_TZ)
-        return dt.isoformat()
+        # Naive 时间，先添加 UTC 时区，然后转为上海时间
+        dt = dt.replace(tzinfo=UTC_TZ)
     
     return dt.astimezone(SHANGHAI_TZ).isoformat()
 

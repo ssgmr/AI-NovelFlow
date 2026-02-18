@@ -399,9 +399,11 @@ export default function Tasks() {
   // 格式化日期为 YYYY/MM/DD HH:mm:ss
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    // 后端返回的是 UTC 时间（带Z后缀或不带），需要正确处理
-    // 确保 dateStr 被当作 UTC 时间处理
-    const utcDate = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
+    // 后端返回的是带时区的时间（如 2026-02-18T11:14:37+08:00）
+    // 先解析为 Date 对象（自动处理时区转换为本地时间）
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '-';
+    
     // 转换为指定时区的时间字符串
     const options: Intl.DateTimeFormatOptions = {
       timeZone: i18n.timezone,
@@ -413,13 +415,29 @@ export default function Tasks() {
       second: '2-digit',
       hour12: false
     };
-    // 使用 en-GB 格式 (DD/MM/YYYY) 然后替换为 YYYY/MM/DD
-    const formatted = utcDate.toLocaleString('en-GB', options);
-    // en-GB 格式: DD/MM/YYYY, HH:mm:ss
-    // 转换为: YYYY/MM/DD HH:mm:ss
-    const [datePart, timePart] = formatted.split(', ');
-    const [day, month, year] = datePart.split('/');
-    return `${year}/${month}/${day} ${timePart}`;
+    
+    try {
+      // 使用 Intl.DateTimeFormat 进行正确的时区转换
+      const formatter = new Intl.DateTimeFormat('en-GB', options);
+      const parts = formatter.formatToParts(date);
+      
+      // 提取各部分
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+      const year = getPart('year');
+      const month = getPart('month');
+      const day = getPart('day');
+      const hour = getPart('hour');
+      const minute = getPart('minute');
+      const second = getPart('second');
+      
+      return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+    } catch (e) {
+      // 如果时区不支持，返回原始解析时间
+      const formatted = date.toLocaleString('en-GB');
+      const [datePart, timePart] = formatted.split(', ');
+      const [day, month, year] = datePart.split('/');
+      return `${year}/${month}/${day} ${timePart}`;
+    }
   };
 
   const getStatusIcon = (status: Task['status']) => {
