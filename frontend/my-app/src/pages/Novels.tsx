@@ -276,7 +276,7 @@ export default function Novels() {
                   {novel.description || t('novels.noDescription')}
                 </p>
                 {/* 小说配置信息 */}
-                <div className="mt-3 flex flex-wrap gap-1.5">
+                <div className="mt-3 flex flex-wrap gap-1.5 h-16 content-start">
                   {/* 人设提示词 */}
                   <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded whitespace-nowrap">
                     <span className="font-medium">{t('novels.characterPrompt')}</span>
