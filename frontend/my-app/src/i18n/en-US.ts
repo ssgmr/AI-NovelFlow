@@ -53,6 +53,19 @@ export default {
     deleteFailed: 'Delete failed',
   },
 
+  // Status
+  status: {
+    pending: 'Pending',
+    processing: 'Processing',
+    completed: 'Completed',
+    failed: 'Failed',
+    parsing: 'Parsing',
+    generatingCharacters: 'Generating Characters',
+    generatingShots: 'Generating Shots',
+    generatingVideos: 'Generating Videos',
+    compositing: 'Compositing',
+  },
+
   // Navigation
   nav: {
     welcome: 'Welcome',
@@ -686,6 +699,7 @@ export default {
 
   // Chapter Detail
   chapterDetail: {
+    chapterTitle: 'Chapter {number}: {title}',
     backToNovel: 'Back to Novel',
     chapterInfo: 'Chapter Info',
     rawContent: 'Raw Content',
@@ -694,7 +708,26 @@ export default {
     shotCount: '{count} Shots',
     regenerateShots: 'Regenerate Shots',
     confirmDelete: 'Are you sure you want to delete this chapter?',
+    deleteFailed: 'Delete Failed',
+    pleaseEditContent: 'Please edit content',
+    chapterNotExist: 'Chapter does not exist',
     generateVideo: 'Generate Video',
+    progress: 'Progress: {progress}%',
+    viewVideo: 'View Video',
+    chapterTitleLabel: 'Chapter Title',
+    chapterTitlePlaceholder: 'Enter chapter title',
+    chapterContentLabel: 'Chapter Content',
+    chapterContentPlaceholder: 'Enter chapter content',
+    generatedResources: 'Generated Resources',
+    characterImages: 'Character Images',
+    characterImageAlt: 'Character Image {index}',
+    shotImages: 'Shot Images',
+    shotImageAlt: 'Shot Image {index}',
+    shotVideos: 'Shot Videos',
+    prevImage: 'Previous',
+    nextImage: 'Next',
+    imagePreview: 'Image Preview',
+    keyboardNavigation: 'Use ← → to navigate',
     shotId: 'Shot ID',
     scene: 'Scene',
     characters: 'Characters',

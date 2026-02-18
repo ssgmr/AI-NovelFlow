@@ -53,6 +53,19 @@ export default {
     deleteFailed: '删除失败',
   },
 
+  // 状态
+  status: {
+    pending: '待处理',
+    processing: '处理中',
+    completed: '已完成',
+    failed: '失败',
+    parsing: '解析中',
+    generatingCharacters: '生成角色中',
+    generatingShots: '生成分镜中',
+    generatingVideos: '生成视频中',
+    compositing: '合成中',
+  },
+
   // 导航
   nav: {
     welcome: '欢迎',
@@ -686,6 +699,7 @@ export default {
 
   // 章节详情
   chapterDetail: {
+    chapterTitle: '第 {number} 回：{title}',
     backToNovel: '返回小说',
     chapterInfo: '章节信息',
     rawContent: '原文内容',
@@ -694,7 +708,26 @@ export default {
     shotCount: '共 {count} 个分镜',
     regenerateShots: '重新生成分镜',
     confirmDelete: '确定要删除这个章节吗？',
+    deleteFailed: '删除失败',
+    pleaseEditContent: '请编辑内容',
+    chapterNotExist: '章节不存在',
     generateVideo: '生成视频',
+    progress: '进度：{progress}%',
+    viewVideo: '查看视频',
+    chapterTitleLabel: '章节标题',
+    chapterTitlePlaceholder: '请输入章节标题',
+    chapterContentLabel: '章节内容',
+    chapterContentPlaceholder: '请输入章节内容',
+    generatedResources: '已生成资源',
+    characterImages: '角色图片',
+    characterImageAlt: '角色图片 {index}',
+    shotImages: '分镜图片',
+    shotImageAlt: '分镜图片 {index}',
+    shotVideos: '分镜视频',
+    prevImage: '上一张',
+    nextImage: '下一张',
+    imagePreview: '图片预览',
+    keyboardNavigation: '使用键盘 ← → 切换',
     shotId: '分镜ID',
     scene: '场景',
     characters: '角色',
