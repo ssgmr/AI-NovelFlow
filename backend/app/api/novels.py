@@ -33,25 +33,42 @@ router = APIRouter()
 async def list_novels(db: Session = Depends(get_db)):
     """获取小说列表"""
     novels = db.query(Novel).order_by(Novel.created_at.desc()).all()
+    result = []
+    
+    for n in novels:
+        cover = n.cover
+        # 如果没有自定义封面，尝试从第一章节的第一个分镜获取
+        if not cover:
+            first_chapter = db.query(Chapter).filter(
+                Chapter.novel_id == n.id
+            ).order_by(Chapter.number.asc()).first()
+            
+            if first_chapter and first_chapter.shot_images:
+                try:
+                    shot_images = json.loads(first_chapter.shot_images)
+                    if isinstance(shot_images, list) and len(shot_images) > 0:
+                        cover = shot_images[0]
+                except json.JSONDecodeError:
+                    pass
+        
+        result.append({
+            "id": n.id,
+            "title": n.title,
+            "author": n.author,
+            "description": n.description,
+            "cover": cover,
+            "status": n.status,
+            "chapterCount": n.chapter_count,
+            "promptTemplateId": n.prompt_template_id,
+            "chapterSplitPromptTemplateId": n.chapter_split_prompt_template_id,
+            "aspectRatio": n.aspect_ratio if n.aspect_ratio and n.aspect_ratio.strip() else "16:9",
+            "createdAt": n.created_at.isoformat() if n.created_at else None,
+            "updatedAt": n.updated_at.isoformat() if n.updated_at else None,
+        })
+    
     return {
         "success": True,
-        "data": [
-            {
-                "id": n.id,
-                "title": n.title,
-                "author": n.author,
-                "description": n.description,
-                "cover": n.cover,
-                "status": n.status,
-                "chapterCount": n.chapter_count,
-                "promptTemplateId": n.prompt_template_id,
-                "chapterSplitPromptTemplateId": n.chapter_split_prompt_template_id,
-                "aspectRatio": n.aspect_ratio if n.aspect_ratio and n.aspect_ratio.strip() else "16:9",
-                "createdAt": n.created_at.isoformat() if n.created_at else None,
-                "updatedAt": n.updated_at.isoformat() if n.updated_at else None,
-            }
-            for n in novels
-        ]
+        "data": result
     }
 
 

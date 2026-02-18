@@ -205,40 +205,6 @@ start.bat
 - [x] 时区支持
 - [x] 视频合成功能（支持分镜视频合并、转场视频插入）
 
-## 环境变量（可选）
-
-配置会存储在数据库中，环境变量仅作为初始默认值：
-
-创建 `backend/.env` 文件：
-
-```env
-# LLM 配置（通用）
-LLM_PROVIDER=deepseek
-LLM_MODEL=deepseek-chat
-LLM_API_URL=https://api.deepseek.com
-LLM_API_KEY=your_api_key_here
-
-# 兼容旧配置（DeepSeek）
-DEEPSEEK_API_URL=https://api.deepseek.com
-DEEPSEEK_API_KEY=your_api_key_here
-
-# ComfyUI 配置
-COMFYUI_HOST=http://localhost:8188
-
-# 代理配置（如需）
-PROXY_ENABLED=false
-HTTP_PROXY=http://proxy.example.com:8080
-HTTPS_PROXY=http://proxy.example.com:8080
-
-# 数据库配置（默认 SQLite）
-DATABASE_URL=sqlite:///./novelflow.db
-
-# Redis 配置（可选）
-REDIS_URL=redis://localhost:6379/0
-```
-
-**注意**：所有配置都可在运行时的【系统配置】页面修改，修改后会保存在数据库中，环境变量的值仅作为初始默认值。
-
 ## 使用说明
 
 ### 1. 新建小说

@@ -68,3 +68,7 @@ Thumbs.db
 output/
 downloads/
 uploads/
+
+# Runtime files
+uvicorn.log
+uvicorn.pid
