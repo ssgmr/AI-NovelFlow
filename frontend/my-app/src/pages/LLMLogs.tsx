@@ -37,7 +37,7 @@ interface Pagination {
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 export default function LLMLogs() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [logs, setLogs] = useState<LLMLog[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, page_size: 20, total: 0, total_pages: 0 });
   const [loading, setLoading] = useState(true);
@@ -115,7 +115,7 @@ export default function LLMLogs() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleString('zh-CN');
+    return date.toLocaleString(i18n.language, { timeZone: i18n.timezone });
   };
 
   const truncateText = (text: string, maxLength: number = 100) => {
