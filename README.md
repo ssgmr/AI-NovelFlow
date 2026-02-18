@@ -1,5 +1,7 @@
 # AI-NovelFlow
 
+**[简体中文](README.md) | [繁體中文](README_TW.md) | [English](README_EN.md) | [日本語](README_JA.md) | [한국어](README_KO.md)**
+
 AI 驱动的小说转视频平台
 
 ## 项目概述
