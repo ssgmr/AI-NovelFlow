@@ -690,6 +690,7 @@ export default {
     chapterInfo: 'Chapter Info',
     rawContent: 'Raw Content',
     parsedShots: 'Parsed Shots',
+    wordCount: '{count} words',
     shotCount: '{count} Shots',
     regenerateShots: 'Regenerate Shots',
     confirmDelete: 'Are you sure you want to delete this chapter?',

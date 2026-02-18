@@ -527,6 +527,7 @@ export default {
 
   chapterDetail: {
     ...zhCN.chapterDetail,
+    wordCount: '{count} 字',
     backToNovel: '返回小說',
     chapterInfo: '章節資訊',
     rawContent: '原文內容',

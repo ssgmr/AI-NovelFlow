@@ -690,6 +690,7 @@ export default {
     chapterInfo: '章节信息',
     rawContent: '原文内容',
     parsedShots: '解析分镜',
+    wordCount: '{count} 字',
     shotCount: '共 {count} 个分镜',
     regenerateShots: '重新生成分镜',
     confirmDelete: '确定要删除这个章节吗？',
