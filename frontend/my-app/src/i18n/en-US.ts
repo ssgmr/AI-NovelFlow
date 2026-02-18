@@ -974,4 +974,15 @@ export default {
     networkError: 'Network error, please check your connection',
     timeout: 'Request timeout',
   },
+
+  // Coffee
+  coffee: {
+    buyMeACoffee: 'Buy me a coffee',
+    title: 'Buy me a coffee',
+    message: 'Creating is not easy. If you find this project helpful, I hope you can support me! I would be very grateful! This will give me more motivation to continue developing this project!',
+    wechatPay: 'WeChat Pay',
+    alipay: 'Alipay',
+    thankYou: 'Thank you for your support!',
+    contactMe: 'Contact Me',
+  },
 };

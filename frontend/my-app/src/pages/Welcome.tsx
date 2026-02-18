@@ -67,7 +67,7 @@ export default function Welcome() {
             { icon: Book, title: t('welcome.features.novelManagement.title'), color: 'from-sky-500 to-blue-500' },
             { icon: Sparkles, title: 'AI', color: 'from-violet-500 to-purple-500' },
             { icon: Users, title: t('welcome.features.characterLibrary.title'), color: 'from-fuchsia-500 to-pink-500' },
-            { icon: FileText, title: t('novelDetail.rawContent'), color: 'from-blue-500 to-cyan-500' },
+            { icon: FileText, title: t('chapterDetail.rawContent'), color: 'from-blue-500 to-cyan-500' },
             { icon: Sparkles, title: 'AI', color: 'from-purple-500 to-pink-500' },
             { icon: FileJson, title: 'JSON', color: 'from-emerald-500 to-teal-500' },
             { icon: Users, title: t('characters.title'), color: 'from-orange-500 to-amber-500' },
@@ -78,8 +78,8 @@ export default function Welcome() {
           ].map((step, index) => (
             <div key={step.title} className="flex items-center flex-shrink-0">
               <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-gradient-to-br ${step.color} text-white shadow-md`}>
-                  <step.icon className="h-5 w-5" />
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-2 bg-gradient-to-br ${step.color} text-white shadow-md`}>
+                  <step.icon className="h-7 w-7" />
                 </div>
                 <span className="text-xs font-medium text-gray-700 text-center whitespace-nowrap">
                   {step.title}

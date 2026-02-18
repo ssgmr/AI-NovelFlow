@@ -1998,8 +1998,8 @@ export default function ChapterGenerate() {
           return (
             <div key={step.key} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 bg-gradient-to-br ${step.color} text-white shadow-md`}>
-                  <StepIcon className="h-5 w-5" />
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-2 bg-gradient-to-br ${step.color} text-white shadow-md`}>
+                  <StepIcon className="h-7 w-7" />
                 </div>
                 <span className="text-xs font-medium text-gray-700 text-center whitespace-nowrap">
                   {getStepLabel(step.key)}

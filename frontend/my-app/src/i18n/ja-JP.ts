@@ -949,5 +949,23 @@ export default {
     splitSuccess: '分割成功',
     splitFailed: '分割失敗',
     splitFailedCheckNetwork: '分割失敗。ネットワークを確認してください',
+    // JSON Editor Save
+    jsonFormatErrorCheck: 'JSON形式エラー、保存前に確認してください',
+    saveSuccess: '保存成功',
+    saveFailed: '保存失敗',
+    saveFailedCheckNetwork: '保存失敗。ネットワークを確認してください',
+    // Transition Videos Generation
+    generatedTransitionVideos: '生成済みトランジション動画',
+  },
+
+  coffee: {
+    ...enUS.coffee,
+    buyMeACoffee: 'コーヒーを買ってください',
+    title: 'コーヒーを買ってください',
+    message: '創作は簡単ではありません。このプロジェクトがお役に立てば、サポートしていただけると幸いです！心から感謝いたします！これは私がこのプロジェクトの開発を続けるための大きな原動力となります！',
+    wechatPay: 'WeChat Pay',
+    alipay: 'Alipay',
+    thankYou: 'ご支援ありがとうございます！',
+    contactMe: '連絡先',
   },
 };

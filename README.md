@@ -141,6 +141,39 @@ npm run dev
   - 分镜生视频: 提示词节点 + 视频保存节点 + 参考图节点
   - 转场视频: 首帧图节点 + 尾帧图节点 + 视频保存节点
 
+#### 2.1 模型文件
+
+目录以 `ComfyUI/models/...` 为基准；如果你用的是 ComfyUI-Manager，一般也按这些目录扫描。
+
+| 模型文件名 | 类型 | 主要用途 | 出现的工作流 | 建议目录 |
+|-----------|------|---------|-------------|---------|
+| `ltx-2-19b-dev-fp8.safetensors` | checkpoint / 主模型 | LTX2 转场（遮挡/光线/镜头）视频生成 | LTX2 遮挡转场视频 / 光线转场视频 / 镜头转场视频 | `models/checkpoints/` |
+| `ltx-2-19b-distilled-fp8.safetensors` | checkpoint / 主模型 | LTX2 视频生成（直接版/扩写版） | LTX2 视频生成-直接版 / 扩写版 | `models/checkpoints/` |
+| `gemma_3_12B_it_fp8_e4m3fn.safetensors` | text encoder (LTX 文本编码器) | LTX2 文本编码 | 所有 LTX2 类工作流都会用（转场/视频生成） | `models/text_encoders/` |
+| `ltx-2-19b-distilled-lora-384.safetensors` | LoRA | LTX2 蒸馏 LoRA（提升/匹配蒸馏流程） | 主要在转场类工作流出现 | `models/loras/` |
+| `ltx-2-19b-lora-camera-control-dolly-left.safetensors` | LoRA | LTX2 镜头控制 (dolly-left) | 主要在转场类工作流出现 | `models/loras/` |
+| `ltx-2-spatial-upscaler-x2-1.0.safetensors` | upscale model (latent upscaler) | LTX2 latent 空间放大 x2 | 主要在转场类工作流出现 | `models/upscale_models/` |
+| `ae.safetensors` | VAE / AE | 在 Z-image-turbo 及部分默认人设流程里作为 VAE/AE | Z-image-turbo 单图生成 / 系统默认-人设生成 | `models/vae/` |
+| `flux-2-klein-9b.safetensors` | UNet | Flux2-Klein 分镜生图 UNet | Flux2-Klein-9B 分镜生图 / 系统默认-人设生成 | `models/unet/` |
+| `flux2-vae.safetensors` | VAE | Flux2 的 VAE | Flux2-Klein-9B 分镜生图 / 系统默认-人设生成 | `models/vae/` |
+| `qwen_3_8b.safetensors` | text encoder | Flux2 文本编码 | Flux2-Klein-9B 分镜生图 / 系统默认-人设生成 | `models/clip/` |
+| `z_image_turbo_bf16.safetensors` | UNet | Z-image-turbo 单图生成 UNet | Z-image-turbo 单图生成 / 系统默认-人设生成 | `models/unet/` |
+| `qwen_3_4b.safetensors` | text encoder | Z-image-turbo 文本编码 | Z-image-turbo 单图生成 / 系统默认-人设生成 | `models/clip/` |
+
+#### 2.2 第三方节点包
+
+| 第三方节点包 | GitHub 仓库 | 工作流中命中的节点 class_type |
+|-------------|------------|------------------------------|
+| **LTXVideo / LTXV** | [Lightricks/ComfyUI-LTXVideo](https://github.com/Lightricks/ComfyUI-LTXVideo) | `LTXAVTextEncoderLoader`, `LTXVScheduler`, `LTXV*`, `LTXAV*`, `Painter*` |
+| **VideoHelperSuite / VHS** | [Kosinkadink/ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_VideoCombine` |
+| **Easy-Use** | [yolain/ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use) | `easy int`, `easy cleanGpuUsed`, `easy showAnything` |
+| **LayerStyle / LayerUtility** | [chflame163/ComfyUI_LayerStyle](https://github.com/chflame163/ComfyUI_LayerStyle) | `LayerUtility: ImageScaleByAspectRatio V2` |
+| **Comfyroll** | [Suzie1/ComfyUI_Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) | `CR Prompt Text`, `CR Text` |
+| **FizzNodes / ConcatStringSingle** | [FizzleDorf/ComfyUI_FizzNodes](https://github.com/FizzleDorf/ComfyUI_FizzNodes) | `ConcatStringSingle` |
+| **comfyui-various / JWInteger** | [jamesWalker55/comfyui-various](https://github.com/jamesWalker55/comfyui-various) | `JWInteger` |
+| **ReservedVRAM** | [Windecay/ComfyUI-ReservedVRAM](https://github.com/Windecay/ComfyUI-ReservedVRAM) | `ReservedVRAMSetter` |
+| **Qwen3-VL-Instruct / Qwen3_VQA** | [luvenisSapiens/ComfyUI_Qwen3-VL-Instruct](https://github.com/luvenisSapiens/ComfyUI_Qwen3-VL-Instruct) | `Qwen3_VQA` |
+
 ### 3. Windows GPU 监控（可选）
 
 如果 ComfyUI 运行在远程 Windows 服务器上，可以部署 `windows_gpu_monitor` 服务来获取实时 GPU 状态。

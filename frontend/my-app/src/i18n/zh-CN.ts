@@ -954,4 +954,15 @@ export default {
     networkError: '网络错误，请检查网络连接',
     timeout: '请求超时',
   },
+
+  // 请我喝咖啡
+  coffee: {
+    buyMeACoffee: '请我喝咖啡',
+    title: '请我喝咖啡',
+    message: '创作不易，如果您觉得这个项目对您有帮助，希望您能打赏一二！本人感激不尽！这将为我继续开发这个项目提供更大的动力！',
+    wechatPay: '微信支付',
+    alipay: '支付宝',
+    thankYou: '感谢您的支持！',
+    contactMe: '联系方式',
+  },
 };

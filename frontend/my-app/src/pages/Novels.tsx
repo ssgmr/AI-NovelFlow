@@ -248,7 +248,7 @@ export default function Novels() {
                 {/* 章节数目 - 左上角 */}
                 <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1">
                   <BookOpen className="h-3 w-3" />
-                  <span>{novel.chapterCount} {t('novels.chapters')}</span>
+                  <span>{novel.chapterCount} {t('novelDetail.chapters')}</span>
                 </div>
                 {/* 删除按钮 - 右上角 */}
                 <button
@@ -272,7 +272,7 @@ export default function Novels() {
                   {novel.title}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">{novel.author}</p>
-                <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                <p className="text-sm text-gray-600 mt-2 line-clamp-2 h-10">
                   {novel.description || t('novels.noDescription')}
                 </p>
                 {/* 小说配置信息 */}
