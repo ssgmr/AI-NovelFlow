@@ -136,11 +136,11 @@ export const useTranslation = () => {
 
 // 语言选项
 export const languageOptions = [
-  { value: 'zh-CN', label: '简体中文' },
-  { value: 'zh-TW', label: '繁體中文' },
-  { value: 'en-US', label: 'English' },
-  { value: 'ja-JP', label: '日本語' },
-  { value: 'ko-KR', label: '한국어' },
+  { value: 'zh-CN', labelKey: 'uiConfig.languages.zh-CN' },
+  { value: 'zh-TW', labelKey: 'uiConfig.languages.zh-TW' },
+  { value: 'en-US', labelKey: 'uiConfig.languages.en-US' },
+  { value: 'ja-JP', labelKey: 'uiConfig.languages.ja-JP' },
+  { value: 'ko-KR', labelKey: 'uiConfig.languages.ko-KR' },
 ] as const;
 
 // 时区选项

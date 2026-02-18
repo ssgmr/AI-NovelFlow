@@ -787,7 +787,26 @@ export default function Tasks() {
               <h3 className="text-lg font-semibold text-gray-900">
                 {t('tasks.workflowDetails')}
                 <span className="ml-2 text-sm font-normal text-gray-500">
-                  {viewingWorkflow.name}
+                  {(() => {
+                    // Try to extract the actual name from the task name (format: "action: name")
+                    const nameMatch = viewingWorkflow.name.match(/^[^:]+:\s*(.+)$/);
+                    const actualName = nameMatch ? nameMatch[1] : viewingWorkflow.name;
+                    // Use task type for localization
+                    switch (viewingWorkflow.type) {
+                      case 'character_portrait':
+                        return t('tasks.taskNames.characterPortrait', { name: actualName });
+                      case 'shot_image':
+                        return t('tasks.taskNames.shotImage', { name: actualName });
+                      case 'shot_video':
+                        return t('tasks.taskNames.shotVideo', { name: actualName });
+                      case 'transition_video':
+                        return t('tasks.taskNames.transitionVideo', { from: actualName, to: '' });
+                      case 'chapter_video':
+                        return t('tasks.taskNames.chapterVideo', { name: actualName });
+                      default:
+                        return viewingWorkflow.name;
+                    }
+                  })()}
                 </span>
               </h3>
               <button

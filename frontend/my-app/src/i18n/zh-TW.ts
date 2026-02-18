@@ -428,11 +428,11 @@ export default {
     timezoneSettings: '時區設定',
     selectTimezone: '選擇時間顯示時區',
     languages: {
-      'zh-CN': '简体中文',
+      'zh-CN': '簡體中文',
       'zh-TW': '繁體中文',
-      'en-US': 'English',
-      'ja-JP': '日本語',
-      'ko-KR': '한국어',
+      'en-US': '英語',
+      'ja-JP': '日語',
+      'ko-KR': '韓語',
     },
     timezones: {
       'Asia/Shanghai': '北京時間 (Asia/Shanghai)',

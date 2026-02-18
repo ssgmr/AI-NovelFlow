@@ -575,9 +575,9 @@ export default {
     languages: {
       'zh-CN': '简体中文',
       'zh-TW': '繁體中文',
-      'en-US': 'English',
-      'ja-JP': '日本語',
-      'ko-KR': '한국어',
+      'en-US': '英语',
+      'ja-JP': '日语',
+      'ko-KR': '韩语',
     },
     timezones: {
       'Asia/Shanghai': '北京时间 (Asia/Shanghai)',

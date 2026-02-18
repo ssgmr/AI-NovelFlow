@@ -130,7 +130,7 @@ export default function UIConfig() {
             >
               {languageOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.labelKey)}
                 </option>
               ))}
             </select>
