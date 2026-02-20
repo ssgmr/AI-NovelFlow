@@ -354,6 +354,27 @@ export default {
     workflowDetails: 'Workflow Details',
     generationPrompt: 'Generation Prompt',
     workflowJSON: 'Workflow JSON',
+    // Image preview
+    preview: 'Preview',
+    dimensions: 'Dimensions',
+    size: 'Size',
+    clickOutsideToClose: 'Click outside to close',
+    clickOutsideToCloseVideo: 'Click outside to close video',
+    // Error messages
+    failedToGetWorkflow: 'Failed to get workflow',
+    failedToLoadWorkflow: 'Failed to load workflow',
+    noWorkflowInfo: 'No workflow information',
+    // JSON Editor
+    jsonEditor: {
+      valid: 'Valid',
+      invalid: 'Invalid',
+      format: 'Format',
+      minify: 'Minify',
+      search: 'Search',
+      searchPlaceholder: 'Search...',
+      exitFullscreen: 'Exit Fullscreen',
+      enterFullscreen: 'Fullscreen',
+    },
   },
 
   // System Settings

@@ -354,6 +354,27 @@ export default {
     workflowDetails: '工作流详情',
     generationPrompt: '生成提示词',
     workflowJSON: '工作流 JSON',
+    // 图片预览
+    preview: '预览',
+    dimensions: '尺寸',
+    size: '大小',
+    clickOutsideToClose: '点击外部关闭',
+    clickOutsideToCloseVideo: '点击外部关闭视频',
+    // 错误提示
+    failedToGetWorkflow: '获取工作流失败',
+    failedToLoadWorkflow: '加载工作流失败',
+    noWorkflowInfo: '没有工作流信息',
+    // JSON 编辑器
+    jsonEditor: {
+      valid: '有效',
+      invalid: '格式错误',
+      format: '格式化',
+      minify: '压缩',
+      search: '搜索',
+      searchPlaceholder: '搜索...',
+      exitFullscreen: '关闭全屏',
+      enterFullscreen: '全屏',
+    },
   },
 
   // 系统配置

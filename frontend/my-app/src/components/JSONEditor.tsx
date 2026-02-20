@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Check, AlertCircle, RotateCcw, AlignLeft, Maximize2, Minimize2, Search, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { useTranslation } from '../stores/i18nStore';
 
 interface JSONEditorProps {
   value: string;
@@ -9,6 +10,7 @@ interface JSONEditorProps {
 }
 
 export default function JSONEditor({ value, onChange, readOnly = false, height = '500px' }: JSONEditorProps) {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -208,12 +210,12 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
           {isValid ? (
             <span className="flex items-center gap-1 text-xs text-green-400">
               <Check className="h-3 w-3" />
-              有效
+              {t('tasks.jsonEditor.valid')}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-xs text-red-400">
               <AlertCircle className="h-3 w-3" />
-              格式错误
+              {t('tasks.jsonEditor.invalid')}
             </span>
           )}
         </div>
@@ -224,7 +226,7 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
                 type="button"
                 onClick={formatJSON}
                 className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                title="格式化"
+                title={t('tasks.jsonEditor.format')}
               >
                 <AlignLeft className="h-4 w-4" />
               </button>
@@ -232,7 +234,7 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
                 type="button"
                 onClick={minifyJSON}
                 className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                title="压缩"
+                title={t('tasks.jsonEditor.minify')}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -240,7 +242,7 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className={`p-1.5 rounded transition-colors ${showSearch ? 'text-white bg-gray-700' : 'text-gray-400 hover:text-white hover:bg-gray-700'}`}
-                title="搜索 (Ctrl+F)"
+                title={`${t('tasks.jsonEditor.search')} (Ctrl+F)`}
               >
                 <Search className="h-4 w-4" />
               </button>
@@ -266,7 +268,7 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            placeholder="搜索..."
+            placeholder={t('tasks.jsonEditor.searchPlaceholder')}
             className="flex-1 bg-gray-700 text-white text-sm px-2 py-1 rounded outline-none focus:ring-1 focus:ring-primary-500"
             autoFocus
           />
@@ -335,7 +337,7 @@ export default function JSONEditor({ value, onChange, readOnly = false, height =
             onClick={() => setIsExpanded(false)}
             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
           >
-            关闭全屏
+            {t('tasks.jsonEditor.exitFullscreen')}
           </button>
         </div>
       )}

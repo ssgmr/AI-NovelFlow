@@ -281,12 +281,10 @@ export default function Tasks() {
         setWorkflowData(data.data);
       } else {
         toast.error(data.message || t('tasks.failedToGetWorkflow'));
-        setViewingWorkflow(null);
       }
     } catch (error) {
       console.error('获取工作流失败:', error);
       toast.error(t('tasks.failedToGetWorkflow'));
-      setViewingWorkflow(null);
     } finally {
       setLoadingWorkflow(false);
     }
@@ -339,6 +337,14 @@ export default function Tasks() {
     return task.workflowName;
   };
 
+  // 将中文"镜X"转换为对应语言的"Shot X"
+  const convertShotName = (name: string): string => {
+    // 匹配"镜数字"格式（如"镜4"）
+    return name.replace(/镜(\d+)/g, (match, num) => {
+      return `${t('workflow.shot', { defaultValue: 'Shot' })}${num}`;
+    });
+  };
+
   // 解析任务名称，提取变量并翻译
   const getTaskDisplayName = (task: Task): string => {
     // 尝试从中文格式中提取名称
@@ -350,7 +356,8 @@ export default function Tasks() {
     const shotMatch = task.name.match(/生成分镜(图|视频|图片):\s*(.+)/);
     if (shotMatch) {
       const type = shotMatch[1] === '视频' ? 'shotVideo' : 'shotImage';
-      return t(`tasks.taskNames.${type}`, { name: shotMatch[2] });
+      const shotName = convertShotName(shotMatch[2]);
+      return t(`tasks.taskNames.${type}`, { name: shotName });
     }
     const transMatch = task.name.match(/生成转场视频:\s*分镜\s*(\d+)\s*→\s*分镜\s*(\d+)/);
     if (transMatch) {
@@ -791,18 +798,20 @@ export default function Tasks() {
                     // Try to extract the actual name from the task name (format: "action: name")
                     const nameMatch = viewingWorkflow.name.match(/^[^:]+:\s*(.+)$/);
                     const actualName = nameMatch ? nameMatch[1] : viewingWorkflow.name;
+                    // Convert Chinese "镜X" to localized "Shot X"
+                    const localizedName = convertShotName(actualName);
                     // Use task type for localization
                     switch (viewingWorkflow.type) {
                       case 'character_portrait':
-                        return t('tasks.taskNames.characterPortrait', { name: actualName });
+                        return t('tasks.taskNames.characterPortrait', { name: localizedName });
                       case 'shot_image':
-                        return t('tasks.taskNames.shotImage', { name: actualName });
+                        return t('tasks.taskNames.shotImage', { name: localizedName });
                       case 'shot_video':
-                        return t('tasks.taskNames.shotVideo', { name: actualName });
+                        return t('tasks.taskNames.shotVideo', { name: localizedName });
                       case 'transition_video':
-                        return t('tasks.taskNames.transitionVideo', { from: actualName, to: '' });
+                        return t('tasks.taskNames.transitionVideo', { from: localizedName, to: '' });
                       case 'chapter_video':
-                        return t('tasks.taskNames.chapterVideo', { name: actualName });
+                        return t('tasks.taskNames.chapterVideo', { name: localizedName });
                       default:
                         return viewingWorkflow.name;
                     }
