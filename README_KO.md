@@ -150,6 +150,39 @@ npm run dev
   - 샷 동영상: 프롬프트 노드 + 동영상 저장 노드 + 참조 이미지 노드
   - 전환 동영상: 첫 프레임 노드 + 마지막 프레임 노드 + 동영상 저장 노드
 
+#### 2.1 모델 파일
+
+디렉토리는 `ComfyUI/models/...` 기준입니다; ComfyUI-Manager를 사용하는 경우에도 일반적으로 이러한 디렉토리를 스캔합니다.
+
+| 모델 파일명 | 타입 | 주요 용도 | 사용되는 워크플로우 | 권장 디렉토리 |
+|-----------|------|---------|------------------|-------------|
+| `ltx-2-19b-dev-fp8.safetensors` | checkpoint / 메인 모델 | LTX2 전환(가림/조명/카메라) 동영상 생성 | LTX2 가림 전환 / 조명 전환 / 카메라 전환 | `models/checkpoints/` |
+| `ltx-2-19b-distilled-fp8.safetensors` | checkpoint / 메인 모델 | LTX2 동영상 생성(직접/확장) | LTX2 동영상 생성-직접 / 확장 | `models/checkpoints/` |
+| `gemma_3_12B_it_fp8_e4m3fn.safetensors` | text encoder (LTX 텍스트 인코더) | LTX2 텍스트 인코딩 | 모든 LTX2 워크플로우(전환/동영상 생성) | `models/text_encoders/` |
+| `ltx-2-19b-distilled-lora-384.safetensors` | LoRA | LTX2 증류 LoRA(향상/증류 프로세스 매칭) | 주로 전환 워크플로우 | `models/loras/` |
+| `ltx-2-19b-lora-camera-control-dolly-left.safetensors` | LoRA | LTX2 카메라 제어 (dolly-left) | 주로 전환 워크플로우 | `models/loras/` |
+| `ltx-2-spatial-upscaler-x2-1.0.safetensors` | upscale model (latent upscaler) | LTX2 latent 공간 업스케일 x2 | 주로 전환 워크플로우 | `models/upscale_models/` |
+| `ae.safetensors` | VAE / AE | Z-image-turbo 및 일부 기본 캐릭터 워크플로우에서 VAE/AE로 사용 | Z-image-turbo 단일 생성 / 시스템 기본-캐릭터 생성 | `models/vae/` |
+| `flux-2-klein-9b.safetensors` | UNet | Flux2-Klein 샷 이미지 생성 UNet | Flux2-Klein-9B 샷 이미지 / 시스템 기본-캐릭터 생성 | `models/unet/` |
+| `flux2-vae.safetensors` | VAE | Flux2의 VAE | Flux2-Klein-9B 샷 이미지 / 시스템 기본-캐릭터 생성 | `models/vae/` |
+| `qwen_3_8b.safetensors` | text encoder | Flux2 텍스트 인코딩 | Flux2-Klein-9B 샷 이미지 / 시스템 기본-캐릭터 생성 | `models/clip/` |
+| `z_image_turbo_bf16.safetensors` | UNet | Z-image-turbo 단일 생성 UNet | Z-image-turbo 단일 생성 / 시스템 기본-캐릭터 생성 | `models/unet/` |
+| `qwen_3_4b.safetensors` | text encoder | Z-image-turbo 텍스트 인코딩 | Z-image-turbo 단일 생성 / 시스템 기본-캐릭터 생성 | `models/clip/` |
+
+#### 2.2 서드파티 노드 패키지
+
+| 서드파티 노드 패키지 | GitHub 저장소 | 워크플로우의 노드 class_type |
+|-------------------|--------------|---------------------------|
+| **LTXVideo / LTXV** | [Lightricks/ComfyUI-LTXVideo](https://github.com/Lightricks/ComfyUI-LTXVideo) | `LTXAVTextEncoderLoader`, `LTXVScheduler`, `LTXV*`, `LTXAV*`, `Painter*` |
+| **VideoHelperSuite / VHS** | [Kosinkadink/ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_VideoCombine` |
+| **Easy-Use** | [yolain/ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use) | `easy int`, `easy cleanGpuUsed`, `easy showAnything` |
+| **LayerStyle / LayerUtility** | [chflame163/ComfyUI_LayerStyle](https://github.com/chflame163/ComfyUI_LayerStyle) | `LayerUtility: ImageScaleByAspectRatio V2` |
+| **Comfyroll** | [Suzie1/ComfyUI_Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) | `CR Prompt Text`, `CR Text` |
+| **FizzNodes / ConcatStringSingle** | [FizzleDorf/ComfyUI_FizzNodes](https://github.com/FizzleDorf/ComfyUI_FizzNodes) | `ConcatStringSingle` |
+| **comfyui-various / JWInteger** | [jamesWalker55/comfyui-various](https://github.com/jamesWalker55/comfyui-various) | `JWInteger` |
+| **ReservedVRAM** | [Windecay/ComfyUI-ReservedVRAM](https://github.com/Windecay/ComfyUI-ReservedVRAM) | `ReservedVRAMSetter` |
+| **Qwen3-VL-Instruct / Qwen3_VQA** | [luvenisSapiens/ComfyUI_Qwen3-VL-Instruct](https://github.com/luvenisSapiens/ComfyUI_Qwen3-VL-Instruct) | `Qwen3_VQA` |
+
 ### 3. Windows GPU 모니터링 (선택사항)
 
 ComfyUI가 원격 Windows 서버에서 실행되는 경우, `windows_gpu_monitor` 서비스를 배포하여 실시간 GPU 상태를 가져올 수 있습니다.

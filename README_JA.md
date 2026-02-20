@@ -150,6 +150,39 @@ npm run dev
   - ショット動画: プロンプトノード + 動画保存ノード + 参照画像ノード
   - トランジション動画: 先頭フレームノード + 末尾フレームノード + 動画保存ノード
 
+#### 2.1 モデルファイル
+
+ディレクトリは `ComfyUI/models/...` を基準とします；ComfyUI-Manager を使用している場合も、一般的にこれらのディレクトリをスキャンします。
+
+| モデルファイル名 | タイプ | 主な用途 | 使用されるワークフロー | 推奨ディレクトリ |
+|----------------|--------|---------|---------------------|----------------|
+| `ltx-2-19b-dev-fp8.safetensors` | checkpoint / メインモデル | LTX2 トランジション（オクルージョン/ライティング/カメラ）動画生成 | LTX2 オクルージョントランジション / ライティングトランジション / カメラトランジション | `models/checkpoints/` |
+| `ltx-2-19b-distilled-fp8.safetensors` | checkpoint / メインモデル | LTX2 動画生成（ダイレクト/拡張版） | LTX2 動画生成-ダイレクト / 拡張版 | `models/checkpoints/` |
+| `gemma_3_12B_it_fp8_e4m3fn.safetensors` | text encoder (LTX テキストエンコーダー) | LTX2 テキストエンコーディング | すべての LTX2 ワークフロー（トランジション/動画生成） | `models/text_encoders/` |
+| `ltx-2-19b-distilled-lora-384.safetensors` | LoRA | LTX2 蒸留 LoRA（強化/蒸留プロセスのマッチング） | 主にトランジションワークフロー | `models/loras/` |
+| `ltx-2-19b-lora-camera-control-dolly-left.safetensors` | LoRA | LTX2 カメラ制御 (dolly-left) | 主にトランジションワークフロー | `models/loras/` |
+| `ltx-2-spatial-upscaler-x2-1.0.safetensors` | upscale model (latent upscaler) | LTX2 latent 空間アップスケール x2 | 主にトランジションワークフロー | `models/upscale_models/` |
+| `ae.safetensors` | VAE / AE | Z-image-turbo および一部のデフォルトキャラクターワークフローで VAE/AE として使用 | Z-image-turbo 単体生成 / システム既定-キャラ生成 | `models/vae/` |
+| `flux-2-klein-9b.safetensors` | UNet | Flux2-Klein ショット画像生成 UNet | Flux2-Klein-9B ショット画像 / システム既定-キャラ生成 | `models/unet/` |
+| `flux2-vae.safetensors` | VAE | Flux2 の VAE | Flux2-Klein-9B ショット画像 / システム既定-キャラ生成 | `models/vae/` |
+| `qwen_3_8b.safetensors` | text encoder | Flux2 テキストエンコーディング | Flux2-Klein-9B ショット画像 / システム既定-キャラ生成 | `models/clip/` |
+| `z_image_turbo_bf16.safetensors` | UNet | Z-image-turbo 単体生成 UNet | Z-image-turbo 単体生成 / システム既定-キャラ生成 | `models/unet/` |
+| `qwen_3_4b.safetensors` | text encoder | Z-image-turbo テキストエンコーディング | Z-image-turbo 単体生成 / システム既定-キャラ生成 | `models/clip/` |
+
+#### 2.2 サードパーティノードパッケージ
+
+| サードパーティノードパッケージ | GitHub リポジトリ | ワークフロー内のノード class_type |
+|---------------------------|------------------|--------------------------------|
+| **LTXVideo / LTXV** | [Lightricks/ComfyUI-LTXVideo](https://github.com/Lightricks/ComfyUI-LTXVideo) | `LTXAVTextEncoderLoader`, `LTXVScheduler`, `LTXV*`, `LTXAV*`, `Painter*` |
+| **VideoHelperSuite / VHS** | [Kosinkadink/ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_VideoCombine` |
+| **Easy-Use** | [yolain/ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use) | `easy int`, `easy cleanGpuUsed`, `easy showAnything` |
+| **LayerStyle / LayerUtility** | [chflame163/ComfyUI_LayerStyle](https://github.com/chflame163/ComfyUI_LayerStyle) | `LayerUtility: ImageScaleByAspectRatio V2` |
+| **Comfyroll** | [Suzie1/ComfyUI_Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) | `CR Prompt Text`, `CR Text` |
+| **FizzNodes / ConcatStringSingle** | [FizzleDorf/ComfyUI_FizzNodes](https://github.com/FizzleDorf/ComfyUI_FizzNodes) | `ConcatStringSingle` |
+| **comfyui-various / JWInteger** | [jamesWalker55/comfyui-various](https://github.com/jamesWalker55/comfyui-various) | `JWInteger` |
+| **ReservedVRAM** | [Windecay/ComfyUI-ReservedVRAM](https://github.com/Windecay/ComfyUI-ReservedVRAM) | `ReservedVRAMSetter` |
+| **Qwen3-VL-Instruct / Qwen3_VQA** | [luvenisSapiens/ComfyUI_Qwen3-VL-Instruct](https://github.com/luvenisSapiens/ComfyUI_Qwen3-VL-Instruct) | `Qwen3_VQA` |
+
 ### 3. Windows GPU 監視（オプション）
 
 ComfyUIがリモートWindowsサーバーで実行されている場合、`windows_gpu_monitor`サービスをデプロイしてリアルタイムGPU状態を取得可能。

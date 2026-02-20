@@ -150,6 +150,39 @@ Set API Key and proxy (if needed) in the [System Settings] page.
   - Shot Video: Prompt node + Video save node + Reference image node
   - Transition Video: First frame node + Last frame node + Video save node
 
+#### 2.1 Model Files
+
+Directory is based on `ComfyUI/models/...`; if you use ComfyUI-Manager, it generally scans these directories as well.
+
+| Model Filename | Type | Main Purpose | Workflows Used | Recommended Directory |
+|---------------|------|-------------|----------------|---------------------|
+| `ltx-2-19b-dev-fp8.safetensors` | checkpoint / main model | LTX2 transition (occlusion/lighting/camera) video generation | LTX2 Occlusion Transition / Lighting Transition / Camera Transition | `models/checkpoints/` |
+| `ltx-2-19b-distilled-fp8.safetensors` | checkpoint / main model | LTX2 video generation (direct/expanded) | LTX2 Video Generation - Direct / Expanded | `models/checkpoints/` |
+| `gemma_3_12B_it_fp8_e4m3fn.safetensors` | text encoder (LTX text encoder) | LTX2 text encoding | All LTX2 workflows (transition/video generation) | `models/text_encoders/` |
+| `ltx-2-19b-distilled-lora-384.safetensors` | LoRA | LTX2 distilled LoRA (enhance/match distillation process) | Mainly in transition workflows | `models/loras/` |
+| `ltx-2-19b-lora-camera-control-dolly-left.safetensors` | LoRA | LTX2 camera control (dolly-left) | Mainly in transition workflows | `models/loras/` |
+| `ltx-2-spatial-upscaler-x2-1.0.safetensors` | upscale model (latent upscaler) | LTX2 latent spatial upscale x2 | Mainly in transition workflows | `models/upscale_models/` |
+| `ae.safetensors` | VAE / AE | Used as VAE/AE in Z-image-turbo and some default character workflows | Z-image-turbo Single Image / System Default - Character | `models/vae/` |
+| `flux-2-klein-9b.safetensors` | UNet | Flux2-Klein shot image generation UNet | Flux2-Klein-9B Shot Image / System Default - Character | `models/unet/` |
+| `flux2-vae.safetensors` | VAE | Flux2 VAE | Flux2-Klein-9B Shot Image / System Default - Character | `models/vae/` |
+| `qwen_3_8b.safetensors` | text encoder | Flux2 text encoding | Flux2-Klein-9B Shot Image / System Default - Character | `models/clip/` |
+| `z_image_turbo_bf16.safetensors` | UNet | Z-image-turbo single image generation UNet | Z-image-turbo Single Image / System Default - Character | `models/unet/` |
+| `qwen_3_4b.safetensors` | text encoder | Z-image-turbo text encoding | Z-image-turbo Single Image / System Default - Character | `models/clip/` |
+
+#### 2.2 Third-Party Node Packages
+
+| Third-Party Node Package | GitHub Repository | Node class_type in Workflows |
+|-------------------------|------------------|------------------------------|
+| **LTXVideo / LTXV** | [Lightricks/ComfyUI-LTXVideo](https://github.com/Lightricks/ComfyUI-LTXVideo) | `LTXAVTextEncoderLoader`, `LTXVScheduler`, `LTXV*`, `LTXAV*`, `Painter*` |
+| **VideoHelperSuite / VHS** | [Kosinkadink/ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_VideoCombine` |
+| **Easy-Use** | [yolain/ComfyUI-Easy-Use](https://github.com/yolain/ComfyUI-Easy-Use) | `easy int`, `easy cleanGpuUsed`, `easy showAnything` |
+| **LayerStyle / LayerUtility** | [chflame163/ComfyUI_LayerStyle](https://github.com/chflame163/ComfyUI_LayerStyle) | `LayerUtility: ImageScaleByAspectRatio V2` |
+| **Comfyroll** | [Suzie1/ComfyUI_Comfyroll_CustomNodes](https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes) | `CR Prompt Text`, `CR Text` |
+| **FizzNodes / ConcatStringSingle** | [FizzleDorf/ComfyUI_FizzNodes](https://github.com/FizzleDorf/ComfyUI_FizzNodes) | `ConcatStringSingle` |
+| **comfyui-various / JWInteger** | [jamesWalker55/comfyui-various](https://github.com/jamesWalker55/comfyui-various) | `JWInteger` |
+| **ReservedVRAM** | [Windecay/ComfyUI-ReservedVRAM](https://github.com/Windecay/ComfyUI-ReservedVRAM) | `ReservedVRAMSetter` |
+| **Qwen3-VL-Instruct / Qwen3_VQA** | [luvenisSapiens/ComfyUI_Qwen3-VL-Instruct](https://github.com/luvenisSapiens/ComfyUI_Qwen3-VL-Instruct) | `Qwen3_VQA` |
+
 ### 3. Windows GPU Monitor (Optional)
 
 If ComfyUI runs on a remote Windows server, you can deploy the `windows_gpu_monitor` service to get real-time GPU status.
