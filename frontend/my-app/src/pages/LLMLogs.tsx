@@ -56,6 +56,17 @@ export default function LLMLogs() {
   const [selectedLog, setSelectedLog] = useState<LLMLog | null>(null);
   const [activePromptTab, setActivePromptTab] = useState<'system' | 'user' | 'response'>('user');
 
+  // ESC 键关闭弹窗
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedLog) {
+        setSelectedLog(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLog]);
+
   useEffect(() => {
     fetchLogs();
     fetchFilterOptions();
