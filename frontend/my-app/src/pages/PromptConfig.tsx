@@ -790,8 +790,8 @@ export default function PromptConfig() {
       {/* 查看模态框 */}
       {showViewModal && viewingPrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{getTemplateDisplayName(viewingPrompt, t)}</h3>
                 <p className="text-sm text-gray-500">{getTemplateDisplayDescription(viewingPrompt, t)}</p>
@@ -805,13 +805,13 @@ export default function PromptConfig() {
               </button>
             </div>
             
-            <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+            <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto overflow-y-auto flex-1 min-h-0">
               <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
                 {viewingPrompt.template}
               </pre>
             </div>
             
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setShowViewModal(false)}
