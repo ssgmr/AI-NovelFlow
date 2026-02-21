@@ -225,6 +225,20 @@ npm run dev
 
 前端服务将在 http://localhost:5173 运行
 
+> **Windows 防火墙提示**
+> 
+> 如果其他设备无法访问前端服务（如局域网内其他电脑无法打开页面），需要放行 5173 端口：
+> 
+> **CMD (管理员身份):**
+> ```cmd
+> netsh advfirewall firewall add rule name="AI-NovelFlow Frontend" dir=in action=allow protocol=tcp localport=5173
+> ```
+> 
+> **PowerShell (管理员身份):**
+> ```powershell
+> New-NetFirewallRule -DisplayName "AI-NovelFlow Frontend" -Direction Inbound -Protocol TCP -LocalPort 5173 -Action Allow
+> ```
+
 ---
 
 ### 3. 生产环境部署
