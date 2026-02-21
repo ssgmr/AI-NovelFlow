@@ -71,7 +71,7 @@
   "27": {
     "inputs": {
       "api_base": "zhenzhen",
-      "apikey": "sk-IgmimRlJY6yvka5S5nRM89gPYfYvUVu9En1FaGpFFAAHGJUy",
+      "apikey": "get from https://ai.t8star.cn/token",
       "custom_ip": ""
     },
     "class_type": "Comfly_api_set",
