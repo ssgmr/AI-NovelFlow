@@ -99,27 +99,206 @@ AI-NovelFlow/
 └── README.md
 ```
 
-## 快速开始
+## 安装部署
 
-### 后端启动
+### 环境要求
+
+- **Python**: 3.10+
+- **Node.js**: 18+
+- **ComfyUI**: 已安装并运行（用于图像/视频生成）
+
+### 1. macOS / Linux 安装
+
+#### 后端部署
 
 ```bash
+# 1. 进入后端目录
 cd backend
-source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 2. 创建虚拟环境
+python3 -m venv venv
+
+# 3. 激活虚拟环境
+source venv/bin/activate
+
+# 4. 安装依赖
+pip install -r requirements.txt
+
+# 5. 启动后端服务
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 后端服务将在 http://localhost:8000 运行
 
-### 前端启动
+#### 前端部署
 
 ```bash
+# 1. 进入前端目录
 cd frontend/my-app
+
+# 2. 安装依赖
 npm install
+
+# 3. 启动开发服务器
 npm run dev
 ```
 
 前端服务将在 http://localhost:5173 运行
+
+---
+
+### 2. Windows 安装
+
+#### 后端部署
+
+**使用 CMD (命令提示符):**
+
+```cmd
+:: 1. 进入后端目录
+cd backend
+
+:: 2. 创建虚拟环境
+python -m venv venv
+
+:: 3. 激活虚拟环境
+venv\Scripts\activate.bat
+
+:: 4. 安装依赖
+pip install -r requirements.txt
+
+:: 5. 启动后端服务
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**使用 PowerShell:**
+
+```powershell
+# 1. 进入后端目录
+cd backend
+
+# 2. 创建虚拟环境
+python -m venv venv
+
+# 3. 激活虚拟环境（如果提示执行策略错误，请先运行：Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser）
+venv\Scripts\Activate.ps1
+
+# 4. 安装依赖
+pip install -r requirements.txt
+
+# 5. 启动后端服务
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**使用 Git Bash:**
+
+```bash
+# 1. 进入后端目录
+cd backend
+
+# 2. 创建虚拟环境
+python -m venv venv
+
+# 3. 激活虚拟环境
+source venv/Scripts/activate
+
+# 4. 安装依赖
+pip install -r requirements.txt
+
+# 5. 启动后端服务
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+后端服务将在 http://localhost:8000 运行
+
+#### 前端部署
+
+```bash
+# 1. 进入前端目录
+cd frontend/my-app
+
+# 2. 安装依赖
+npm install
+
+# 3. 启动开发服务器
+npm run dev
+```
+
+前端服务将在 http://localhost:5173 运行
+
+---
+
+### 3. 生产环境部署
+
+#### 后端生产部署
+
+```bash
+cd backend
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 使用 gunicorn 部署（Linux/macOS）
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+
+# 或使用 uvicorn 直接部署
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+#### 前端生产构建
+
+```bash
+cd frontend/my-app
+
+# 构建生产版本
+npm run build
+
+# 使用 serve 部署（需要先安装：npm install -g serve）
+serve -s dist -l 5173
+```
+
+---
+
+### 4. Docker 部署（可选）
+
+```bash
+# 构建镜像
+docker build -t ai-novelflow .
+
+# 运行容器
+docker run -p 8000:8000 -p 5173:5173 ai-novelflow
+```
+
+---
+
+### 5. 更新升级
+
+#### 后端更新
+
+```bash
+cd backend
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 拉取最新代码
+git pull
+
+# 更新依赖
+pip install -r requirements.txt
+
+# 重启服务
+```
+
+#### 前端更新
+
+```bash
+cd frontend/my-app
+
+# 拉取最新代码
+git pull
+
+# 更新依赖
+npm install
+
+# 重新启动
+npm run dev
+```
 
 ## API 文档
 
