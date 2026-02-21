@@ -222,6 +222,7 @@ export default {
     retry: '重試',
     delete: '刪除',
     viewLogs: '檢視日誌',
+    viewWorkflow: '檢視工作流',
     noTasks: '暫無任務',
     noTasksCreated: '尚未建立任何任務',
     noTasksInStatus: '此狀態下無任務',
