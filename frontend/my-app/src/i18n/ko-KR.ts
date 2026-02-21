@@ -818,7 +818,7 @@ export default {
     // 자료 다운로드
     chapterMaterials: '장 자료',
     downloadMaterialsDesc: '이 장의 모든 자료를 다운로드:',
-    characterImages: '캐릭터 이미지',
+    characterImagesLabel: '캐릭터 이미지',
     mergedCharacterImage: '통합 캐릭터 이미지',
     shotImages: '샷 이미지',
     shotVideos: '샷 비디오',
@@ -878,7 +878,7 @@ export default {
     noCharactersInShot: '현재 샷에 캐릭터가 없습니다',
     characterImagesNotGenerated: '캐릭터 이미지가 생성되지 않았습니다',
     mergeFailedRetry: '합성 실패, 다시 시도하세요',
-    characterImages: '캐릭터 이미지',
+    characterDesignImages: '캐릭터 이미지',
     aiGenerateCharacter: 'AI 캐릭터 생성',
     noCharacterImages: '캐릭터 이미지가 없습니다',
     viewMergedImage: '통합 이미지 보기',

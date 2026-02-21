@@ -821,7 +821,7 @@ export default {
     // 下载素材
     chapterMaterials: '章节素材',
     downloadMaterialsDesc: '打包下载当前章节的所有素材，包括：',
-    characterImages: '角色图',
+    characterImagesLabel: '角色图',
     mergedCharacterImage: '合并角色图',
     shotImages: '分镜图片',
     shotVideos: '分镜视频',
@@ -876,7 +876,7 @@ export default {
     noCharactersInShot: '当前分镜没有角色',
     characterImagesNotGenerated: '角色图片未生成',
     mergeFailedRetry: '合并失败，请重试',
-    characterImages: '人设图片',
+    characterDesignImages: '人设图片',
     aiGenerateCharacter: 'AI生成角色形象',
     noCharacterImages: '暂无角色图片',
     viewMergedImage: '查看合并角色图',

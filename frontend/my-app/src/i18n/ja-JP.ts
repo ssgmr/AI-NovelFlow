@@ -818,7 +818,7 @@ export default {
     // 素材ダウンロード
     chapterMaterials: '章素材',
     downloadMaterialsDesc: 'この章の全素材をダウンロード：',
-    characterImages: 'キャラクター画像',
+    characterImagesLabel: 'キャラクター画像',
     mergedCharacterImage: '統合キャラクター画像',
     shotImages: 'ショット画像',
     shotVideos: 'ショット動画',
@@ -878,7 +878,7 @@ export default {
     noCharactersInShot: '現在のショットにキャラクターがいません',
     characterImagesNotGenerated: 'キャラクター画像が生成されていません',
     mergeFailedRetry: '統合失敗、再試行してください',
-    characterImages: 'キャラクター画像',
+    characterDesignImages: 'キャラクター画像',
     aiGenerateCharacter: 'AIキャラクター生成',
     noCharacterImages: 'キャラクター画像がありません',
     viewMergedImage: '統合画像を表示',

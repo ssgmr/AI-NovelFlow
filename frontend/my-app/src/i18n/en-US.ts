@@ -821,7 +821,7 @@ export default {
     // Download Materials
     chapterMaterials: 'Chapter Materials',
     downloadMaterialsDesc: 'Download all materials for this chapter:',
-    characterImages: 'Character Images',
+    characterImagesLabel: 'Character Images',
     mergedCharacterImage: 'Merged Character Image',
     shotImages: 'Shot Images',
     shotVideos: 'Shot Videos',
@@ -876,7 +876,7 @@ export default {
     noCharactersInShot: 'No characters in current shot',
     characterImagesNotGenerated: 'Character images not generated',
     mergeFailedRetry: 'Merge failed, please retry',
-    characterImages: 'Character Images',
+    characterDesignImages: 'Character Images',
     aiGenerateCharacter: 'AI Generate Character',
     noCharacterImages: 'No character images',
     viewMergedImage: 'View Merged Image',
