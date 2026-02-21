@@ -1037,33 +1037,68 @@ async def generate_shot_task(
             style=style
         )
         
-        # 保存构建后的完整工作流到任务，让用户可以立即查看
-        task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
-        db.commit()
-        print(f"[ShotTask {task_id}] Saved submitted workflow to task")
+        # 如果有角色参考图，先上传图片并更新工作流中的LoadImage节点
+        # 这样用户在任务运行期间就能看到实际提交的工作流内容
+        if character_reference_path:
+            task.current_step = "上传角色参考图..."
+            db.commit()
+            print(f"[ShotTask {task_id}] Uploading character reference image before submission")
+            
+            upload_result = await comfyui_service._upload_image(character_reference_path)
+            if upload_result.get("success"):
+                uploaded_filename = upload_result.get("filename")
+                print(f"[ShotTask {task_id}] Image uploaded successfully: {uploaded_filename}")
+                
+                # 更新工作流中的LoadImage节点
+                reference_image_node_id = node_mapping.get("reference_image_node_id")
+                if reference_image_node_id and reference_image_node_id in submitted_workflow:
+                    submitted_workflow[reference_image_node_id]["inputs"]["image"] = uploaded_filename
+                    print(f"[ShotTask {task_id}] Set LoadImage node {reference_image_node_id} to {uploaded_filename}")
+                else:
+                    # 查找第一个LoadImage节点
+                    for node_id, node in submitted_workflow.items():
+                        if node.get("class_type") == "LoadImage":
+                            submitted_workflow[node_id]["inputs"]["image"] = uploaded_filename
+                            print(f"[ShotTask {task_id}] Set first LoadImage node {node_id} to {uploaded_filename}")
+                            break
+                
+                # 保存更新后的工作流（包含替换后的LoadImage节点）到任务
+                # 这样即使用户在任务运行期间查看，也能看到实际提交的内容
+                task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+                db.commit()
+                print(f"[ShotTask {task_id}] Saved workflow with LoadImage replacement to task")
+            else:
+                print(f"[ShotTask {task_id}] Failed to upload image: {upload_result.get('message')}")
+        else:
+            # 没有角色参考图，直接保存构建后的工作流
+            task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+            db.commit()
+            print(f"[ShotTask {task_id}] Saved submitted workflow to task (no character reference)")
         
         # 调用 ComfyUI 生成图片
         task.current_step = "正在调用 ComfyUI 生成图片..."
         task.progress = 30
         db.commit()
         
+        # 注意：我们已经上传了图片并更新了工作流，所以不再传递 character_reference_path
+        # 传入的 workflow 已经包含替换后的 LoadImage 节点
         result = await comfyui_service.generate_shot_image_with_workflow(
             prompt=shot_description,
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
             aspect_ratio=novel.aspect_ratio or "16:9",
-            character_reference_path=character_reference_path,
-            workflow=submitted_workflow,  # 传递已构建的工作流
+            character_reference_path=None,  # 已经手动处理过了
+            workflow=submitted_workflow,  # 传递已更新（包含LoadImage替换）的工作流
             style=style
         )
         
         print(f"[ShotTask {task_id}] Generation result: {result}")
         
-        # 保存实际提交给ComfyUI的工作流（包含替换后的LoadImage节点）
+        # 任务完成后，再次保存最终工作流（以防有后续修改）
         if result.get("submitted_workflow"):
             task.workflow_json = json.dumps(result["submitted_workflow"], ensure_ascii=False, indent=2)
             db.commit()
-            print(f"[ShotTask {task_id}] Saved final submitted workflow with LoadImage replacement")
+            print(f"[ShotTask {task_id}] Saved final workflow after task completion")
         
         # 保存 ComfyUI prompt_id 用于取消任务
         if result.get("prompt_id"):
