@@ -14,7 +14,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  MapPin
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
@@ -43,7 +44,13 @@ export default function ChapterDetail() {
   
   // 单章节解析状态
   const [parsingChapter, setParsingChapter] = useState(false);
+  const [parsingScenes, setParsingScenes] = useState(false);
   const [parseResult, setParseResult] = useState<{
+    created: number;
+    updated: number;
+    total: number;
+  } | null>(null);
+  const [parseScenesResult, setParseScenesResult] = useState<{
     created: number;
     updated: number;
     total: number;
@@ -168,6 +175,53 @@ export default function ChapterDetail() {
       toast.error(t('chapterDetail.parseFailed'));
     } finally {
       setParsingChapter(false);
+    }
+  };
+  
+  // 单章节场景解析
+  const handleParseScenes = async () => {
+    if (!content.trim()) {
+      toast.warning(t('chapterDetail.chapterEmptyError'));
+      return;
+    }
+    
+    setParsingScenes(true);
+    setParseScenesResult(null);
+    
+    try {
+      const res = await fetch(`${API_BASE}/novels/${id}/chapters/${cid}/parse-scenes/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_incremental: true })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        const stats = data.statistics || {};
+        setParseScenesResult({
+          created: stats.created || 0,
+          updated: stats.updated || 0,
+          total: stats.total || 0
+        });
+        
+        let message = '';
+        if (stats.created > 0 || stats.updated > 0) {
+          message = t('chapterDetail.parseScenesResult', { created: stats.created || 0, updated: stats.updated || 0 });
+        }
+        
+        if (message) {
+          toast.success(message);
+        } else {
+          toast.info(t('chapterDetail.noNewScenes'));
+        }
+      } else {
+        toast.error(t('chapterDetail.parseScenesFailed') + ': ' + data.message);
+      }
+    } catch (error) {
+      console.error(t('chapterDetail.parseScenesFailed') + ':', error);
+      toast.error(t('chapterDetail.parseScenesFailed'));
+    } finally {
+      setParsingScenes(false);
     }
   };
   
@@ -303,7 +357,6 @@ export default function ChapterDetail() {
           </button>
           <button
             onClick={handleParseCharacters}
-
             className="btn-secondary text-purple-600 border-purple-200 hover:bg-purple-50 disabled:opacity-50"
           >
             {parsingChapter ? (
@@ -312,6 +365,18 @@ export default function ChapterDetail() {
               <Sparkles className="h-4 w-4 mr-2" />
             )}
             {t('chapterDetail.parseCharacters')}
+          </button>
+          <button
+            onClick={handleParseScenes}
+            className="btn-secondary text-teal-600 border-teal-200 hover:bg-teal-50 disabled:opacity-50"
+            disabled={parsingScenes}
+          >
+            {parsingScenes ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <MapPin className="h-4 w-4 mr-2" />
+            )}
+            {t('chapterDetail.parseScenes')}
           </button>
           <button
             onClick={handleGenerate}
@@ -368,6 +433,29 @@ export default function ChapterDetail() {
               className="ml-auto btn-primary bg-purple-600 hover:bg-purple-700 text-sm"
             >
               {t('chapterDetail.viewCharacters')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 场景解析结果展示 */}
+      {parseScenesResult && (
+        <div className="card bg-teal-50 border-teal-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-teal-100 rounded-full">
+              <MapPin className="h-5 w-5 text-teal-600" />
+            </div>
+            <div>
+              <p className="font-medium text-teal-800">{t('chapterDetail.parseScenesComplete')}</p>
+              <p className="text-sm text-teal-600">
+                {t('chapterDetail.parseScenesResult', { created: parseScenesResult.created, updated: parseScenesResult.updated })}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate(`/scenes?novel=${id}&highlight=new`)}
+              className="ml-auto btn-primary bg-teal-600 hover:bg-teal-700 text-sm"
+            >
+              {t('chapterDetail.viewScenes')}
             </button>
           </div>
         </div>

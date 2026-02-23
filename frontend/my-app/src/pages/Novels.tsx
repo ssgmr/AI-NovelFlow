@@ -10,7 +10,8 @@ import {
   Loader2,
   Users,
   Sparkles,
-  Edit2
+  Edit2,
+  MapPin
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNovelStore } from '../stores/novelStore';
@@ -59,7 +60,8 @@ export default function Novels() {
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     novelId: string | null;
-  }>({ isOpen: false, novelId: null });
+    type: 'characters' | 'scenes';  // 区分角色解析和场景解析
+  }>({ isOpen: false, novelId: null, type: 'characters' });
   
   // 章节范围解析状态
   const [chapterRange, setChapterRange] = useState<{
@@ -71,6 +73,9 @@ export default function Novels() {
     endChapter: null,
     isIncremental: true
   });
+  
+  // 场景解析状态
+  const [parsingScenesNovelId, setParsingScenesNovelId] = useState<string | null>(null);
   
   // 提示词模板
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
@@ -131,12 +136,12 @@ export default function Novels() {
     setImporting(false);
   };
 
-  const openParseConfirm = (novelId: string) => {
-    setConfirmDialog({ isOpen: true, novelId });
+  const openParseConfirm = (novelId: string, type: 'characters' | 'scenes' = 'characters') => {
+    setConfirmDialog({ isOpen: true, novelId, type });
   };
 
   const closeParseConfirm = () => {
-    setConfirmDialog({ isOpen: false, novelId: null });
+    setConfirmDialog({ isOpen: false, novelId: null, type: 'characters' });
   };
 
   const confirmParseCharacters = async () => {
@@ -194,6 +199,58 @@ export default function Novels() {
       toast.error(t('novels.parseNetworkError'));
     } finally {
       setParsingNovelId(null);
+    }
+  };
+
+  // 场景解析
+  const confirmParseScenes = async () => {
+    const novelId = confirmDialog.novelId;
+    if (!novelId) return;
+    
+    closeParseConfirm();
+    setParsingScenesNovelId(novelId);
+    
+    try {
+      const res = await fetch(`${API_BASE}/scenes/parse-scenes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          novel_id: novelId,
+          chapter_ids: [],
+          mode: chapterRange.isIncremental ? 'incremental' : 'full'
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const stats = data.statistics || {};
+        
+        let message = '';
+        if (stats.created > 0 || stats.updated > 0) {
+          message = t('novels.parseScenesResult', { created: stats.created || 0, updated: stats.updated || 0 });
+        }
+        
+        if (message) {
+          toast.success(message);
+        } else {
+          toast.info(t('novels.noNewScenes'));
+        }
+        
+        // 重置章节范围
+        setChapterRange({
+          startChapter: null,
+          endChapter: null,
+          isIncremental: true
+        });
+        
+        window.location.href = `/scenes?novel=${novelId}`;
+      } else {
+        toast.error(t('novels.parseError') + ': ' + data.message);
+      }
+    } catch (error) {
+      console.error(t('novels.parseFailed') + ':', error);
+      toast.error(t('novels.parseNetworkError'));
+    } finally {
+      setParsingScenesNovelId(null);
     }
   };
 
@@ -334,7 +391,7 @@ export default function Novels() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-end mt-4 pt-4 border-t border-gray-100 gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
-                      onClick={() => openParseConfirm(novel.id)}
+                      onClick={() => openParseConfirm(novel.id, 'characters')}
                       disabled={parsingNovelId === novel.id}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors disabled:opacity-50 text-sm"
                       title={t('novels.aiParseCharacters')}
@@ -346,12 +403,32 @@ export default function Novels() {
                       )}
                       <span>{t('novels.aiParseCharacters')}</span>
                     </button>
+                    <button
+                      onClick={() => openParseConfirm(novel.id, 'scenes')}
+                      disabled={parsingScenesNovelId === novel.id}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-100 text-teal-600 hover:bg-teal-200 transition-colors disabled:opacity-50 text-sm"
+                      title={t('novels.aiParseScenes')}
+                    >
+                      {parsingScenesNovelId === novel.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 flex-shrink-0" />
+                      )}
+                      <span>{t('novels.aiParseScenes')}</span>
+                    </button>
                     <Link
                       to={`/characters?novel=${novel.id}`}
                       className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 transition-colors flex-shrink-0"
                       title={t('novels.viewCharacters')}
                     >
                       <Users className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      to={`/scenes?novel=${novel.id}`}
+                      className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+                      title={t('novels.viewScenes')}
+                    >
+                      <MapPin className="h-4 w-4" />
                     </Link>
                     <Link
                       to={`/novels/${novel.id}`}
@@ -610,19 +687,21 @@ export default function Novels() {
         </div>
       )}
 
-      {/* AI解析角色确认对话框 */}
+      {/* AI解析确认对话框 */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-purple-100 rounded-full">
-                <Sparkles className="h-6 w-6 text-purple-600" />
+              <div className={`p-2 rounded-full ${confirmDialog.type === 'characters' ? 'bg-purple-100' : 'bg-teal-100'}`}>
+                <Sparkles className={`h-6 w-6 ${confirmDialog.type === 'characters' ? 'text-purple-600' : 'text-teal-600'}`} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">{t('novels.aiParseCharactersTitle')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {confirmDialog.type === 'characters' ? t('novels.aiParseCharactersTitle') : t('novels.aiParseScenesTitle')}
+              </h3>
             </div>
             
             <p className="text-gray-600 mb-4">
-              {t('novels.parseConfirmMessage')}
+              {confirmDialog.type === 'characters' ? t('novels.parseConfirmMessage') : t('novels.parseScenesConfirmMessage')}
             </p>
             
             {/* 章节范围选择 */}
@@ -674,7 +753,7 @@ export default function Novels() {
                       ...chapterRange,
                       isIncremental: e.target.checked
                     })}
-                    className="rounded text-purple-600 focus:ring-purple-500"
+                    className={`rounded focus:ring-0 ${confirmDialog.type === 'characters' ? 'text-purple-600 focus:ring-purple-500' : 'text-teal-600 focus:ring-teal-500'}`}
                   />
                   <span className="text-sm text-gray-700">
                     {t('novels.incrementalUpdate')}
@@ -698,10 +777,10 @@ export default function Novels() {
                 {t('common.cancel')}
               </button>
               <button
-                onClick={confirmParseCharacters}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                onClick={confirmDialog.type === 'characters' ? confirmParseCharacters : confirmParseScenes}
+                className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 ${confirmDialog.type === 'characters' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-teal-600 hover:bg-teal-700'}`}
               >
-                {parsingNovelId === confirmDialog.novelId ? (
+                {(confirmDialog.type === 'characters' ? parsingNovelId : parsingScenesNovelId) === confirmDialog.novelId ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {t('novels.parseInProgress')}
