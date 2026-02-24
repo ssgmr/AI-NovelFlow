@@ -101,7 +101,7 @@ class LLMClient:
                 transport = httpx.AsyncHTTPTransport(proxy=None)
                 self._client = httpx.AsyncClient(transport=transport, timeout=300.0)
             else:
-                self._client = httpx.AsyncClient(proxy=proxy, timeout=300.0)
+                self._client = httpx.AsyncClient(proxy=proxy, timeout=600.0)
         
         return self._client
     

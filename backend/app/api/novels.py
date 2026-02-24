@@ -1407,7 +1407,7 @@ async def generate_shot_task(
             # 上传角色参考图（如果存在）
             character_uploaded_filename = None
             if character_reference_path:
-                upload_result = await comfyui_service._upload_image(character_reference_path)
+                upload_result = await comfyui_service.client.upload_image(character_reference_path)
                 if upload_result.get("success"):
                     character_uploaded_filename = upload_result.get("filename")
                     print(f"[ShotTask {task_id}] Character image uploaded successfully: {character_uploaded_filename}")
@@ -1417,7 +1417,7 @@ async def generate_shot_task(
             # 上传场景参考图（如果存在）
             scene_uploaded_filename = None
             if scene_reference_path:
-                upload_result = await comfyui_service._upload_image(scene_reference_path)
+                upload_result = await comfyui_service.client.upload_image(scene_reference_path)
                 if upload_result.get("success"):
                     scene_uploaded_filename = upload_result.get("filename")
                     print(f"[ShotTask {task_id}] Scene image uploaded successfully: {scene_uploaded_filename}")
