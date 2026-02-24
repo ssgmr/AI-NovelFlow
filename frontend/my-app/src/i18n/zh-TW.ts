@@ -311,6 +311,8 @@ export default {
       'LTX2 镜头转场视频': 'LTX2 鏡頭轉場影片',
       'LTX2 光线转场视频': 'LTX2 光線轉場影片',
       'LTX2 遮挡转场视频': 'LTX2 遮擋轉場影片',
+      'Z-image-turbo 场景生成': 'Z-image-turbo 場景生成',
+      'Flux2-Klein-9B 分镜生图双图参考': 'Flux2-Klein-9B 分鏡生圖雙圖參考',
     },
     workflowDescriptions: {
       '系统预设的人设生成工作流（Flux2 Klein 9B 三视图）': '系統預設的人設生成工作流（Flux2 Klein 9B 三視圖）',

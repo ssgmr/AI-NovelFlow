@@ -609,6 +609,8 @@ export default {
       'LTX2 镜头转场视频': 'LTX2 カメラトランジション',
       'LTX2 光线转场视频': 'LTX2 ライティングトランジション',
       'LTX2 遮挡转场视频': 'LTX2 オクルージョントランジション',
+      'Z-image-turbo 场景生成': 'Z-image-turbo シーン生成',
+      'Flux2-Klein-9B 分镜生图双图参考': 'Flux2-Klein-9B ショット画像生成（デュアル参照）',
     },
     workflowDescriptions: {
       '系统预设的人设生成工作流（Flux2 Klein 9B 三视图）': 'システム既定のキャラ生成ワークフロー（Flux2 Klein 9B 三面図）',
