@@ -9,48 +9,18 @@ from app.models.novel import Scene, Novel, Chapter
 from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
 from app.services.llm_service import LLMService
+from app.services.prompt_builder import (
+    build_scene_prompt,
+    extract_style_from_character_template
+)
 
 router = APIRouter()
 settings = get_settings()
 comfyui_service = ComfyUIService()
 
 
-def extract_style_from_character_template(template: str) -> str:
-    """从角色提示词模板中提取 style
-    
-    兼容逻辑：
-    1. 尝试解析为 JSON，获取 style 字段
-    2. 否则清理模板中的 {appearance} 和 {description} 占位符
-    """
-    if not template:
-        return "anime style, high quality, detailed"
-
-    # 尝试解析 JSON
-    try:
-        template_data = json.loads(template)
-        if isinstance(template_data, dict) and "style" in template_data:
-            return template_data["style"]
-    except:
-        pass
-
-    # 清理占位符和角色相关内容
-    style = (template.replace("{appearance}", "").replace("{description}", "")
-             .replace("character portrait", "")
-             .replace("single character", "")
-             .replace("centered", "")
-             .replace("colorful", "")
-             .replace("clean background", "")
-             .strip(", ").strip(","))
-    
-    # 清理多余的逗号和空格
-    style = " ".join(style.split())  # 合并多余空格
-    style = style.replace(", ,", ",").replace(",,", ",")  # 清理连续逗号
-    style = style.strip(", ")  # 再次清理首尾
-    
-    if style:
-        return style
-
-    return "anime style, high quality, detailed"
+# 提示词构建函数已移至 app/services/prompt_builder.py
+# extract_style_from_character_template, build_scene_prompt 已导入
 
 
 def get_llm_service() -> LLMService:
@@ -357,40 +327,8 @@ async def generate_scene_setting(
         }
 
 
-def build_scene_prompt(name: str, setting: str, description: str, template: str = None) -> str:
-    """构建场景图提示词
-    
-    Args:
-        name: 场景名称
-        setting: 环境设置/布景描述（用于生成场景图）
-        description: 场景描述（不使用，保留参数兼容性）
-        template: 提示词模板
-    
-    Note:
-        场景图生成只使用 setting 字段，不使用 description 字段
-        因为分镜生成时会参考角色图+场景图，场景设定应该是纯环境描述
-    """
-    if template:
-        # 使用模板构建提示词，只使用 setting，忽略 description
-        prompt = template.replace("{setting}", setting or "").replace("{description}", "").replace("{name}", name or "")
-        # 清理多余的逗号和空格
-        prompt = " ".join(prompt.split())
-        prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
-        return prompt
-
-    # 默认提示词 - 只使用 setting 字段
-    base_prompt = "environment design, background art, landscape, "
-
-    if name:
-        base_prompt += f"{name}, "
-
-    if setting:
-        base_prompt += setting + ", "
-
-    # 不再使用 description 字段
-    base_prompt += "high quality, detailed, no characters, professional artwork"
-
-    return base_prompt
+# build_scene_prompt 函数已移至 app/services/prompt_builder.py
+# 已从 prompt_builder 导入 build_scene_prompt
 
 
 @router.post("/parse-scenes")

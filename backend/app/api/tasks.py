@@ -10,8 +10,12 @@ from app.models.novel import Character, Chapter, Novel, Scene
 from app.models.prompt_template import PromptTemplate
 from app.models.workflow import Workflow
 from app.services.comfyui import ComfyUIService
-from app.api.scenes import extract_style_from_character_template, build_scene_prompt
-from app.api.characters import build_character_prompt, extract_style_from_template
+from app.services.prompt_builder import (
+    build_character_prompt,
+    build_scene_prompt,
+    extract_style_from_template,
+    extract_style_from_character_template
+)
 
 router = APIRouter()
 comfyui_service = ComfyUIService()

@@ -9,6 +9,11 @@ from app.models.novel import Character, Novel
 from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
 from app.services.llm_service import LLMService
+from app.services.prompt_builder import (
+    build_character_prompt,
+    extract_style_from_template,
+    detect_animal_type
+)
 
 router = APIRouter()
 settings = get_settings()
@@ -289,106 +294,6 @@ async def generate_appearance(
         }
 
 
-def build_character_prompt(name: str, appearance: str, description: str, template: str = None) -> str:
-    """构建角色人设图提示词
-    
-    Args:
-        name: 角色名称
-        appearance: 外貌描述
-        description: 角色描述（已废弃，不再使用）
-        template: 提示词模板，包含 {appearance} 和 {description} 占位符
-    """
-    # 根据角色名称检测动物类型，添加英文强调词
-    # animal_keyword = detect_animal_type(name, appearance)
-    animal_keyword = None
-    
-    if template:
-        # 使用模板构建提示词，只使用 appearance，不使用 description
-        prompt = template.replace("{appearance}", appearance or "").replace("{description}", "")
-        # 在开头添加动物类型强调
-        if animal_keyword:
-            prompt = f"{animal_keyword} character, " + prompt
-        # 清理多余的逗号和空格
-        prompt = " ".join(prompt.split())
-        prompt = prompt.replace(" ,", ",").replace(",,", ",").strip(", ")
-        return prompt
-    
-    # 默认提示词
-    base_prompt = "character portrait, high quality, detailed, "
-    
-    if animal_keyword:
-        base_prompt = f"{animal_keyword} character, " + base_prompt
-    
-    if appearance:
-        base_prompt += appearance + ", "
-    
-    if description:
-        base_prompt += description + ", "
-    
-    base_prompt += "single character, centered, clean background, professional artwork"
-    
-    return base_prompt
-
-
-def detect_animal_type(name: str, appearance: str) -> str:
-    """检测角色动物类型，返回英文关键词"""
-    name_lower = (name or "").lower()
-    appearance_lower = (appearance or "").lower()
-    
-    # 动物关键词映射
-    animal_map = {
-        "horse": ["马", "horse", "pony", "stallion", "mare"],
-        "cow": ["牛", "cow", "bull", "ox", "cattle", "buffalo", "bison"],
-        "squirrel": ["松鼠", "squirrel", "chipmunk"],
-        "fox": ["狐狸", "fox"],
-        "dog": ["狗", "dog", "puppy", "canine"],
-        "cat": ["猫", "cat", "kitten", "feline"],
-        "rabbit": ["兔", "rabbit", "bunny", "hare"],
-        "bear": ["熊", "bear"],
-        "wolf": ["狼", "wolf"],
-        "tiger": ["虎", "tiger"],
-        "lion": ["狮", "lion"],
-        "elephant": ["象", "elephant"],
-        "pig": ["猪", "pig", "boar", "hog"],
-        "sheep": ["羊", "sheep", "lamb", "goat"],
-        "chicken": ["鸡", "chicken", "hen", "rooster"],
-        "duck": ["鸭", "duck"],
-        "mouse": ["鼠", "mouse", "rat"],
-        "deer": ["鹿", "deer"],
-        "monkey": ["猴", "monkey", "ape"],
-    }
-    
-    combined_text = name_lower + " " + appearance_lower
-    
-    for animal_type, keywords in animal_map.items():
-        for keyword in keywords:
-            if keyword in combined_text:
-                return animal_type
-    
-    return None
-
-
-def extract_style_from_template(template: str) -> str:
-    """从角色提示词模板中提取 style
-
-    兼容逻辑：
-    1. 尝试解析为 JSON，获取 style 字段
-    2. 否则清理模板中的 {appearance} 和 {description} 占位符
-    """
-    if not template:
-        return "anime style, high quality, detailed"
-
-    # 尝试解析 JSON
-    try:
-        template_data = json.loads(template)
-        if isinstance(template_data, dict) and "style" in template_data:
-            return template_data["style"]
-    except:
-        pass
-
-    # 清理占位符
-    style = template.replace("{appearance}", "").replace("{description}", "").strip(", ")
-    if style:
-        return style
-
-    return "anime style, high quality, detailed"
+# 提示词构建函数已移至 app/services/prompt_builder.py
+# 保留以下函数作为向后兼容的别名
+# build_character_prompt, detect_animal_type, extract_style_from_template
