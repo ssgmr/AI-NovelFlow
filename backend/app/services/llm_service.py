@@ -497,7 +497,7 @@ class LLMService:
             system_prompt=system_prompt,
             user_content=f"请解析以下小说文本：\n\n{text[:15000]}",
             temperature=0.7,
-            max_tokens=4000,
+            max_tokens=15000,
             response_format="json_object",
             task_type="parse_characters",
             novel_id=novel_id
@@ -589,7 +589,7 @@ class LLMService:
             system_prompt=system_prompt,
             user_content=user_content,
             temperature=0.7,
-            max_tokens=8000,
+            max_tokens=15000,
             response_format="json_object",
             task_type="split_chapter",
             novel_id=novel_id,
@@ -830,7 +830,7 @@ Traditional Chinese courtyard, ancient wooden architecture with curved roofs, re
             system_prompt=system_prompt,
             user_content=user_content,
             temperature=0.7,
-            max_tokens=4000,
+            max_tokens=15000,
             response_format="json_object",
             task_type="parse_scenes",
             novel_id=novel_id

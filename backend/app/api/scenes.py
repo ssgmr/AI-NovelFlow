@@ -457,7 +457,7 @@ async def parse_scenes(
         # 调用 LLM 解析场景
         result = await get_llm_service().parse_scenes(
             novel_id=novel_id,
-            chapter_content=combined_content[:20000],  # 限制长度
+            chapter_content=combined_content[:150000],  # 限制长度
             chapter_title=source_range,
             prompt_template=prompt_template
         )
