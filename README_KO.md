@@ -53,11 +53,10 @@ NovelFlow는 소설을 자동으로 동영상으로 변환하는 AI 플랫폼입
 
 ## 커뮤니티
 
-💬 <a href="https://t.me/AI_NovelFlow" target="_blank">Telegram 그룹 @AI_NovelFlow</a>
-
-🐧 **QQ 그룹**: 1083469624
-
-<img src="docs/qq_group.png" width="200" alt="QQ 그룹 QR 코드">
+| Telegram 그룹 | QQ 그룹 |
+|:---:|:---:|
+| <a href="https://t.me/AI_NovelFlow" target="_blank">@AI_NovelFlow</a> | 1083469624 |
+| <img src="docs/telegram_group.png" width="200" alt="Telegram 그룹 QR 코드"> | <img src="docs/qq_group.png" width="200" alt="QQ 그룹 QR 코드"> |
 
 ## 기술 스택
 
