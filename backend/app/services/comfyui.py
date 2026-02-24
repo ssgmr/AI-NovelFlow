@@ -4,17 +4,20 @@ import uuid
 import asyncio
 import random
 from typing import Dict, Any, Optional, List
-from app.core.config import get_settings
-
-settings = get_settings()
 
 
 class ComfyUIService:
     """ComfyUI 服务封装"""
     
     def __init__(self):
-        self.base_url = settings.COMFYUI_HOST
+        # 不在初始化时设置base_url，改为每次都动态获取
         self.client_id = str(uuid.uuid4())
+    
+    @property
+    def base_url(self):
+        """动态获取当前的ComfyUI主机地址"""
+        from app.core.config import get_settings
+        return get_settings().COMFYUI_HOST
     
     async def check_health(self) -> bool:
         """检查 ComfyUI 服务状态"""
