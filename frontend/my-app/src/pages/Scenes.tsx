@@ -27,6 +27,14 @@ interface SceneWithNovel extends Scene {
   novelName?: string;
 }
 
+interface PromptTemplate {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  type: string;
+}
+
 export default function Scenes() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,6 +72,9 @@ export default function Scenes() {
   // 生成场景设定中的场景ID
   const [generatingSettingId, setGeneratingSettingId] = useState<string | null>(null);
   
+  // 提示词模板
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -75,7 +86,30 @@ export default function Scenes() {
   useEffect(() => {
     fetchScenes();
     fetchNovels();
+    fetchPromptTemplates();
   }, [selectedNovel]);
+  
+  // 获取提示词模板
+  const fetchPromptTemplates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/prompt-templates/?type=character`);
+      const data = await res.json();
+      if (data.success) {
+        setPromptTemplates(data.data);
+      }
+    } catch (error) {
+      console.error('加载提示词模板失败:', error);
+    }
+  };
+  
+  // 获取翻译后的模板名称（系统预设模板会翻译，自定义模板保持原样）
+  const getTemplateDisplayName = (template: PromptTemplate | undefined): string => {
+    if (!template) return t('novels.default');
+    if (template.isSystem) {
+      return t(`promptConfig.templateNames.${template.name}`, { defaultValue: template.name });
+    }
+    return template.name;
+  };
 
   // 处理高亮场景
   useEffect(() => {
@@ -738,10 +772,12 @@ export default function Scenes() {
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-xs text-gray-400">{t('scenes.promptLabel')}</p>
                       <span className="text-xs text-gray-400">
-                        {scenePrompts[scene.id].isSystem 
-                          ? t(`promptConfig.templateNames.${scenePrompts[scene.id].templateName}`, { defaultValue: scenePrompts[scene.id].templateName })
-                          : scenePrompts[scene.id].templateName
-                        }
+                        {/* 显示当前小说配置的 Image Style */}
+                        {(() => {
+                          const currentNovel = novels.find(n => n.id === selectedNovel);
+                          const template = promptTemplates.find(t => t.id === currentNovel?.promptTemplateId);
+                          return getTemplateDisplayName(template);
+                        })()}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 max-h-20 overflow-y-auto scrollbar-thin font-mono">
