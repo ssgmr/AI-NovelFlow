@@ -7,6 +7,7 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.core.config import get_settings
+from app.core.utils import format_datetime
 from app.models.workflow import Workflow
 from app.repositories import WorkflowRepository
 
@@ -255,7 +256,7 @@ async def list_workflows(
                 "isSystem": w.is_system,
                 "isActive": w.is_active,
                 "nodeMapping": json.loads(w.node_mapping) if w.node_mapping else None,
-                "createdAt": w.created_at.isoformat() if w.created_at else None,
+                "createdAt": format_datetime(w.created_at),
             }
             for w in workflows
         ]
@@ -317,7 +318,7 @@ async def get_workflow(
             "isSystem": workflow.is_system,
             "isActive": workflow.is_active,
             "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
-            "createdAt": workflow.created_at.isoformat() if workflow.created_at else None,
+            "createdAt": format_datetime(workflow.created_at),
         }
     }
 
@@ -473,7 +474,7 @@ async def update_workflow(
             "isSystem": workflow.is_system,
             "isActive": workflow.is_active,
             "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
-            "createdAt": workflow.created_at.isoformat() if workflow.created_at else None,
+            "createdAt": format_datetime(workflow.created_at),
         }
     }
 

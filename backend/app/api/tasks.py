@@ -17,6 +17,7 @@ from app.services.prompt_builder import (
     extract_style_from_character_template
 )
 from app.repositories import TaskRepository
+from app.core.utils import format_datetime
 
 router = APIRouter()
 comfyui_service = ComfyUIService()
@@ -133,9 +134,9 @@ async def list_tasks(
                 "chapterTitle": chapters.get(t.chapter_id).title if t.chapter_id and t.chapter_id in chapters else None,
                 "characterId": t.character_id,
                 "sceneId": t.scene_id,
-                "createdAt": t.created_at.isoformat() if t.created_at else None,
-                "startedAt": t.started_at.isoformat() if t.started_at else None,
-                "completedAt": t.completed_at.isoformat() if t.completed_at else None,
+                "createdAt": format_datetime(t.created_at),
+                "startedAt": format_datetime(t.started_at),
+                "completedAt": format_datetime(t.completed_at),
             }
             for t in tasks
         ]
@@ -170,9 +171,9 @@ async def get_task(task_id: str, task_repo: TaskRepository = Depends(get_task_re
             "characterId": task.character_id,
             "sceneId": task.scene_id,
             "comfyuiPromptId": task.comfyui_prompt_id,
-            "createdAt": task.created_at.isoformat() if task.created_at else None,
-            "startedAt": task.started_at.isoformat() if task.started_at else None,
-            "completedAt": task.completed_at.isoformat() if task.completed_at else None,
+            "createdAt": format_datetime(task.created_at),
+            "startedAt": format_datetime(task.started_at),
+            "completedAt": format_datetime(task.completed_at),
         }
     }
 

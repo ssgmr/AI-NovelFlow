@@ -5,6 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.utils import format_datetime
 from app.models.prompt_template import PromptTemplate
 from app.repositories import PromptTemplateRepository
 
@@ -205,7 +206,7 @@ def list_prompt_templates(
                 "type": t.type or "character",
                 "isSystem": t.is_system,
                 "isActive": t.is_active,
-                "createdAt": t.created_at.isoformat() if t.created_at else None,
+                "createdAt": format_datetime(t.created_at),
             }
             for t in templates
         ]
@@ -235,7 +236,7 @@ def get_prompt_template(
             "type": template.type or "character",
             "isSystem": template.is_system,
             "isActive": template.is_active,
-            "createdAt": template.created_at.isoformat() if template.created_at else None,
+            "createdAt": format_datetime(template.created_at),
         }
     }
 
@@ -273,7 +274,7 @@ def create_prompt_template(
             "type": template.type or "character",
             "isSystem": template.is_system,
             "isActive": template.is_active,
-            "createdAt": template.created_at.isoformat() if template.created_at else None,
+            "createdAt": format_datetime(template.created_at),
         }
     }
 
@@ -317,7 +318,7 @@ def copy_prompt_template(
             "type": new_template.type or "character",
             "isSystem": new_template.is_system,
             "isActive": new_template.is_active,
-            "createdAt": new_template.created_at.isoformat() if new_template.created_at else None,
+            "createdAt": format_datetime(new_template.created_at),
         }
     }
 
@@ -365,7 +366,7 @@ def update_prompt_template(
             "type": template.type or "character",
             "isSystem": template.is_system,
             "isActive": template.is_active,
-            "createdAt": template.created_at.isoformat() if template.created_at else None,
+            "createdAt": format_datetime(template.created_at),
         }
     }
 
@@ -413,6 +414,6 @@ def get_default_system_template(
             "type": template.type or "character",
             "isSystem": template.is_system,
             "isActive": template.is_active,
-            "createdAt": template.created_at.isoformat() if template.created_at else None,
+            "createdAt": format_datetime(template.created_at),
         }
     }

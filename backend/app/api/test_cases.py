@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.core.database import get_db
+from app.core.utils import format_datetime
 from app.models.test_case import TestCase
 from app.models.novel import Novel, Chapter, Character
 from app.repositories import TestCaseRepository
@@ -73,7 +74,7 @@ async def list_test_cases(
             "expectedShotCount": tc.expected_shot_count,
             "notes": tc.notes,
             "notesKey": notes_key,
-            "createdAt": tc.created_at.isoformat() if tc.created_at else None,
+            "createdAt": format_datetime(tc.created_at),
         })
     
     return {
@@ -137,7 +138,7 @@ async def get_test_case(
                 }
                 for c in characters
             ],
-            "createdAt": tc.created_at.isoformat() if tc.created_at else None,
+            "createdAt": format_datetime(tc.created_at),
         }
     }
 

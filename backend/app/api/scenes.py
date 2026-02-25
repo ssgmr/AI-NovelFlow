@@ -14,6 +14,7 @@ from app.services.prompt_builder import (
     extract_style_from_character_template
 )
 from app.repositories import NovelRepository, SceneRepository, ChapterRepository
+from app.core.utils import format_datetime
 
 router = APIRouter()
 settings = get_settings()
@@ -69,9 +70,9 @@ async def list_scenes(novel_id: str = None, db: Session = Depends(get_db), novel
             "endChapter": s.end_chapter,
             "isIncremental": s.is_incremental,
             "sourceRange": s.source_range,
-            "lastParsedAt": s.last_parsed_at.isoformat() if s.last_parsed_at else None,
-            "createdAt": s.created_at.isoformat() if s.created_at else None,
-            "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
+            "lastParsedAt": format_datetime(s.last_parsed_at),
+            "createdAt": format_datetime(s.created_at),
+            "updatedAt": format_datetime(s.updated_at),
         })
 
     return {"success": True, "data": result}
@@ -102,9 +103,9 @@ async def get_scene(scene_id: str, novel_repo: NovelRepository = Depends(get_nov
             "endChapter": scene.end_chapter,
             "isIncremental": scene.is_incremental,
             "sourceRange": scene.source_range,
-            "lastParsedAt": scene.last_parsed_at.isoformat() if scene.last_parsed_at else None,
-            "createdAt": scene.created_at.isoformat() if scene.created_at else None,
-            "updatedAt": scene.updated_at.isoformat() if scene.updated_at else None,
+            "lastParsedAt": format_datetime(scene.last_parsed_at),
+            "createdAt": format_datetime(scene.created_at),
+            "updatedAt": format_datetime(scene.updated_at),
         }
     }
 
@@ -141,7 +142,7 @@ async def create_scene(
             "setting": scene.setting,
             "imageUrl": scene.image_url,
             "novelName": novel.title,
-            "createdAt": scene.created_at.isoformat() if scene.created_at else None,
+            "createdAt": format_datetime(scene.created_at),
         }
     }
 
@@ -181,7 +182,7 @@ async def update_scene(
             "setting": scene.setting,
             "imageUrl": scene.image_url,
             "novelName": novel.title if novel else None,
-            "updatedAt": scene.updated_at.isoformat() if scene.updated_at else None,
+            "updatedAt": format_datetime(scene.updated_at),
         }
     }
 
@@ -496,7 +497,7 @@ async def parse_scenes(
                     "endChapter": s.end_chapter,
                     "isIncremental": s.is_incremental,
                     "sourceRange": s.source_range,
-                    "lastParsedAt": s.last_parsed_at.isoformat() if s.last_parsed_at else None
+                    "lastParsedAt": format_datetime(s.last_parsed_at)
                 }
                 for s in created_scenes + updated_scenes
             ],

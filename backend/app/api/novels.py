@@ -18,6 +18,7 @@ from app.services.comfyui import ComfyUIService
 from app.services.file_storage import file_storage
 from app.api.tasks import validate_workflow_node_mapping
 from app.repositories import NovelRepository, ChapterRepository, CharacterRepository, SceneRepository
+from app.core.utils import format_datetime
 
 # 注意：不要在模块级别创建 LLMService 实例
 # 因为配置可能在运行时更新，每次使用时应创建新实例
@@ -98,7 +99,7 @@ async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
             "promptTemplateId": db_novel.prompt_template_id,
             "chapterSplitPromptTemplateId": db_novel.chapter_split_prompt_template_id,
             "aspectRatio": db_novel.aspect_ratio or "16:9",
-            "createdAt": db_novel.created_at.isoformat() if db_novel.created_at else None,
+            "createdAt": format_datetime(db_novel.created_at),
         }
     }
 
@@ -122,7 +123,7 @@ async def get_novel(novel_id: str, novel_repo: NovelRepository = Depends(get_nov
             "promptTemplateId": novel.prompt_template_id,
             "chapterSplitPromptTemplateId": novel.chapter_split_prompt_template_id,
             "aspectRatio": novel.aspect_ratio or "16:9",
-            "createdAt": novel.created_at.isoformat() if novel.created_at else None,
+            "createdAt": format_datetime(novel.created_at),
         }
     }
 
@@ -164,8 +165,8 @@ async def update_novel(novel_id: str, data: dict, db: Session = Depends(get_db),
             "promptTemplateId": novel.prompt_template_id,
             "chapterSplitPromptTemplateId": novel.chapter_split_prompt_template_id,
             "aspectRatio": novel.aspect_ratio or "16:9",
-            "createdAt": novel.created_at.isoformat() if novel.created_at else None,
-            "updatedAt": novel.updated_at.isoformat() if novel.updated_at else None,
+            "createdAt": format_datetime(novel.created_at),
+            "updatedAt": format_datetime(novel.updated_at),
         }
     }
 
@@ -341,7 +342,7 @@ async def parse_characters(
                     "endChapter": c.end_chapter,
                     "isIncremental": c.is_incremental,
                     "sourceRange": c.source_range,
-                    "lastParsedAt": c.last_parsed_at.isoformat() if c.last_parsed_at else None
+                    "lastParsedAt": format_datetime(c.last_parsed_at)
                 }
                 for c in created_characters + updated_characters
             ],
@@ -471,7 +472,7 @@ async def parse_chapter_characters(
                     "endChapter": c.end_chapter,
                     "isIncremental": c.is_incremental,
                     "sourceRange": c.source_range,
-                    "lastParsedAt": c.last_parsed_at.isoformat() if c.last_parsed_at else None
+                    "lastParsedAt": format_datetime(c.last_parsed_at)
                 }
                 for c in created_characters + updated_characters
             ],
@@ -616,7 +617,7 @@ async def parse_chapter_scenes(
                     "endChapter": s.end_chapter,
                     "isIncremental": s.is_incremental,
                     "sourceRange": s.source_range,
-                    "lastParsedAt": s.last_parsed_at.isoformat() if s.last_parsed_at else None
+                    "lastParsedAt": format_datetime(s.last_parsed_at)
                 }
                 for s in created_scenes + updated_scenes
             ],
@@ -651,7 +652,7 @@ async def list_chapters(novel_id: str, novel_repo: NovelRepository = Depends(get
                 "title": c.title,
                 "status": c.status,
                 "progress": c.progress,
-                "createdAt": c.created_at.isoformat() if c.created_at else None,
+                "createdAt": format_datetime(c.created_at),
             }
             for c in chapters
         ]
@@ -687,7 +688,7 @@ async def create_chapter(novel_id: str, data: dict, db: Session = Depends(get_db
             "title": chapter.title,
             "status": chapter.status,
             "progress": chapter.progress,
-            "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
+            "createdAt": format_datetime(chapter.created_at),
         }
     }
 
@@ -723,7 +724,7 @@ async def get_chapter(novel_id: str, chapter_id: str, chapter_repo: ChapterRepos
             "shotVideos": shot_videos,
             "transitionVideos": transition_videos,
             "finalVideo": chapter.final_video,
-            "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
+            "createdAt": format_datetime(chapter.created_at),
         }
     }
 
@@ -762,8 +763,8 @@ async def update_chapter(
             "status": chapter.status,
             "progress": chapter.progress,
             "parsedData": chapter.parsed_data,
-            "createdAt": chapter.created_at.isoformat() if chapter.created_at else None,
-            "updatedAt": chapter.updated_at.isoformat() if chapter.updated_at else None,
+            "createdAt": format_datetime(chapter.created_at),
+            "updatedAt": format_datetime(chapter.updated_at),
         }
     }
 

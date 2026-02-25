@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.utils import format_datetime
 from app.models.novel import Character, Novel
 from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
@@ -57,9 +58,9 @@ async def list_characters(novel_id: str = None, db: Session = Depends(get_db), n
             "endChapter": c.end_chapter,
             "isIncremental": c.is_incremental,
             "sourceRange": c.source_range,
-            "lastParsedAt": c.last_parsed_at.isoformat() if c.last_parsed_at else None,
-            "createdAt": c.created_at.isoformat() if c.created_at else None,
-            "updatedAt": c.updated_at.isoformat() if c.updated_at else None,
+            "lastParsedAt": format_datetime(c.last_parsed_at),
+            "createdAt": format_datetime(c.created_at),
+            "updatedAt": format_datetime(c.updated_at),
         })
     
     return {"success": True, "data": result}
@@ -90,9 +91,9 @@ async def get_character(character_id: str, novel_repo: NovelRepository = Depends
             "endChapter": character.end_chapter,
             "isIncremental": character.is_incremental,
             "sourceRange": character.source_range,
-            "lastParsedAt": character.last_parsed_at.isoformat() if character.last_parsed_at else None,
-            "createdAt": character.created_at.isoformat() if character.created_at else None,
-            "updatedAt": character.updated_at.isoformat() if character.updated_at else None,
+            "lastParsedAt": format_datetime(character.last_parsed_at),
+            "createdAt": format_datetime(character.created_at),
+            "updatedAt": format_datetime(character.updated_at),
         }
     }
 
@@ -129,7 +130,7 @@ async def create_character(
             "appearance": character.appearance,
             "imageUrl": character.image_url,
             "novelName": novel.title,
-            "createdAt": character.created_at.isoformat() if character.created_at else None,
+            "createdAt": format_datetime(character.created_at),
         }
     }
 
@@ -166,7 +167,7 @@ async def update_character(
             "appearance": character.appearance,
             "imageUrl": character.image_url,
             "novelName": novel.title if novel else None,
-            "updatedAt": character.updated_at.isoformat() if character.updated_at else None,
+            "updatedAt": format_datetime(character.updated_at),
         }
     }
 
