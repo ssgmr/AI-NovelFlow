@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -304,4 +304,78 @@ async def generate_appearance(
             "success": False,
             "message": f"生成失败: {str(e)}"
         }
+
+
+@router.post("/{character_id}/upload-image", response_model=dict)
+async def upload_character_image(
+    character_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    character_repo: CharacterRepository = Depends(get_character_repo),
+    novel_repo: NovelRepository = Depends(get_novel_repo)
+):
+    """
+    上传角色图片
+    
+    支持用户从本地上传角色形象图片，替代AI生成
+    """
+    from app.services.file_storage import file_storage
+    from datetime import datetime
+    
+    character = character_repo.get_by_id(character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    
+    # 验证文件类型
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"不支持的文件类型: {file.content_type}，仅支持 PNG, JPG, WEBP"
+        )
+    
+    try:
+        # 获取保存路径
+        file_path = file_storage.get_character_image_path(
+            novel_id=character.novel_id,
+            character_name=character.name
+        )
+        
+        # 保存文件
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # 计算访问URL
+        relative_path = file_path.relative_to(file_storage.base_dir)
+        image_url = f"/api/files/{relative_path}"
+        
+        # 更新角色记录
+        character.image_url = image_url
+        character.generating_status = "completed"  # 标记为已完成
+        db.commit()
+        db.refresh(character)
+        
+        novel = novel_repo.get_by_id(character.novel_id)
+        
+        return {
+            "success": True,
+            "data": {
+                "id": character.id,
+                "novelId": character.novel_id,
+                "name": character.name,
+                "description": character.description,
+                "appearance": character.appearance,
+                "imageUrl": character.image_url,
+                "generatingStatus": character.generating_status,
+                "novelName": novel.title if novel else None,
+                "updatedAt": character.updated_at.isoformat() if character.updated_at else None,
+            },
+            "message": "图片上传成功"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
 

@@ -299,6 +299,11 @@ export default {
     regenerate: '重新生成',
     generatingStatus: '生成中...',
     descriptionLabel: '描述',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
   },
 
   // 场景库
@@ -349,6 +354,11 @@ export default {
     next: '下一个 (→)',
     promptLabel: '生成提示词',
     regenerate: '重新生成',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
   },
 
   // 任务队列
@@ -999,11 +1009,26 @@ export default {
     videoDescPlaceholder: '视频描述 - 用于生成分镜视频，如果为空则使用分镜描述',
     scene: '场景',
     durationSec: '时长(秒)',
+    durationLabel: '时长',
     charactersPlaceholder: '角色（用逗号分隔）',
+    charactersLabel: '角色',
     noShotData: '暂无分镜数据',
     shotId: '镜{id} / 共{total}镜',
     prevShot: '上一镜',
     nextShot: '下一镜',
+    
+    // 角色库和场景库选择
+    selectCharacterFromLibrary: '从角色库选择...',
+    selectSceneFromLibrary: '从场景库选择...',
+    selectCharacterFromChapter: '从章节角色列表选择...',
+    selectSceneFromChapter: '从章节场景列表选择...',
+    noCharactersInLibrary: '角色库中没有角色，请先解析或添加角色',
+    noScenesInLibrary: '场景库中没有场景，请先解析或添加场景',
+    allCharactersAdded: '角色库中的角色已全部添加',
+    allScenesAdded: '场景库中的场景已全部添加',
+    removeCharacter: '移除角色',
+    removeScene: '移除场景',
+    orAddCustom: '或手动输入',
     
     // 合并视频
     mergeVideo: '合并视频',
@@ -1054,6 +1079,11 @@ export default {
     regenerateShotImage: '重新生成分镜图',
     generateShotImageFirst: '请先生成分镜图片',
     noShotImages: '暂无分镜图片，请先进行AI拆分',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
     
     // 分镜视频
     noShotsToGenerateVideo: '没有可分镜的视频',

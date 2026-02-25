@@ -971,6 +971,7 @@ export default {
     videoDescPlaceholder: '動画説明 - ショット動画生成に使用。空の場合はショット説明を使用',
     scene: 'シーン',
     durationSec: '長さ（秒）',
+    durationLabel: '長さ',
     charactersPlaceholder: 'キャラクター（カンマ区切り）',
     noShotData: 'ショットデータがありません',
     shotId: 'ショット {id} / 合計 {total}',
@@ -1011,6 +1012,25 @@ export default {
     sceneImages: 'シーン画像',
     aiGenerateScene: 'AIシーン生成',
     noSceneImages: 'シーン画像がありません',
+    
+    // キャラクター・シーンライブラリ選択
+    selectCharacterFromLibrary: 'キャラクターライブラリから選択...',
+    selectSceneFromLibrary: 'シーンライブラリから選択...',
+    selectCharacterFromChapter: '章のキャラクターリストから選択...',
+    selectSceneFromChapter: '章のシーンリストから選択...',
+    noCharactersInLibrary: 'ライブラリにキャラクターがありません。先に解析または追加してください',
+    noScenesInLibrary: 'ライブラリにシーンがありません。先に解析または追加してください',
+    allCharactersAdded: 'ライブラリの全キャラクターが追加されました',
+    allScenesAdded: 'ライブラリの全シーンが追加されました',
+    removeCharacter: 'キャラクターを削除',
+    removeScene: 'シーンを削除',
+    orAddCustom: 'または手動入力',
+    charactersLabel: 'キャラクター',
+    uploadImage: '画像をアップロード',
+    uploadSuccess: '画像のアップロードに成功しました',
+    uploadFailed: '画像のアップロードに失敗しました',
+    selectImage: '画像を選択',
+    orUploadLocal: 'またはローカルからアップロード',
     
     // ショット画像
     noShotsToGenerate: '画像を生成するショットがありません',

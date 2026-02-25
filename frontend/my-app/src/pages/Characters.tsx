@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,7 +13,8 @@ import {
   Image,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  Upload
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Character, Novel } from '../types';
@@ -61,6 +62,11 @@ export default function Characters() {
   
   // 批量生成所有角色形象
   const [generatingAll, setGeneratingAll] = useState(false);
+  
+  // 上传状态
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [currentUploadCharacterId, setCurrentUploadCharacterId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -355,6 +361,61 @@ export default function Characters() {
     }, 3000); // 每3秒检查一次
   };
 
+  // 触发文件选择
+  const triggerFileUpload = (characterId: string) => {
+    setCurrentUploadCharacterId(characterId);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // 上传角色图片
+  const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUploadCharacterId) return;
+    
+    // 验证文件类型
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(t('common.error') + ': 仅支持 PNG, JPG, WEBP 格式');
+      return;
+    }
+    
+    setUploadingId(currentUploadCharacterId);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(`${API_BASE}/characters/${currentUploadCharacterId}/upload-image`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // 更新本地角色列表
+        setCharacters(prev => prev.map(c => 
+          c.id === currentUploadCharacterId ? { ...c, ...data.data } : c
+        ));
+        toast.success(t('characters.uploadSuccess'));
+      } else {
+        toast.error(data.message || t('characters.uploadFailed'));
+      }
+    } catch (error) {
+      console.error('上传图片失败:', error);
+      toast.error(t('characters.uploadFailed'));
+    } finally {
+      setUploadingId(null);
+      setCurrentUploadCharacterId(null);
+      // 清空文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // 批量生成所有角色形象
   const generateAllPortraits = async () => {
     if (filteredCharacters.length === 0) {
@@ -579,7 +640,10 @@ export default function Characters() {
             </button>
           )}
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setFormData({ name: '', description: '', appearance: '', novelId: selectedNovel });
+              setShowCreateModal(true);
+            }}
             className="btn-primary"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -688,6 +752,20 @@ export default function Characters() {
                   title={t('common.edit')}
                 >
                   <Edit2 className="h-4 w-4" />
+                </button>
+                
+                {/* 上传按钮 - 左下角（编辑按钮右边） */}
+                <button
+                  onClick={() => triggerFileUpload(character.id)}
+                  disabled={uploadingId === character.id}
+                  className="absolute bottom-2 left-12 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors disabled:opacity-70 opacity-0 group-hover:opacity-100"
+                  title={t('characters.uploadImage')}
+                >
+                  {uploadingId === character.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                 </button>
                 
                 {/* AI生成形象 Button - 右下角，带文字 */}
@@ -1031,6 +1109,15 @@ export default function Characters() {
           </div>
         </div>
       )}
+      
+      {/* 隐藏的文件输入 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        onChange={handleUploadImage}
+      />
     </div>
   );
 }
