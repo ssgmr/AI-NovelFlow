@@ -169,6 +169,46 @@ export default function ChapterGenerate() {
     }
   }, [cid, id]);
 
+  // 从章节数据初始化 shotImages、shotVideos、transitionVideos 状态
+  // 使用合并策略而不是覆盖，避免在任务进行中丢失其他分镜的图片
+  // 依赖 chapter 对象，当章节数据更新时重新合并
+  useEffect(() => {
+    if (chapter) {
+      // 初始化 shotImages（合并策略）
+      if (chapter.shotImages && Array.isArray(chapter.shotImages)) {
+        setShotImages(prev => {
+          const images = { ...prev };
+          chapter.shotImages!.forEach((url: string | null, index: number) => {
+            if (url) {
+              // 只有当服务器有数据时才更新，保留本地已有的其他分镜图片
+              images[index + 1] = url;
+            }
+          });
+          return images;
+        });
+      }
+      
+      // 初始化 shotVideos（合并策略）
+      if (chapter.shotVideos && Array.isArray(chapter.shotVideos)) {
+        setShotVideos(prev => {
+          const videos = { ...prev };
+          chapter.shotVideos!.forEach((url: string | null, index: number) => {
+            if (url) {
+              videos[index + 1] = url;
+            }
+          });
+          return videos;
+        });
+      }
+      
+      // 初始化 transitionVideos（合并策略）
+      if (chapter.transitionVideos && typeof chapter.transitionVideos === 'object') {
+        setTransitionVideos(prev => ({ ...prev, ...chapter.transitionVideos}));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapter?.id, chapter?.shotImages, chapter?.shotVideos, chapter?.transitionVideos]);
+
   // 切换分镜时更新合并角色图
   useEffect(() => {
     if (parsedData?.shots && parsedData.shots.length >= currentShot) {
