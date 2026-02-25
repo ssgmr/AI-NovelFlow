@@ -125,6 +125,9 @@ export default {
 
   novels: {
     ...enUS.novels,
+    characterPromptLabel: '画像スタイル',
+    characterPromptHint: '画像生成用の画像スタイルテンプレートを選択',
+    editNovel: '小説を編集',
     title: '小説管理',
     subtitle: '小説プロジェクトの管理と整理',
     chapters: '章',
@@ -159,8 +162,6 @@ export default {
     parseScenesResult: '{created}件のシーンを追加、{updated}件のシーンを更新',
     noNewScenes: '新しいシーンが見つかりません',
     viewScenes: 'シーン',
-    characterPromptLabel: 'キャラクター生成用プロンプトテンプレート',
-    characterPromptHint: 'キャラクター肖像生成用のプロンプトテンプレートを選択',
     splitPromptLabel: 'ショット分割プロンプトテンプレート',
     splitPromptHint: '章をショットに分割するためのプロンプトテンプレートを選択',
     aiParseCharactersTitle: 'AIキャラクター解析',

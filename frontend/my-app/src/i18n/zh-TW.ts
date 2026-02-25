@@ -124,6 +124,9 @@ export default {
 
   novels: {
     ...zhCN.novels,
+    characterPromptLabel: '圖像風格',
+    characterPromptHint: '選擇用於生成圖片的圖像風格模板',
+    editNovel: '編輯小說',
     title: '小說管理',
     subtitle: '管理和組織你的小說專案',
     createNovel: '建立小說',

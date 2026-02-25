@@ -164,8 +164,8 @@ export default {
     parseScenesResult: '新增 {created} 个场景，更新 {updated} 个场景',
     noNewScenes: '未发现新场景',
     viewScenes: '查看场景',
-    characterPromptLabel: '角色生成提示词模板',
-    characterPromptHint: '选择用于生成角色人设图的提示词模板',
+    characterPromptLabel: '图像风格',
+    characterPromptHint: '选择用于生成图片的图像风格模板',
     splitPromptLabel: '分镜拆分提示词模板',
     splitPromptHint: '选择用于拆分章节为分镜的提示词模板',
     aiParseCharactersTitle: 'AI解析角色',
@@ -190,6 +190,7 @@ export default {
     incrementalUpdateDesc: '开启后只更新空字段，保留已有信息',
     // 创建/编辑小说弹窗
     createNovelTitle: '创建小说',
+    editNovel: '编辑小说',
     editNovelTitle: '编辑小说',
     titleLabel: '小说标题',
     authorLabel: '作者',

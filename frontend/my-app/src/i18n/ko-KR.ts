@@ -125,6 +125,9 @@ export default {
 
   novels: {
     ...enUS.novels,
+    characterPromptLabel: '이미지 스타일',
+    characterPromptHint: '이미지 생성용 이미지 스타일 템플릿 선택',
+    editNovel: '소설 편집',
     title: '소설 관리',
     subtitle: '소설 프로젝트 관리 및 정리',
     chapters: '장',
@@ -159,8 +162,6 @@ export default {
     parseScenesResult: '{created}개 장면 추가, {updated}개 장면 업데이트',
     noNewScenes: '새로운 장면이 없습니다',
     viewScenes: '장면',
-    characterPromptLabel: '캐릭터 생성 프롬프트 템플릿',
-    characterPromptHint: '캐릭터 초상화 생성용 프롬프트 템플릿 선택',
     splitPromptLabel: '샷 분할 프롬프트 템플릿',
     splitPromptHint: '장을 샷으로 분할하는 프롬프트 템플릿 선택',
     aiParseCharactersTitle: 'AI 캐릭터 분석',

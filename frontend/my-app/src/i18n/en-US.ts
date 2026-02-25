@@ -164,8 +164,8 @@ export default {
     parseScenesResult: 'Created {created} scenes, updated {updated} scenes',
     noNewScenes: 'No new scenes found',
     viewScenes: 'Scenes',
-    characterPromptLabel: 'Character Generation Prompt Template',
-    characterPromptHint: 'Select prompt template for character portrait generation',
+    characterPromptLabel: 'Image Style',
+    characterPromptHint: 'Select image style template for picture generation',
     splitPromptLabel: 'Shot Split Prompt Template',
     splitPromptHint: 'Select prompt template for splitting chapters into shots',
     aiParseCharactersTitle: 'AI Parse Characters',
@@ -190,6 +190,7 @@ export default {
     incrementalUpdateDesc: 'When enabled, only updates empty fields and preserves existing information',
     // Create/Edit Novel Modal
     createNovelTitle: 'Create Novel',
+    editNovel: 'Edit Novel',
     editNovelTitle: 'Edit Novel',
     titleLabel: 'Novel Title',
     authorLabel: 'Author',
