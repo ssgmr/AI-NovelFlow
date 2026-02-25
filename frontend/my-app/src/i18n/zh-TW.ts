@@ -124,6 +124,9 @@ export default {
 
   novels: {
     ...zhCN.novels,
+    characterPromptLabel: '圖像風格',
+    characterPromptHint: '選擇用於生成圖片的圖像風格模板',
+    editNovel: '編輯小說',
     title: '小說管理',
     subtitle: '管理和組織你的小說專案',
     createNovel: '建立小說',
@@ -374,6 +377,11 @@ export default {
   systemSettings: {
     ...zhCN.systemSettings,
     title: '系統組態',
+    workflow: {
+      ...zhCN.systemSettings.workflow,
+      setDefaultSuccess: '已設為預設：{name}',
+      setDefaultFailed: '設置預設工作流失敗',
+    },
     subtitle: '組態 LLM、代理和 ComfyUI 設定',
     llmConfig: 'LLM 組態',
     llmProvider: 'LLM 廠商',
@@ -726,5 +734,12 @@ export default {
     alipay: '支付寶',
     thankYou: '感謝您的支持！',
     contactMe: '聯絡方式',
+  },
+
+  chapterGenerate: {
+    ...zhCN.chapterGenerate,
+    default: '預設',
+    reset: '還原',
+    dualReferenceWorkflowNotActive: '當前未切到雙圖分鏡生成工作流，場景圖暫不可用',
   },
 };

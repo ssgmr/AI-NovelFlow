@@ -790,10 +790,7 @@ async def generate_scene_image_task(
                 PromptTemplate.is_system == True
             ).order_by(PromptTemplate.created_at.asc()).first()
 
-        # 构建提示词（只使用 setting 字段）
-        prompt = build_scene_prompt(name, setting, "", template.template if template else None)
-
-        # 获取角色提示词模板
+        # 获取角色提示词模板（用于提取 style）
         character_template = None
         if novel and novel.prompt_template_id:
             character_template = db.query(PromptTemplate).filter(
@@ -807,15 +804,26 @@ async def generate_scene_image_task(
                 PromptTemplate.type == "character"
             ).order_by(PromptTemplate.created_at.asc()).first()
 
-        # 获取 style（从模板的 style 字段）
+        # 获取 style（优先使用小说配置的 Image Style - 角色模板的 style）
         style = "anime style, high quality, detailed, environment"
-        if template and template.style:
-            style = template.style
-        elif character_template and character_template.style:
+        if character_template and character_template.style:
+            # 优先使用小说配置的 Image Style（角色模板的 style）
             style = character_template.style
+            print(f"[SceneTask] Using character template style (Image Style): {style}")
         elif character_template:
             # 兼容旧模板：从角色模板内容中提取 style
             style = extract_style_from_character_template(character_template.template)
+            print(f"[SceneTask] Extracted style from character template: {style}")
+        elif template and template.style:
+            # 最后使用场景模板的 style 作为后备
+            style = template.style
+            print(f"[SceneTask] Using scene template style: {style}")
+        
+        print(f"[SceneTask] Final style: {style}")
+
+        # 构建提示词（只使用 setting 字段，传入 style）
+        prompt = build_scene_prompt(name, setting, "", template.template if template else None, style)
+        print(f"[SceneTask] Generated prompt: {prompt[:100]}...")
 
         task.current_step = f"使用模板: {template.name if template else '默认'}, 提示词: {prompt[:80]}..."
 

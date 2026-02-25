@@ -164,8 +164,8 @@ export default {
     parseScenesResult: '新增 {created} 个场景，更新 {updated} 个场景',
     noNewScenes: '未发现新场景',
     viewScenes: '查看场景',
-    characterPromptLabel: '角色生成提示词模板',
-    characterPromptHint: '选择用于生成角色人设图的提示词模板',
+    characterPromptLabel: '图像风格',
+    characterPromptHint: '选择用于生成图片的图像风格模板',
     splitPromptLabel: '分镜拆分提示词模板',
     splitPromptHint: '选择用于拆分章节为分镜的提示词模板',
     aiParseCharactersTitle: 'AI解析角色',
@@ -190,6 +190,7 @@ export default {
     incrementalUpdateDesc: '开启后只更新空字段，保留已有信息',
     // 创建/编辑小说弹窗
     createNovelTitle: '创建小说',
+    editNovel: '编辑小说',
     editNovelTitle: '编辑小说',
     titleLabel: '小说标题',
     authorLabel: '作者',
@@ -591,6 +592,8 @@ export default {
       systemPreset: '系统预设',
       setAsDefault: '设为默认',
       setDefault: '设为默认',
+      setDefaultSuccess: '已设为默认：{name}',
+      setDefaultFailed: '设置默认工作流失败',
       currentDefault: '当前默认',
       // 弹窗
       uploadTitle: '上传{type}工作流',
@@ -941,6 +944,7 @@ export default {
     second: '秒',
     default: '默认',
     reset: '还原',
+    dualReferenceWorkflowNotActive: '当前未切到双图分镜生成工作流，场景图暂不可用',
     
     // 步骤
     stepContent: '原文内容',
@@ -1093,6 +1097,15 @@ export default {
     splitSuccess: '拆分成功',
     splitFailed: '拆分失败',
     splitFailedCheckNetwork: '拆分失败，请检查网络连接',
+    
+    // 场景验证
+    sceneValidation: {
+      warning: '存在不一致场景名，建议重新使用AI拆分分镜头',
+      detected: '检测到 {count} 个分镜使用了不在场景库中的场景',
+      invalidScenesTitle: '检测到 {count} 个分镜使用了不在场景库中的场景：',
+      invalidScenesDetail: 'Shot {shotId}: "{sceneName}"',
+      fixSuggestion: '请修改分镜场景或先到场景库添加对应场景',
+    },
     
     // JSON编辑
     jsonText: 'JSON文本',

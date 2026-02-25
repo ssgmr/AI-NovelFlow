@@ -164,8 +164,8 @@ export default {
     parseScenesResult: 'Created {created} scenes, updated {updated} scenes',
     noNewScenes: 'No new scenes found',
     viewScenes: 'Scenes',
-    characterPromptLabel: 'Character Generation Prompt Template',
-    characterPromptHint: 'Select prompt template for character portrait generation',
+    characterPromptLabel: 'Image Style',
+    characterPromptHint: 'Select image style template for picture generation',
     splitPromptLabel: 'Shot Split Prompt Template',
     splitPromptHint: 'Select prompt template for splitting chapters into shots',
     aiParseCharactersTitle: 'AI Parse Characters',
@@ -190,6 +190,7 @@ export default {
     incrementalUpdateDesc: 'When enabled, only updates empty fields and preserves existing information',
     // Create/Edit Novel Modal
     createNovelTitle: 'Create Novel',
+    editNovel: 'Edit Novel',
     editNovelTitle: 'Edit Novel',
     titleLabel: 'Novel Title',
     authorLabel: 'Author',
@@ -591,6 +592,8 @@ export default {
       systemPreset: 'System Preset',
       setAsDefault: 'Set as Default',
       setDefault: 'Set as Default',
+      setDefaultSuccess: 'Set as default: {name}',
+      setDefaultFailed: 'Failed to set default workflow',
       currentDefault: 'Current Default',
       // Modal
       uploadTitle: 'Upload {type} Workflow',
@@ -941,6 +944,7 @@ export default {
     second: 's',
     default: 'Default',
     reset: 'Reset',
+    dualReferenceWorkflowNotActive: 'Dual reference workflow not selected. Scene images are temporarily unavailable.',
     
     // Steps
     stepContent: 'Original Content',
@@ -1093,6 +1097,15 @@ export default {
     splitSuccess: 'Split successful',
     splitFailed: 'Split failed',
     splitFailedCheckNetwork: 'Split failed, please check network',
+    
+    // Scene Validation
+    sceneValidation: {
+      warning: 'Inconsistent scene names detected, recommend re-splitting with AI',
+      detected: 'Detected {count} shot(s) using scenes not in the scene library',
+      invalidScenesTitle: 'Detected {count} shot(s) using scenes not in the scene library:',
+      invalidScenesDetail: 'Shot {shotId}: "{sceneName}"',
+      fixSuggestion: 'Please modify the shot scene or add the scene to the library first',
+    },
     
     // JSON Editor
     jsonText: 'JSON Text',

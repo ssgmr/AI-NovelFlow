@@ -125,6 +125,9 @@ export default {
 
   novels: {
     ...enUS.novels,
+    characterPromptLabel: '이미지 스타일',
+    characterPromptHint: '이미지 생성용 이미지 스타일 템플릿 선택',
+    editNovel: '소설 편집',
     title: '소설 관리',
     subtitle: '소설 프로젝트 관리 및 정리',
     chapters: '장',
@@ -159,8 +162,6 @@ export default {
     parseScenesResult: '{created}개 장면 추가, {updated}개 장면 업데이트',
     noNewScenes: '새로운 장면이 없습니다',
     viewScenes: '장면',
-    characterPromptLabel: '캐릭터 생성 프롬프트 템플릿',
-    characterPromptHint: '캐릭터 초상화 생성용 프롬프트 템플릿 선택',
     splitPromptLabel: '샷 분할 프롬프트 템플릿',
     splitPromptHint: '장을 샷으로 분할하는 프롬프트 템플릿 선택',
     aiParseCharactersTitle: 'AI 캐릭터 분석',
@@ -320,6 +321,8 @@ export default {
       setAsDefault: '기본으로 설정',
       setDefault: '기본으로 설정',
       currentDefault: '현재 기본값',
+      setDefaultSuccess: '기본값으로 설정됨：{name}',
+      setDefaultFailed: '기본 워크플로우 설정 실패',
       // Modal
       uploadTitle: '{type} 워크플로우 업로드',
       workflowName: '워크플로우 이름',
@@ -909,6 +912,7 @@ export default {
     second: '초',
     default: '기본값',
     reset: '재설정',
+    dualReferenceWorkflowNotActive: '이중 참조 워크플로우가 선택되지 않았습니다. 장면 이미지를 일시적으로 사용할 수 없습니다.',
     
     // 단계
     stepContent: '원문 내용',
@@ -1066,6 +1070,15 @@ export default {
     splitSuccess: '분할 성공',
     splitFailed: '분할 실패',
     splitFailedCheckNetwork: '분할 실패. 네트워크를 확인하세요',
+    
+    // 장면 검증
+    sceneValidation: {
+      warning: '일치하지 않는 장면 이름이 있습니다. AI로 다시 분할하는 것을 권장합니다',
+      detected: '{count}개의 샷이 장면 라이브러리에 없는 장면을 사용하고 있습니다',
+      invalidScenesTitle: '{count}개의 샷이 장면 라이브러리에 없는 장면을 사용하고 있습니다:',
+      invalidScenesDetail: '샷{shotId}: 「{sceneName}」',
+      fixSuggestion: '샷의 장면을 수정하거나 먼저 장면 라이브러리에 장면을 추가하세요',
+    },
     
     // JSON Editor Save
     jsonFormatErrorCheck: 'JSON 형식 오류, 저장 전에 확인하세요',

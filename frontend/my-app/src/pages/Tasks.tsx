@@ -701,13 +701,38 @@ export default function Tasks() {
                             )}
                           </div>
                         ) : task.type === 'shot_video' || task.type === 'chapter_video' || task.type === 'transition_video' ? (
-                          <button
-                            onClick={() => task.resultUrl && setPreviewVideo(task.resultUrl)}
-                            className="text-sm underline inline-flex items-center gap-1 text-green-600 hover:text-green-700"
-                          >
-                            <Play className="h-3 w-3" />
-                            {t('tasks.viewResult')}
-                          </button>
+                          <div>
+                            {/* 视频缩略图预览 */}
+                            <div 
+                              className="relative group inline-block cursor-pointer"
+                              onClick={() => task.resultUrl && setPreviewVideo(task.resultUrl)}
+                            >
+                              <div className="h-32 w-48 bg-gray-900 rounded-lg flex items-center justify-center overflow-hidden">
+                                {/* 使用视频第一帧作为缩略图 */}
+                                <video 
+                                  src={task.resultUrl}
+                                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                  preload="metadata"
+                                />
+                                {/* 播放按钮覆盖层 */}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-12 h-12 bg-black bg-opacity-50 rounded-full flex items-center justify-center group-hover:bg-opacity-70 transition-all group-hover:scale-110">
+                                    <Play className="h-6 w-6 text-white ml-1" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            {/* 视频信息 */}
+                            <div className="mt-1 text-xs text-gray-500">
+                              <button
+                                onClick={() => task.resultUrl && setPreviewVideo(task.resultUrl)}
+                                className="text-green-600 hover:text-green-700 underline inline-flex items-center gap-1"
+                              >
+                                <Play className="h-3 w-3" />
+                                {t('tasks.viewResult')}
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <a 
                             href={task.resultUrl}

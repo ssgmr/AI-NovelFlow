@@ -161,9 +161,10 @@ function DownloadMaterialsCard({
 interface JsonTableEditorProps {
   value: string;
   onChange: (value: string) => void;
+  availableScenes?: string[]; // 场景库中的场景名列表
 }
 
-function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
+function JsonTableEditor({ value, onChange, availableScenes = [] }: JsonTableEditorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string>('');
@@ -172,6 +173,18 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
   const [characterInputs, setCharacterInputs] = useState<Record<number, string>>({});
   // 当前选中的分镜索引
   const [activeShotIndex, setActiveShotIndex] = useState<number>(0);
+  
+  // 验证分镜场景是否在场景库中
+  const getInvalidShotIndices = () => {
+    if (!data?.shots || availableScenes.length === 0) return [];
+    return data.shots
+      .map((shot: any, idx: number) => ({ idx, scene: shot.scene }))
+      .filter((item: any) => item.scene && !availableScenes.includes(item.scene))
+      .map((item: any) => item.idx);
+  };
+  
+  const invalidShotIndices = getInvalidShotIndices();
+  const hasInvalidScenes = invalidShotIndices.length > 0;
 
   // 解析JSON
   useEffect(() => {
@@ -388,23 +401,45 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
         )}
 
         {activeSection === 'shots' && (
-          <div className="space-y-3 h-full flex flex-col">
+          <div className={`space-y-3 h-full flex flex-col ${hasInvalidScenes ? 'border-2 border-red-400 rounded-lg p-2' : ''}`}>
+            {/* 场景验证错误提示 */}
+            {hasInvalidScenes && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-700">
+                    检测到 {invalidShotIndices.length} 个分镜使用了不在场景库中的场景：
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {invalidShotIndices.map((idx: number) => `Shot ${data.shots[idx].id}: "${data.shots[idx].scene}"`).join('、')}
+                  </p>
+                  <p className="text-xs text-red-500 mt-1">
+                    请修改分镜场景或先到场景库添加对应场景
+                  </p>
+                </div>
+              </div>
+            )}
             {/* 分镜 Tab 列表 */}
             {data.shots?.length > 0 && (
               <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-2">
-                {data.shots.map((shot: any, idx: number) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveShotIndex(idx)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-t-md transition-colors ${
-                      activeShotIndex === idx
-                        ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {t('chapterGenerate.shot')}{shot.id}
-                  </button>
-                ))}
+                {data.shots.map((shot: any, idx: number) => {
+                  const isInvalidScene = shot.scene && !availableScenes.includes(shot.scene);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveShotIndex(idx)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-t-md transition-colors ${
+                        activeShotIndex === idx
+                          ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      } ${isInvalidScene ? 'bg-red-100 text-red-600 border-red-400' : ''}`}
+                      title={isInvalidScene ? `场景 "${shot.scene}" 不在场景库中` : ''}
+                    >
+                      {t('chapterGenerate.shot')}{shot.id}
+                      {isInvalidScene && ' ⚠️'}
+                    </button>
+                  );
+                })}
                 <button
                   onClick={addShot}
                   className="px-2 py-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-t-md transition-colors"
@@ -483,7 +518,12 @@ function JsonTableEditor({ value, onChange }: JsonTableEditorProps) {
                             value={shot.scene}
                             onChange={(e) => updateShot(idx, 'scene', e.target.value)}
                             placeholder={t('chapterGenerate.scene')}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            className={`flex-1 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                              shot.scene && !availableScenes.includes(shot.scene)
+                                ? 'border-red-500 bg-red-50 text-red-700 placeholder-red-400'
+                                : 'border-gray-200'
+                            }`}
+                            title={shot.scene && !availableScenes.includes(shot.scene) ? `场景 "${shot.scene}" 不在场景库中，请从场景库选择有效场景` : ''}
                           />
                           <input
                             type="number"
@@ -743,6 +783,22 @@ export default function ChapterGenerate() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   // 编辑器刷新key，用于强制重新挂载表格编辑器（重置内部状态）
   const [editorKey, setEditorKey] = useState<number>(0);
+  
+  // 验证分镜场景是否在场景库中
+  const getInvalidSceneShots = () => {
+    if (!editableJson.trim() || scenes.length === 0) return [];
+    try {
+      const parsed = JSON.parse(editableJson);
+      if (!parsed.shots || !Array.isArray(parsed.shots)) return [];
+      const sceneNames = scenes.map(s => s.name);
+      return parsed.shots.filter((shot: any) => shot.scene && !sceneNames.includes(shot.scene));
+    } catch (e) {
+      return [];
+    }
+  };
+  
+  const invalidSceneShots = getInvalidSceneShots();
+  const hasInvalidScenesInShots = invalidSceneShots.length > 0;
 
   // 小说数据
   const [novel, setNovel] = useState<Novel | null>(null);
@@ -777,6 +833,10 @@ export default function ChapterGenerate() {
   const [selectedTransitionWorkflow, setSelectedTransitionWorkflow] = useState<string>("");  // 选中的工作流ID
   const [transitionDuration, setTransitionDuration] = useState<number>(2);  // 转场时长（秒）默认2秒
   const [showTransitionConfig, setShowTransitionConfig] = useState<boolean>(false);  // 是否显示配置面板
+  
+  // Shot 工作流配置
+  const [shotWorkflows, setShotWorkflows] = useState<any[]>([]);  // shot 工作流列表
+  const [activeShotWorkflow, setActiveShotWorkflow] = useState<any>(null);  // 当前激活的 shot 工作流
 
   // 生成分镜图片
   const handleGenerateShotImage = async (shotIndex: number) => {
@@ -1062,6 +1122,8 @@ export default function ChapterGenerate() {
       fetchChapter();
       // 加载转场工作流列表
       fetchTransitionWorkflows();
+      // 加载 shot 工作流列表
+      fetchShotWorkflows();
     }
   }, [cid, id]);
 
@@ -1436,6 +1498,24 @@ export default function ChapterGenerate() {
       }
     } catch (error) {
       console.error('获取转场工作流失败:', error);
+    }
+  };
+
+  // 获取 shot 工作流列表
+  const fetchShotWorkflows = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/workflows/?type=shot`);
+      const data = await res.json();
+      if (data.success) {
+        setShotWorkflows(data.data || []);
+        // 获取当前激活的工作流
+        const activeWorkflow = data.data.find((w: any) => w.isActive);
+        if (activeWorkflow) {
+          setActiveShotWorkflow(activeWorkflow);
+        }
+      }
+    } catch (error) {
+      console.error('获取 shot 工作流失败:', error);
     }
   };
 
@@ -2177,6 +2257,7 @@ export default function ChapterGenerate() {
           key={editorKey}  // 使用editorKey强制重新挂载，重置内部状态
           value={editableJson}
           onChange={setEditableJson}
+          availableScenes={scenes.map(s => s.name)}
         />
       )}
     </div>
@@ -2270,11 +2351,29 @@ export default function ChapterGenerate() {
               {loading ? t('chapterGenerate.loading') : chapter?.content || t('chapterGenerate.noContent')}
             </p>
             {/* AI拆分分镜头按钮 */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+              {/* 场景名不一致提示 */}
+              {hasInvalidScenesInShots && !isSplitting && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-700">
+                      {t('chapterGenerate.sceneValidation.warning')}
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      {t('chapterGenerate.sceneValidation.detected', { count: invalidSceneShots.length })}
+                    </p>
+                  </div>
+                </div>
+              )}
               <button 
                 onClick={handleSplitChapterClick}
                 disabled={isSplitting}
-                className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`w-full py-3 px-4 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  hasInvalidScenesInShots && !isSplitting
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                }`}
               >
                 {isSplitting ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -2383,6 +2482,17 @@ export default function ChapterGenerate() {
                 {t('chapterGenerate.aiGenerateScene')}
               </Link>
             </div>
+            
+            {/* 双图工作流提示 */}
+            {activeShotWorkflow && activeShotWorkflow.name !== 'Flux2-Klein-9B 分镜生图双图参考' && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-700">
+                  {t('chapterGenerate.dualReferenceWorkflowNotActive')}
+                </p>
+              </div>
+            )}
+            
             <div className="flex gap-4 flex-wrap">
               {(() => {
                 // 获取当前选中的分镜

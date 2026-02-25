@@ -125,6 +125,9 @@ export default {
 
   novels: {
     ...enUS.novels,
+    characterPromptLabel: '画像スタイル',
+    characterPromptHint: '画像生成用の画像スタイルテンプレートを選択',
+    editNovel: '小説を編集',
     title: '小説管理',
     subtitle: '小説プロジェクトの管理と整理',
     chapters: '章',
@@ -159,8 +162,6 @@ export default {
     parseScenesResult: '{created}件のシーンを追加、{updated}件のシーンを更新',
     noNewScenes: '新しいシーンが見つかりません',
     viewScenes: 'シーン',
-    characterPromptLabel: 'キャラクター生成用プロンプトテンプレート',
-    characterPromptHint: 'キャラクター肖像生成用のプロンプトテンプレートを選択',
     splitPromptLabel: 'ショット分割プロンプトテンプレート',
     splitPromptHint: '章をショットに分割するためのプロンプトテンプレートを選択',
     aiParseCharactersTitle: 'AIキャラクター解析',
@@ -324,6 +325,8 @@ export default {
       setAsDefault: 'デフォルトに設定',
       setDefault: 'デフォルトに設定',
       currentDefault: '現在のデフォルト',
+      setDefaultSuccess: 'デフォルトに設定しました：{name}',
+      setDefaultFailed: 'デフォルトワークフローの設定に失敗しました',
       // Modal
       uploadTitle: '{type}ワークフローをアップロード',
       workflowName: 'ワークフロー名',
@@ -913,6 +916,7 @@ export default {
     second: '秒',
     default: 'デフォルト',
     reset: 'リセット',
+    dualReferenceWorkflowNotActive: 'デュアル参照ワークフローが選択されていません。シーン画像は一時的に使用できません。',
     
     // 步骤
     stepContent: '原文コンテンツ',
@@ -1070,6 +1074,15 @@ export default {
     splitSuccess: '分割成功',
     splitFailed: '分割失敗',
     splitFailedCheckNetwork: '分割失敗。ネットワークを確認してください',
+    
+    // シーン検証
+    sceneValidation: {
+      warning: 'シーン名に不一致があります。AIで再分割することをお勧めします',
+      detected: '{count}個のショットがシーンライブラリにないシーンを使用しています',
+      invalidScenesTitle: '{count}個のショットがシーンライブラリにないシーンを使用しています：',
+      invalidScenesDetail: 'ショット{shotId}: 「{sceneName}」',
+      fixSuggestion: 'ショットのシーンを修正するか、先にシーンライブラリにシーンを追加してください',
+    },
     
     // JSON Editor Save
     jsonFormatErrorCheck: 'JSON形式エラー、保存前に確認してください',

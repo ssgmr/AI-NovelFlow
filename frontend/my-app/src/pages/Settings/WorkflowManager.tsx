@@ -111,9 +111,13 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
       });
       if (res.ok) {
         fetchWorkflows();
+        toast.success(t('systemSettings.workflow.setDefaultSuccess', { name: getWorkflowDisplayName(workflow, t) }));
+      } else {
+        toast.error(t('systemSettings.workflow.setDefaultFailed'));
       }
     } catch (error) {
       console.error('设置默认工作流失败:', error);
+      toast.error(t('systemSettings.workflow.setDefaultFailed'));
     }
   };
 
@@ -730,34 +734,34 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
                     rows={2}
                   />
                 </div>
-                {!editingWorkflow.isSystem && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Workflow JSON
-                    </label>
-                    <JSONEditor
-                      value={editForm.workflowJson}
-                      onChange={(value) => setEditForm({ ...editForm, workflowJson: value })}
-                      readOnly={editingWorkflow.isSystem}
-                      height={"300px"}
-                    />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Workflow JSON
+                  </label>
+                  <JSONEditor
+                    value={editForm.workflowJson}
+                    onChange={(value) => setEditForm({ ...editForm, workflowJson: value })}
+                    readOnly={editingWorkflow.isSystem}
+                    height={"300px"}
+                  />
+                </div>
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setEditingWorkflow(null)}
                     className="btn-secondary"
                   >
-                    {t('common.cancel')}
+                    {editingWorkflow.isSystem ? t('common.close') : t('common.cancel')}
                   </button>
-                  <button
-                    type="submit"
-                    disabled={savingEdit}
-                    className="btn-primary"
-                  >
-                    {savingEdit ? t('common.loading') : t('common.save')}
-                  </button>
+                  {!editingWorkflow.isSystem && (
+                    <button
+                      type="submit"
+                      disabled={savingEdit}
+                      className="btn-primary"
+                    >
+                      {savingEdit ? t('common.loading') : t('common.save')}
+                    </button>
+                  )}
                 </div>
               </form>
             )}
