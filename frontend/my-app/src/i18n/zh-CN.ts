@@ -1010,10 +1010,24 @@ export default {
     scene: '场景',
     durationSec: '时长(秒)',
     charactersPlaceholder: '角色（用逗号分隔）',
+    charactersLabel: '角色',
     noShotData: '暂无分镜数据',
     shotId: '镜{id} / 共{total}镜',
     prevShot: '上一镜',
     nextShot: '下一镜',
+    
+    // 角色库和场景库选择
+    selectCharacterFromLibrary: '从角色库选择...',
+    selectSceneFromLibrary: '从场景库选择...',
+    selectCharacterFromChapter: '从章节角色列表选择...',
+    selectSceneFromChapter: '从章节场景列表选择...',
+    noCharactersInLibrary: '角色库中没有角色，请先解析或添加角色',
+    noScenesInLibrary: '场景库中没有场景，请先解析或添加场景',
+    allCharactersAdded: '角色库中的角色已全部添加',
+    allScenesAdded: '场景库中的场景已全部添加',
+    removeCharacter: '移除角色',
+    removeScene: '移除场景',
+    orAddCustom: '或手动输入',
     
     // 合并视频
     mergeVideo: '合并视频',

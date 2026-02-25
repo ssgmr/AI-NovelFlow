@@ -1008,6 +1008,25 @@ export default {
     aiGenerateScene: 'AI 장면 생성',
     noSceneImages: '장면 이미지가 없습니다',
     
+    // 캐릭터 & 장면 라이브러리 선택
+    selectCharacterFromLibrary: '캐릭터 라이브러리에서 선택...',
+    selectSceneFromLibrary: '장면 라이브러리에서 선택...',
+    selectCharacterFromChapter: '챕터 캐릭터 목록에서 선택...',
+    selectSceneFromChapter: '챕터 장면 목록에서 선택...',
+    noCharactersInLibrary: '라이브러리에 캐릭터가 없습니다. 먼저 파싱 또는 추가하세요',
+    noScenesInLibrary: '라이브러리에 장면이 없습니다. 먼저 파싱 또는 추가하세요',
+    allCharactersAdded: '라이브러리의 모든 캐릭터가 추가되었습니다',
+    allScenesAdded: '라이브러리의 모든 장면이 추가되었습니다',
+    removeCharacter: '캐릭터 제거',
+    removeScene: '장면 제거',
+    orAddCustom: '또는 직접 입력',
+    charactersLabel: '캐릭터',
+    uploadImage: '이미지 업로드',
+    uploadSuccess: '이미지 업로드 성공',
+    uploadFailed: '이미지 업로드 실패',
+    selectImage: '이미지 선택',
+    orUploadLocal: '또는 로컬에서 업로드',
+    
     // 샷 이미지
     noShotsToGenerate: '이미지를 생성할 샷이 없습니다',
     pendingShotsInQueue: '{count}개의 샷이 이미 대기열에 있습니다. 기다려 주세요',

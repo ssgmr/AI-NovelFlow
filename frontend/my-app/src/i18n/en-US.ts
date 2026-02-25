@@ -1010,10 +1010,24 @@ export default {
     scene: 'Scene',
     durationSec: 'Duration (sec)',
     charactersPlaceholder: 'Characters (comma separated)',
+    charactersLabel: 'Characters',
     noShotData: 'No shot data',
     shotId: 'Shot {id} / Total {total}',
     prevShot: 'Previous',
     nextShot: 'Next',
+    
+    // Character & Scene Library Selection
+    selectCharacterFromLibrary: 'Select from character library...',
+    selectSceneFromLibrary: 'Select from scene library...',
+    selectCharacterFromChapter: 'Select from chapter characters...',
+    selectSceneFromChapter: 'Select from chapter scenes...',
+    noCharactersInLibrary: 'No characters in library, please parse or add characters first',
+    noScenesInLibrary: 'No scenes in library, please parse or add scenes first',
+    allCharactersAdded: 'All characters from library have been added',
+    allScenesAdded: 'All scenes from library have been added',
+    removeCharacter: 'Remove character',
+    removeScene: 'Remove scene',
+    orAddCustom: 'Or add custom',
     
     // Merge Video
     mergeVideo: 'Merge Videos',

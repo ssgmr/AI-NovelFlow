@@ -163,10 +163,11 @@ interface JsonTableEditorProps {
   value: string;
   onChange: (value: string) => void;
   availableScenes?: string[]; // 场景库中的场景名列表
+  availableCharacters?: string[]; // 角色库中的角色名列表
   activeShotWorkflow?: any; // 当前激活的分镜工作流
 }
 
-function JsonTableEditor({ value, onChange, availableScenes = [], activeShotWorkflow }: JsonTableEditorProps) {
+function JsonTableEditor({ value, onChange, availableScenes = [], availableCharacters = [], activeShotWorkflow }: JsonTableEditorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string>('');
@@ -346,59 +347,115 @@ function JsonTableEditor({ value, onChange, availableScenes = [], activeShotWork
       <div className="flex-1 overflow-auto p-4">
         {activeSection === 'characters' && (
           <div className="space-y-2">
+            {/* 已添加的角色列表 */}
             {data.characters?.map((char: string, idx: number) => (
               <div key={idx} className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={char}
-                  onChange={(e) => updateCharacter(idx, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
+                <span className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium">
+                  {char}
+                </span>
                 <button
                   onClick={() => removeCharacter(idx)}
                   className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                  title={t('chapterGenerate.removeCharacter')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))}
-            <button
-              onClick={addCharacter}
-              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              {t('chapterGenerate.addCharacter')}
-            </button>
+            {/* 从角色库添加角色 */}
+            {(() => {
+              const existingCharacters = data.characters || [];
+              const availableToAdd = availableCharacters.filter(c => !existingCharacters.includes(c));
+              
+              if (availableToAdd.length === 0) {
+                return (
+                  <div className="text-center py-3 text-gray-400 text-sm">
+                    {availableCharacters.length === 0 
+                      ? t('chapterGenerate.noCharactersInLibrary') 
+                      : t('chapterGenerate.allCharactersAdded')}
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="flex items-center gap-2">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const newCharacters = [...(data.characters || []), e.target.value];
+                        updateJson({ ...data, characters: newCharacters });
+                        e.target.value = '';
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    defaultValue=""
+                  >
+                    <option value="">{t('chapterGenerate.selectCharacterFromLibrary')}</option>
+                    {availableToAdd.map((char) => (
+                      <option key={char} value={char}>{char}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
           </div>
         )}
 
         {activeSection === 'scenes' && (
           <div className="space-y-2">
+            {/* 已添加的场景列表 */}
             {data.scenes?.map((scene: string, idx: number) => (
               <div key={idx} className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-green-500 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={scene}
-                  onChange={(e) => updateScene(idx, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
+                <span className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium">
+                  {scene}
+                </span>
                 <button
                   onClick={() => removeScene(idx)}
                   className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                  title={t('chapterGenerate.removeScene')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))}
-            <button
-              onClick={addScene}
-              className="w-full py-2 border border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 text-sm flex items-center justify-center gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              {t('chapterGenerate.addScene')}
-            </button>
+            {/* 从场景库添加场景 */}
+            {(() => {
+              const existingScenes = data.scenes || [];
+              const availableToAdd = availableScenes.filter(s => !existingScenes.includes(s));
+              
+              if (availableToAdd.length === 0) {
+                return (
+                  <div className="text-center py-3 text-gray-400 text-sm">
+                    {availableScenes.length === 0 
+                      ? t('chapterGenerate.noScenesInLibrary') 
+                      : t('chapterGenerate.allScenesAdded')}
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="flex items-center gap-2">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const newScenes = [...(data.scenes || []), e.target.value];
+                        updateJson({ ...data, scenes: newScenes });
+                        e.target.value = '';
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    defaultValue=""
+                  >
+                    <option value="">{t('chapterGenerate.selectSceneFromLibrary')}</option>
+                    {availableToAdd.map((scene) => (
+                      <option key={scene} value={scene}>{scene}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -515,19 +572,21 @@ function JsonTableEditor({ value, onChange, availableScenes = [], activeShotWork
                             rows={8}
                           />
                         </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={shot.scene}
+                        {/* 场景选择器 - 从当前章节场景列表选择 */}
+                        <div className="space-y-2">
+                          <label className="block text-xs text-gray-500 mb-1">{t('chapterGenerate.scene')}</label>
+                          <select
+                            value={shot.scene || ''}
                             onChange={(e) => updateShot(idx, 'scene', e.target.value)}
-                            placeholder={t('chapterGenerate.scene')}
-                            className={`flex-1 px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                              shot.scene && !availableScenes.includes(shot.scene) && activeShotWorkflow?.extension?.reference_image_count === 'dual'
-                                ? 'border-red-500 bg-red-50 text-red-700 placeholder-red-400'
-                                : 'border-gray-200'
-                            }`}
-                            title={shot.scene && !availableScenes.includes(shot.scene) && activeShotWorkflow?.extension?.reference_image_count === 'dual' ? `场景 "${shot.scene}" 不在场景库中，请从场景库选择有效场景` : ''}
-                          />
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                          >
+                            <option value="">{t('chapterGenerate.selectSceneFromChapter')}</option>
+                            {(data.scenes || []).map((scene: string) => (
+                              <option key={scene} value={scene}>{scene}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
                           <input
                             type="number"
                             value={shot.duration}
@@ -536,24 +595,50 @@ function JsonTableEditor({ value, onChange, availableScenes = [], activeShotWork
                             className="w-24 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                           />
                         </div>
-                        <input
-                          type="text"
-                          value={characterInputs[idx] !== undefined ? characterInputs[idx] : shot.characters?.join(', ')}
-                          onChange={(e) => {
-                            setCharacterInputs(prev => ({ ...prev, [idx]: e.target.value }));
-                          }}
-                          onBlur={(e) => {
-                            const chars = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean);
-                            updateShot(idx, 'characters', chars);
-                            setCharacterInputs(prev => {
-                              const newState = { ...prev };
-                              delete newState[idx];
-                              return newState;
-                            });
-                          }}
-                          placeholder={t('chapterGenerate.charactersPlaceholder')}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        />
+                        {/* 角色选择器 - 从当前章节角色列表选择 */}
+                        <div className="space-y-2">
+                          <label className="block text-xs text-gray-500 mb-1">{t('chapterGenerate.charactersLabel')}</label>
+                          {/* 已选角色标签 */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {(shot.characters || []).map((char: string, charIdx: number) => (
+                              <span
+                                key={charIdx}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                              >
+                                <Users className="h-3 w-3" />
+                                {char}
+                                <button
+                                  onClick={() => {
+                                    const newChars = (shot.characters || []).filter((_: string, i: number) => i !== charIdx);
+                                    updateShot(idx, 'characters', newChars);
+                                  }}
+                                  className="ml-1 hover:text-red-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          {/* 从当前章节角色列表选择 */}
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value && !(shot.characters || []).includes(e.target.value)) {
+                                const newChars = [...(shot.characters || []), e.target.value];
+                                updateShot(idx, 'characters', newChars);
+                              }
+                              e.target.value = '';
+                            }}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            defaultValue=""
+                          >
+                            <option value="">{t('chapterGenerate.selectCharacterFromChapter')}</option>
+                            {(data.characters || [])
+                              .filter((c: string) => !(shot.characters || []).includes(c))
+                              .map((char: string) => (
+                                <option key={char} value={char}>{char}</option>
+                              ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2334,6 +2419,7 @@ export default function ChapterGenerate() {
           value={editableJson}
           onChange={setEditableJson}
           availableScenes={scenes.map(s => s.name)}
+          availableCharacters={characters.map(c => c.name)}
           activeShotWorkflow={activeShotWorkflow}
         />
       )}
