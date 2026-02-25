@@ -26,6 +26,23 @@ export interface Workflow {
     character_reference_image_node_id?: string;
     scene_reference_image_node_id?: string;
   };
+  extension?: {
+    reference_image_count?: 'single' | 'dual' | 'triple';
+    [key: string]: any;
+  };
+}
+
+// 扩展属性配置
+export interface ExtensionConfig {
+  name: string;
+  label: string;
+  labelKey: string;
+  options: {
+    value: string;
+    label: string;
+    labelKey: string;
+  }[];
+  default: string;
 }
 
 export interface SettingsFormData {

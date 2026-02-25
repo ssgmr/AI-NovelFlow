@@ -8,6 +8,12 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.config import get_settings
 from app.core.utils import format_datetime
+from app.core.workflow_extensions import (
+    get_extension_config, 
+    get_default_extension, 
+    validate_extension,
+    get_all_extension_configs
+)
 from app.models.workflow import Workflow
 from app.repositories import WorkflowRepository
 
@@ -42,8 +48,10 @@ EXTRA_SYSTEM_WORKFLOWS = [
     {"filename": "character_single.json", "type": "character", "name": "Z-image-turbo 单图生成", "description": "Z-image-turbo【非三视图】"},
     # 双图参考工作流（角色图+场景图）作为分镜生图的默认工作流
     {"filename": "shot_flux2_klein_dual_reference.json", "type": "shot", "name": "Flux2-Klein-9B 分镜生图双图参考", "description": "Flux2-Klein-9B 双图参考工作流，支持角色参考图+场景参考图，保持场景一致性",
-     "node_mapping": {"prompt_node_id": "110", "save_image_node_id": "9", "width_node_id": "123", "height_node_id": "125", "character_reference_image_node_id": "76", "scene_reference_image_node_id": "128"}},
-    {"filename": "shot_flux2_klein.json", "type": "shot", "name": "Flux2-Klein-9B 分镜生图", "description": "Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图"},
+     "node_mapping": {"prompt_node_id": "110", "save_image_node_id": "9", "width_node_id": "123", "height_node_id": "125", "character_reference_image_node_id": "76", "scene_reference_image_node_id": "128"},
+     "extension": {"reference_image_count": "dual"}},  # 双图参考默认为 dual
+    {"filename": "shot_flux2_klein.json", "type": "shot", "name": "Flux2-Klein-9B 分镜生图", "description": "Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图",
+     "extension": {"reference_image_count": "single"}},  # 单图参考默认为 single
     {"filename": "video_ltx2_direct.json", "type": "video", "name": "LTX2 视频生成-直接版", "description": "LTX-2 图生视频，直接使用用户提示词",
      "node_mapping": {"prompt_node_id": "11", "video_save_node_id": "1", "reference_image_node_id": "12", "max_side_node_id": "36", "frame_count_node_id": "35"}},
     {"filename": "video_ltx2_expanded.json", "type": "video", "name": "LTX2 视频生成-扩写版", "description": "LTX-2 图生视频，使用 Qwen3 自动扩写提示词",
@@ -142,6 +150,17 @@ def load_default_workflows(db: Session):
                 if not current_mapping:
                     existing.node_mapping = json.dumps(wf_config["node_mapping"], ensure_ascii=False)
                     print(f"[Workflow] Updated node mapping: {wf_config['name']}")
+            # 更新扩展属性（如果配置中有且未设置）
+            if "extension" in wf_config:
+                current_extension = None
+                if existing.extension:
+                    try:
+                        current_extension = json.loads(existing.extension)
+                    except:
+                        pass
+                if not current_extension:
+                    existing.extension = json.dumps(wf_config["extension"], ensure_ascii=False)
+                    print(f"[Workflow] Updated extension: {wf_config['name']} -> {wf_config['extension']}")
             continue
         
         # 检查该类型是否已有激活的工作流（数据库中）
@@ -168,6 +187,11 @@ def load_default_workflows(db: Session):
         # 设置默认节点映射（如果配置中有）
         if "node_mapping" in wf_config:
             workflow.node_mapping = json.dumps(wf_config["node_mapping"], ensure_ascii=False)
+        # 设置默认扩展属性（如果配置中有）
+        if "extension" in wf_config:
+            workflow.extension = json.dumps(wf_config["extension"], ensure_ascii=False)
+            print(f"[Workflow] Added: {wf_config['name']} with extension {wf_config['extension']} (active={should_be_active})")
+        elif workflow.extension:
             print(f"[Workflow] Added: {wf_config['name']} with node mapping (active={should_be_active})")
         else:
             print(f"[Workflow] Added: {wf_config['name']} (active={should_be_active})")
@@ -256,6 +280,7 @@ async def list_workflows(
                 "isSystem": w.is_system,
                 "isActive": w.is_active,
                 "nodeMapping": json.loads(w.node_mapping) if w.node_mapping else None,
+                "extension": json.loads(w.extension) if w.extension else None,
                 "createdAt": format_datetime(w.created_at),
             }
             for w in workflows
@@ -318,6 +343,7 @@ async def get_workflow(
             "isSystem": workflow.is_system,
             "isActive": workflow.is_active,
             "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
+            "extension": json.loads(workflow.extension) if workflow.extension else None,
             "createdAt": format_datetime(workflow.created_at),
         }
     }
@@ -328,6 +354,7 @@ async def upload_workflow(
     name: str = Form(...),
     type: str = Form(...),
     description: Optional[str] = Form(None),
+    extension: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -365,6 +392,21 @@ async def upload_workflow(
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(workflow_json)
     
+    # 解析并验证扩展属性
+    extension_data = None
+    if extension:
+        try:
+            extension_data = json.loads(extension)
+            is_valid, error_msg = validate_extension(type, extension_data)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=f"无效的扩展属性: {error_msg}")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="扩展属性必须是有效的 JSON 字符串")
+    
+    # 如果没有提供扩展属性，使用默认值
+    if not extension_data:
+        extension_data = get_default_extension(type, name)
+    
     # 创建工作流记录
     workflow = Workflow(
         name=name,
@@ -374,7 +416,8 @@ async def upload_workflow(
         is_system=False,
         is_active=False,  # 上传后不是默认，需要手动设置
         created_by="user",
-        file_path=file_path
+        file_path=file_path,
+        extension=json.dumps(extension_data, ensure_ascii=False) if extension_data else None
     )
     db.add(workflow)
     db.commit()
@@ -424,6 +467,21 @@ async def update_workflow(
                     workflow.node_mapping = json.dumps(mapping, ensure_ascii=False)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"无效的节点映射配置: {str(e)}")
+        # 系统工作流也支持扩展属性配置
+        if "extension" in data:
+            try:
+                if data["extension"] is None:
+                    workflow.extension = None
+                else:
+                    ext = data["extension"]
+                    if not isinstance(ext, dict):
+                        raise ValueError("extension 必须是对象")
+                    is_valid, error_msg = validate_extension(workflow.type, ext)
+                    if not is_valid:
+                        raise ValueError(error_msg)
+                    workflow.extension = json.dumps(ext, ensure_ascii=False)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"无效的扩展属性配置: {str(e)}")
     else:
         # 用户工作流可以修改更多
         if "name" in data:
@@ -459,6 +517,22 @@ async def update_workflow(
                     workflow.node_mapping = json.dumps(mapping, ensure_ascii=False)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"无效的节点映射配置: {str(e)}")
+        
+        # 更新扩展属性配置
+        if "extension" in data:
+            try:
+                if data["extension"] is None:
+                    workflow.extension = None
+                else:
+                    ext = data["extension"]
+                    if not isinstance(ext, dict):
+                        raise ValueError("extension 必须是对象")
+                    is_valid, error_msg = validate_extension(workflow.type, ext)
+                    if not is_valid:
+                        raise ValueError(error_msg)
+                    workflow.extension = json.dumps(ext, ensure_ascii=False)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"无效的扩展属性配置: {str(e)}")
     
     db.commit()
     db.refresh(workflow)
@@ -474,6 +548,7 @@ async def update_workflow(
             "isSystem": workflow.is_system,
             "isActive": workflow.is_active,
             "nodeMapping": json.loads(workflow.node_mapping) if workflow.node_mapping else None,
+            "extension": json.loads(workflow.extension) if workflow.extension else None,
             "createdAt": format_datetime(workflow.created_at),
         }
     }
@@ -519,6 +594,36 @@ async def set_default_workflow(
     return {
         "success": True,
         "message": f"已设为默认{WORKFLOW_TYPES.get(workflow.type, workflow.type)}工作流"
+    }
+
+
+@router.get("/extensions/config/", response_model=dict)
+async def get_extension_configs():
+    """获取所有工作流类型的扩展属性配置"""
+    configs = get_all_extension_configs()
+    return {
+        "success": True,
+        "data": configs
+    }
+
+
+@router.get("/extensions/{workflow_type}/", response_model=dict)
+async def get_extension_config_by_type(workflow_type: str):
+    """获取指定工作流类型的扩展属性配置"""
+    if workflow_type not in WORKFLOW_TYPES:
+        raise HTTPException(status_code=400, detail=f"无效的工作流类型，可选: {list(WORKFLOW_TYPES.keys())}")
+    
+    config = get_extension_config(workflow_type)
+    default = get_default_extension(workflow_type)
+    
+    return {
+        "success": True,
+        "data": {
+            "type": workflow_type,
+            "typeName": WORKFLOW_TYPES.get(workflow_type, workflow_type),
+            "config": config,
+            "default": default
+        }
     }
 
 

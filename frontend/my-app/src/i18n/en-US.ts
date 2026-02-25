@@ -614,6 +614,13 @@ export default {
       jsonEditableTip: 'Editable, please ensure JSON format is correct',
       saving: 'Saving...',
       close: 'Close',
+      // Extension
+      extension: {
+        referenceImageCount: 'Reference Image Count',
+        single: 'Single',
+        dual: 'Dual',
+        triple: 'Triple',
+      },
       // Mapping Config
       mappingConfig: 'Node Mapping',
       mappingConfigIncomplete: 'Mapping configuration incomplete, click to configure',

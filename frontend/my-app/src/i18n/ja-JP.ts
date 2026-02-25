@@ -346,6 +346,13 @@ export default {
       jsonEditableTip: '編集可能、JSON形式が正しいことを確認してください',
       saving: '保存中...',
       close: '閉じる',
+      // 拡張属性
+      extension: {
+        referenceImageCount: '参照画像数',
+        single: 'シングル',
+        dual: 'デュアル',
+        triple: 'トリプル',
+      },
       // Mapping Config
       mappingConfig: 'ノードマッピング',
       mappingConfigIncomplete: 'マッピング設定が不完全です、クリックして設定',

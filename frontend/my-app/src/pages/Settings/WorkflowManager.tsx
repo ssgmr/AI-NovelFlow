@@ -50,11 +50,15 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<'character' | 'scene' | 'shot' | 'video' | 'transition'>('character');
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null });
+  const [uploadExtension, setUploadExtension] = useState<Record<string, string> | null>(null);
   const [uploading, setUploading] = useState(false);
+  // 扩展属性配置
+  const [extensionConfigs, setExtensionConfigs] = useState<Record<string, any>>({});
   
   // 编辑弹窗
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [editForm, setEditForm] = useState({ name: '', description: '', workflowJson: '' });
+  const [editExtension, setEditExtension] = useState<Record<string, string> | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   
@@ -88,7 +92,30 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
 
   useEffect(() => {
     fetchWorkflows();
+    fetchExtensionConfigs();
   }, []);
+
+  // 当上传类型改变时，重置扩展属性
+  useEffect(() => {
+    const config = extensionConfigs[uploadType];
+    if (config) {
+      setUploadExtension({ [config.name]: config.default });
+    } else {
+      setUploadExtension(null);
+    }
+  }, [uploadType, extensionConfigs]);
+
+  const fetchExtensionConfigs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/workflows/extensions/config/`);
+      const data = await res.json();
+      if (data.success) {
+        setExtensionConfigs(data.data);
+      }
+    } catch (error) {
+      console.error('加载扩展属性配置失败:', error);
+    }
+  };
 
   const fetchWorkflows = async () => {
     try {
@@ -149,6 +176,9 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
     formData.append('name', uploadForm.name);
     formData.append('type', uploadType);
     formData.append('description', uploadForm.description || '');
+    if (uploadExtension) {
+      formData.append('extension', JSON.stringify(uploadExtension));
+    }
     formData.append('file', uploadForm.file);
     
     try {
@@ -210,6 +240,13 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
           description: displayDescription,
           workflowJson: formattedJson
         });
+        
+        // 设置扩展属性
+        if (wf.extension) {
+          setEditExtension(wf.extension);
+        } else {
+          setEditExtension(null);
+        }
       } else {
         toast.error(data.message || t('systemSettings.workflow.loadingFailed'));
         setEditingWorkflow(null);
@@ -245,6 +282,11 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
           setSavingEdit(false);
           return;
         }
+      }
+      
+      // 添加扩展属性
+      if (editExtension) {
+        payload.extension = editExtension;
       }
       
       const res = await fetch(`${API_BASE}/workflows/${editingWorkflow.id}/`, {
@@ -550,6 +592,23 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
                               {getWorkflowDisplayDescription(workflow, t)}
                             </p>
                           )}
+                          {/* 扩展属性显示 */}
+                          {workflow.extension && extensionConfigs[workflow.type] && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs text-gray-400">
+                                {t(extensionConfigs[workflow.type].labelKey, { defaultValue: extensionConfigs[workflow.type].label })}:
+                              </span>
+                              <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">
+                                {(() => {
+                                  const config = extensionConfigs[workflow.type];
+                                  const propName = config.name;
+                                  const value = workflow.extension?.[propName];
+                                  const option = config.options.find((opt: any) => opt.value === value);
+                                  return option ? t(option.labelKey, { defaultValue: option.label }) : value;
+                                })()}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -653,6 +712,33 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
                   rows={2}
                 />
               </div>
+              {/* 扩展属性选择 */}
+              {extensionConfigs[uploadType] && uploadExtension && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t(extensionConfigs[uploadType].labelKey, { defaultValue: extensionConfigs[uploadType].label })}
+                  </label>
+                  <div className="flex gap-2">
+                    {extensionConfigs[uploadType].options.map((option: any) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          const config = extensionConfigs[uploadType];
+                          setUploadExtension({ [config.name]: option.value });
+                        }}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                          uploadExtension[extensionConfigs[uploadType].name] === option.value
+                            ? 'bg-primary-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {t(option.labelKey, { defaultValue: option.label })}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t('systemSettings.workflow.file')}
@@ -734,6 +820,33 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
                     rows={2}
                   />
                 </div>
+                {/* 扩展属性编辑 */}
+                {editingWorkflow && extensionConfigs[editingWorkflow.type] && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t(extensionConfigs[editingWorkflow.type].labelKey, { defaultValue: extensionConfigs[editingWorkflow.type].label })}
+                    </label>
+                    <div className="flex gap-2">
+                      {extensionConfigs[editingWorkflow.type].options.map((option: any) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            const config = extensionConfigs[editingWorkflow.type];
+                            setEditExtension({ [config.name]: option.value });
+                          }}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                            editExtension?.[extensionConfigs[editingWorkflow.type].name] === option.value
+                              ? 'bg-primary-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {t(option.labelKey, { defaultValue: option.label })}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Workflow JSON

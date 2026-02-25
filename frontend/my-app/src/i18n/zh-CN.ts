@@ -614,6 +614,13 @@ export default {
       jsonEditableTip: '可编辑，请确保 JSON 格式正确',
       saving: '保存中...',
       close: '关闭',
+      // 扩展属性
+      extension: {
+        referenceImageCount: '参考图数量',
+        single: '单图',
+        dual: '双图',
+        triple: '三图',
+      },
       // 映射配置
       mappingConfig: '映射配置',
       mappingConfigIncomplete: '映射配置不完整，请点击配置',

@@ -342,6 +342,13 @@ export default {
       jsonEditableTip: '편집 가능, JSON 형식이 올바른지 확인하세요',
       saving: '저장 중...',
       close: '닫기',
+      // 확장 속성
+      extension: {
+        referenceImageCount: '참조 이미지 수',
+        single: '단일',
+        dual: '이중',
+        triple: '삼중',
+      },
       // Mapping Config
       mappingConfig: '노드 매핑',
       mappingConfigIncomplete: '매핑 설정이 불완전합니다, 클릭하여 설정',
