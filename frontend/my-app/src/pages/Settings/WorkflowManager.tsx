@@ -751,15 +751,17 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
                     onClick={() => setEditingWorkflow(null)}
                     className="btn-secondary"
                   >
-                    {t('common.cancel')}
+                    {editingWorkflow.isSystem ? t('common.close') : t('common.cancel')}
                   </button>
-                  <button
-                    type="submit"
-                    disabled={savingEdit}
-                    className="btn-primary"
-                  >
-                    {savingEdit ? t('common.loading') : t('common.save')}
-                  </button>
+                  {!editingWorkflow.isSystem && (
+                    <button
+                      type="submit"
+                      disabled={savingEdit}
+                      className="btn-primary"
+                    >
+                      {savingEdit ? t('common.loading') : t('common.save')}
+                    </button>
+                  )}
                 </div>
               </form>
             )}
