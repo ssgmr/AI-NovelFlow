@@ -804,18 +804,20 @@ async def generate_scene_image_task(
                 PromptTemplate.type == "character"
             ).order_by(PromptTemplate.created_at.asc()).first()
 
-        # 获取 style（从模板的 style 字段）
+        # 获取 style（优先使用小说配置的 Image Style - 角色模板的 style）
         style = "anime style, high quality, detailed, environment"
-        if template and template.style:
-            style = template.style
-            print(f"[SceneTask] Using scene template style: {style}")
-        elif character_template and character_template.style:
+        if character_template and character_template.style:
+            # 优先使用小说配置的 Image Style（角色模板的 style）
             style = character_template.style
-            print(f"[SceneTask] Using character template style: {style}")
+            print(f"[SceneTask] Using character template style (Image Style): {style}")
         elif character_template:
             # 兼容旧模板：从角色模板内容中提取 style
             style = extract_style_from_character_template(character_template.template)
             print(f"[SceneTask] Extracted style from character template: {style}")
+        elif template and template.style:
+            # 最后使用场景模板的 style 作为后备
+            style = template.style
+            print(f"[SceneTask] Using scene template style: {style}")
         
         print(f"[SceneTask] Final style: {style}")
 
