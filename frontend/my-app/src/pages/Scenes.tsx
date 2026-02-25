@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,7 +13,8 @@ import {
   ChevronRight,
   AlertTriangle,
   Wand2,
-  Sparkles
+  Sparkles,
+  Upload
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Scene, Novel } from '../types';
@@ -65,6 +66,11 @@ export default function Scenes() {
   
   // 批量生成所有场景图
   const [generatingAll, setGeneratingAll] = useState(false);
+  
+  // 上传状态
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [currentUploadSceneId, setCurrentUploadSceneId] = useState<string | null>(null);
   
   // 场景提示词
   const [scenePrompts, setScenePrompts] = useState<Record<string, { prompt: string; templateName: string; templateId?: string; isSystem?: boolean }>>({});
@@ -500,6 +506,61 @@ export default function Scenes() {
     }, 5000);
   };
 
+  // 触发文件选择
+  const triggerFileUpload = (sceneId: string) => {
+    setCurrentUploadSceneId(sceneId);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // 上传场景图片
+  const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUploadSceneId) return;
+    
+    // 验证文件类型
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(t('common.error') + ': 仅支持 PNG, JPG, WEBP 格式');
+      return;
+    }
+    
+    setUploadingId(currentUploadSceneId);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(`${API_BASE}/scenes/${currentUploadSceneId}/upload-image`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // 更新本地场景列表
+        setScenes(prev => prev.map(s => 
+          s.id === currentUploadSceneId ? { ...s, ...data.data } : s
+        ));
+        toast.success(t('scenes.uploadSuccess'));
+      } else {
+        toast.error(data.message || t('scenes.uploadFailed'));
+      }
+    } catch (error) {
+      console.error('上传图片失败:', error);
+      toast.error(t('scenes.uploadFailed'));
+    } finally {
+      setUploadingId(null);
+      setCurrentUploadSceneId(null);
+      // 清空文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // 打开图片预览
   const openImagePreview = (url: string, name: string, sceneId: string) => {
     setPreviewImage({ isOpen: true, url, name, sceneId });
@@ -687,6 +748,20 @@ export default function Scenes() {
                   title={t('common.edit')}
                 >
                   <Edit2 className="h-4 w-4" />
+                </button>
+                
+                {/* 上传按钮 - 左下角（编辑按钮右边） */}
+                <button
+                  onClick={() => triggerFileUpload(scene.id)}
+                  disabled={uploadingId === scene.id}
+                  className="absolute bottom-2 left-12 p-2 bg-white/90 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors disabled:opacity-70 opacity-0 group-hover:opacity-100"
+                  title={t('scenes.uploadImage')}
+                >
+                  {uploadingId === scene.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                 </button>
                 
                 {/* AI生成场景图 Button - 右下角，带文字 */}
@@ -999,6 +1074,15 @@ export default function Scenes() {
           </button>
         </div>
       )}
+      
+      {/* 隐藏的文件输入 */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        onChange={handleUploadImage}
+      />
     </div>
   );
 }

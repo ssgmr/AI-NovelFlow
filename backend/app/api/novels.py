@@ -2614,3 +2614,95 @@ async def clear_chapter_resources(
         "message": "章节资源已清除" + ("（包含物理文件）" if file_deleted else "（物理文件清除失败）"),
         "files_deleted": file_deleted
     }
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/shots/{shot_index}/upload-image", response_model=dict)
+async def upload_shot_image(
+    novel_id: str,
+    chapter_id: str,
+    shot_index: int,  # 1-based index
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    上传分镜图片
+    
+    支持用户从本地上传分镜图片，替代AI生成
+    """
+    # 验证文件类型
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"不支持的文件类型: {file.content_type}，仅支持 PNG, JPG, WEBP"
+        )
+    
+    # 获取章节
+    chapter = db.query(Chapter).filter(
+        Chapter.id == chapter_id,
+        Chapter.novel_id == novel_id
+    ).first()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+    
+    # 解析章节数据
+    if not chapter.parsed_data:
+        raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
+    
+    parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
+    shots = parsed_data.get("shots", [])
+    
+    if shot_index < 1 or shot_index > len(shots):
+        raise HTTPException(status_code=400, detail="分镜索引超出范围")
+    
+    try:
+        # 删除旧图片
+        file_storage.delete_shot_image(novel_id, chapter_id, shot_index)
+        
+        # 获取保存路径
+        file_path = file_storage.get_shot_image_path(
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            shot_number=shot_index
+        )
+        
+        # 保存文件
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # 计算访问URL
+        relative_path = file_path.relative_to(file_storage.base_dir)
+        image_url = f"/api/files/{relative_path}"
+        
+        # 更新 parsed_data
+        parsed_data["shots"][shot_index - 1]["image_url"] = image_url
+        parsed_data["shots"][shot_index - 1]["image_path"] = str(file_path)
+        chapter.parsed_data = json.dumps(parsed_data, ensure_ascii=False)
+        
+        # 更新 shot_images 数组
+        shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
+        # 确保数组长度足够
+        while len(shot_images) < shot_index:
+            shot_images.append(None)
+        shot_images[shot_index - 1] = image_url
+        chapter.shot_images = json.dumps(shot_images, ensure_ascii=False)
+        
+        db.commit()
+        db.refresh(chapter)
+        
+        return {
+            "success": True,
+            "data": {
+                "shotIndex": shot_index,
+                "imageUrl": image_url,
+                "parsedData": parsed_data
+            },
+            "message": "分镜图片上传成功"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")

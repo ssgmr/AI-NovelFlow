@@ -299,6 +299,11 @@ export default {
     regenerate: 'Regenerate',
     generatingStatus: 'Generating...',
     descriptionLabel: 'Description',
+    uploadImage: 'Upload Image',
+    uploadSuccess: 'Image uploaded successfully',
+    uploadFailed: 'Image upload failed',
+    selectImage: 'Select Image',
+    orUploadLocal: 'Or upload from local',
   },
 
   // Scenes
@@ -349,6 +354,11 @@ export default {
     next: 'Next (→)',
     promptLabel: 'Generation Prompt',
     regenerate: 'Regenerate',
+    uploadImage: 'Upload Image',
+    uploadSuccess: 'Image uploaded successfully',
+    uploadFailed: 'Image upload failed',
+    selectImage: 'Select Image',
+    orUploadLocal: 'Or upload from local',
   },
 
   // Tasks
@@ -1054,8 +1064,13 @@ export default {
     regenerateShotImage: 'Regenerate Shot Image',
     generateShotImageFirst: 'Please generate shot image first',
     noShotImages: 'No shot images, please use AI shot splitting first',
-    
-    // Shot Videos
+    uploadImage: 'Upload Image',
+    uploadSuccess: 'Image uploaded successfully',
+    uploadFailed: 'Image upload failed',
+    selectImage: 'Select Image',
+    orUploadLocal: 'Or upload from local',
+        
+    // Shot videos
     noShotsToGenerateVideo: 'No shots to generate videos',
     noShotsWithImages: 'No shots available for video generation (please ensure shot images are generated)',
     startBatchGenerateVideos: 'Starting batch generation of {count} shot videos...',

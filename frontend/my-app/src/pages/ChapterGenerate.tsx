@@ -29,7 +29,8 @@ import {
   Trash2,
   AlertCircle,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Upload
 } from 'lucide-react';
 import type { Chapter, Novel } from '../types';
 import { toast } from '../stores/toastStore';
@@ -840,6 +841,10 @@ export default function ChapterGenerate() {
   const [shotWorkflows, setShotWorkflows] = useState<any[]>([]);  // shot 工作流列表
   const [activeShotWorkflow, setActiveShotWorkflow] = useState<any>(null);  // 当前激活的 shot 工作流
 
+  // 分镜图上传状态
+  const [uploadingShotIndex, setUploadingShotIndex] = useState<number | null>(null);
+  const shotFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // 生成分镜图片
   const handleGenerateShotImage = async (shotIndex: number) => {
     setGeneratingShots(prev => new Set(prev).add(shotIndex));
@@ -902,6 +907,75 @@ export default function ChapterGenerate() {
         next.delete(shotIndex);
         return next;
       });
+    }
+  };
+
+  // 触发分镜图文件选择
+  const triggerShotFileUpload = (shotIndex: number) => {
+    if (shotFileInputRef.current) {
+      shotFileInputRef.current.click();
+    }
+  };
+
+  // 上传分镜图片
+  const handleUploadShotImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // 验证文件类型
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(t('common.error') + ': 仅支持 PNG, JPG, WEBP 格式');
+      return;
+    }
+    
+    setUploadingShotIndex(currentShot);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(
+        `${API_BASE}/novels/${id}/chapters/${cid}/shots/${currentShot}/upload-image`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // 更新 shotImages
+        setShotImages(prev => ({
+          ...prev,
+          [currentShot]: data.data.imageUrl
+        }));
+        // 更新 parsedData
+        setParsedData((prev: any) => {
+          if (!prev) return prev;
+          const newShots = [...prev.shots];
+          if (newShots[currentShot - 1]) {
+            newShots[currentShot - 1] = {
+              ...newShots[currentShot - 1],
+              image_url: data.data.imageUrl
+            };
+          }
+          return { ...prev, shots: newShots };
+        });
+        toast.success(t('chapterGenerate.uploadSuccess'));
+      } else {
+        toast.error(data.message || t('chapterGenerate.uploadFailed'));
+      }
+    } catch (error) {
+      console.error('上传分镜图片失败:', error);
+      toast.error(t('chapterGenerate.uploadFailed'));
+    } finally {
+      setUploadingShotIndex(null);
+      // 清空文件输入
+      if (shotFileInputRef.current) {
+        shotFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -2728,6 +2802,19 @@ export default function ChapterGenerate() {
                       <><RefreshCw className="h-3 w-3 mr-1" />{t('chapterGenerate.regenerateShotImage')}</>
                     )}
                   </button>
+                  {/* 本地上传分镜图按钮 */}
+                  <button 
+                    onClick={() => triggerShotFileUpload(currentShot)}
+                    disabled={uploadingShotIndex === currentShot || generatingShots.has(currentShot) || pendingShots.has(currentShot)}
+                    className="btn-secondary text-sm py-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 disabled:opacity-50"
+                    title={t('chapterGenerate.orUploadLocal')}
+                  >
+                    {uploadingShotIndex === currentShot ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{t('common.upload')}...</>
+                    ) : (
+                      <><Upload className="h-3 w-3 mr-1" />{t('chapterGenerate.uploadImage')}</>
+                    )}
+                  </button>
                   {/* 生成分镜视频按钮 - 只有当前分镜有图片时才可点击 */}
                   <button 
                     onClick={() => handleGenerateShotVideo(currentShot)}
@@ -3167,6 +3254,15 @@ export default function ChapterGenerate() {
           </div>
         </div>
       )}
+
+      {/* 隐藏的文件输入元素 - 分镜图上传 */}
+      <input
+        type="file"
+        ref={shotFileInputRef}
+        onChange={handleUploadShotImage}
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        className="hidden"
+      />
 
       {/* AI拆分确认对话框 */}
       {splitConfirmDialog.isOpen && (

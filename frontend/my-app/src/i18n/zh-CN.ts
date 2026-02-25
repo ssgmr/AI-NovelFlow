@@ -299,6 +299,11 @@ export default {
     regenerate: '重新生成',
     generatingStatus: '生成中...',
     descriptionLabel: '描述',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
   },
 
   // 场景库
@@ -349,6 +354,11 @@ export default {
     next: '下一个 (→)',
     promptLabel: '生成提示词',
     regenerate: '重新生成',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
   },
 
   // 任务队列
@@ -1054,6 +1064,11 @@ export default {
     regenerateShotImage: '重新生成分镜图',
     generateShotImageFirst: '请先生成分镜图片',
     noShotImages: '暂无分镜图片，请先进行AI拆分',
+    uploadImage: '上传图片',
+    uploadSuccess: '图片上传成功',
+    uploadFailed: '图片上传失败',
+    selectImage: '选择图片',
+    orUploadLocal: '或从本地上传',
     
     // 分镜视频
     noShotsToGenerateVideo: '没有可分镜的视频',

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 import json
 from datetime import datetime
@@ -513,3 +513,76 @@ async def parse_scenes(
         import traceback
         traceback.print_exc()
         return {"success": False, "message": f"解析异常: {str(e)}"}
+
+
+@router.post("/{scene_id}/upload-image", response_model=dict)
+async def upload_scene_image(
+    scene_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    scene_repo: SceneRepository = Depends(get_scene_repo),
+    novel_repo: NovelRepository = Depends(get_novel_repo)
+):
+    """
+    上传场景图片
+    
+    支持用户从本地上传场景图片，替代AI生成
+    """
+    from app.services.file_storage import file_storage
+    
+    scene = scene_repo.get_by_id(scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="场景不存在")
+    
+    # 验证文件类型
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"不支持的文件类型: {file.content_type}，仅支持 PNG, JPG, WEBP"
+        )
+    
+    try:
+        # 获取保存路径
+        file_path = file_storage.get_scene_image_path(
+            novel_id=scene.novel_id,
+            scene_name=scene.name
+        )
+        
+        # 保存文件
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        # 计算访问URL
+        relative_path = file_path.relative_to(file_storage.base_dir)
+        image_url = f"/api/files/{relative_path}"
+        
+        # 更新场景记录
+        scene.image_url = image_url
+        scene.generating_status = "completed"  # 标记为已完成
+        db.commit()
+        db.refresh(scene)
+        
+        novel = novel_repo.get_by_id(scene.novel_id)
+        
+        return {
+            "success": True,
+            "data": {
+                "id": scene.id,
+                "novelId": scene.novel_id,
+                "name": scene.name,
+                "description": scene.description,
+                "setting": scene.setting,
+                "imageUrl": scene.image_url,
+                "generatingStatus": scene.generating_status,
+                "novelName": novel.title if novel else None,
+                "updatedAt": scene.updated_at.isoformat() if scene.updated_at else None,
+            },
+            "message": "图片上传成功"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
