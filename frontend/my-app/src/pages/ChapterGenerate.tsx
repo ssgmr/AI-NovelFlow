@@ -162,9 +162,10 @@ interface JsonTableEditorProps {
   value: string;
   onChange: (value: string) => void;
   availableScenes?: string[]; // 场景库中的场景名列表
+  activeShotWorkflow?: any; // 当前激活的分镜工作流
 }
 
-function JsonTableEditor({ value, onChange, availableScenes = [] }: JsonTableEditorProps) {
+function JsonTableEditor({ value, onChange, availableScenes = [], activeShotWorkflow }: JsonTableEditorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string>('');
@@ -401,9 +402,9 @@ function JsonTableEditor({ value, onChange, availableScenes = [] }: JsonTableEdi
         )}
 
         {activeSection === 'shots' && (
-          <div className={`space-y-3 h-full flex flex-col ${hasInvalidScenes ? 'border-2 border-red-400 rounded-lg p-2' : ''}`}>
-            {/* 场景验证错误提示 */}
-            {hasInvalidScenes && (
+          <div className={`space-y-3 h-full flex flex-col ${hasInvalidScenes && activeShotWorkflow?.extension?.reference_image_count === 'dual' ? 'border-2 border-red-400 rounded-lg p-2' : ''}`}>
+            {/* 场景验证错误提示 - 只有双图工作流时才显示 */}
+            {hasInvalidScenes && activeShotWorkflow?.extension?.reference_image_count === 'dual' && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -2258,6 +2259,7 @@ export default function ChapterGenerate() {
           value={editableJson}
           onChange={setEditableJson}
           availableScenes={scenes.map(s => s.name)}
+          activeShotWorkflow={activeShotWorkflow}
         />
       )}
     </div>
@@ -2352,8 +2354,8 @@ export default function ChapterGenerate() {
             </p>
             {/* AI拆分分镜头按钮 */}
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-              {/* 场景名不一致提示 */}
-              {hasInvalidScenesInShots && !isSplitting && (
+              {/* 场景名不一致提示 - 只有双图工作流时才显示 */}
+              {hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual' && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -2370,7 +2372,7 @@ export default function ChapterGenerate() {
                 onClick={handleSplitChapterClick}
                 disabled={isSplitting}
                 className={`w-full py-3 px-4 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  hasInvalidScenesInShots && !isSplitting
+                  hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual'
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
                 }`}
