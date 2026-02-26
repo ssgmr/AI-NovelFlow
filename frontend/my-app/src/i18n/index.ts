@@ -1,8 +1,8 @@
-import zhCN from './zh-CN';
-import zhTW from './zh-TW';
-import enUS from './en-US';
-import jaJP from './ja-JP';
-import koKR from './ko-KR';
+import zhCN from './locales/zh-CN';
+import zhTW from './locales/zh-TW';
+import enUS from './locales/en-US';
+import jaJP from './locales/ja-JP';
+import koKR from './locales/ko-KR';
 
 export type Language = 'zh-CN' | 'zh-TW' | 'en-US' | 'ja-JP' | 'ko-KR';
 

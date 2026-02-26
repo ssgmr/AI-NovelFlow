@@ -70,3 +70,43 @@ class CharacterRepository:
         """删除角色"""
         self.db.delete(character)
         self.db.commit()
+    
+    def list_all(self) -> List[Character]:
+        """获取所有角色（按创建时间倒序）"""
+        return self.db.query(Character).order_by(Character.created_at.desc()).all()
+    
+    def delete_by_novel(self, novel_id: str) -> int:
+        """删除小说的所有角色，返回删除数量"""
+        count = self.db.query(Character).filter(Character.novel_id == novel_id).delete()
+        self.db.commit()
+        return count
+    
+    def create_from_schema(self, novel_id: str, name: str, description: str = "", 
+                          appearance: str = "") -> Character:
+        """从 Schema 数据创建角色"""
+        return self.create(
+            novel_id=novel_id,
+            name=name,
+            description=description,
+            appearance=appearance
+        )
+    
+    def update_from_schema(self, character: Character, name: str = None, 
+                          description: str = None, appearance: str = None) -> Character:
+        """从 Schema 数据更新角色"""
+        update_data = {}
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if appearance is not None:
+            update_data["appearance"] = appearance
+        return self.update(character, **update_data)
+    
+    def update_appearance(self, character: Character, appearance: str) -> Character:
+        """更新角色外貌"""
+        return self.update(character, appearance=appearance)
+    
+    def update_image(self, character: Character, image_url: str, generating_status: str = "completed") -> Character:
+        """更新角色图片"""
+        return self.update(character, image_url=image_url, generating_status=generating_status)

@@ -4,13 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import { Save, Loader2, Bot, Network, Server, CheckCircle } from 'lucide-react';
 import { useTranslation } from '../../stores/i18nStore';
 import { toast } from '../../stores/toastStore';
-import LLMConfig from './LLMConfig';
-import ProxyConfigPanel from './ProxyConfig';
-import ComfyUIConfig from './ComfyUIConfig';
-import WorkflowManager from './WorkflowManager';
+import LLMConfig from './components/LLMConfig';
+import ProxyConfigPanel from './components/ProxyConfig';
+import ComfyUIConfig from './components/ComfyUIConfig';
+import WorkflowManager from './components/WorkflowManager';
 import type { SettingsFormData } from './types';
-
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+import { configApi } from '../../api/config';
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -36,27 +35,24 @@ export default function Settings() {
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const res = await fetch(`${API_BASE}/config/`);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[Settings/index] API response:', data);
-          if (data.success && data.data) {
-            const config = data.data;
-            setFormData({
-              llmProvider: config.llmProvider || 'deepseek',
-              llmModel: config.llmModel || 'deepseek-chat',
-              llmApiKey: '', // API Key 不从前端获取
-              llmApiUrl: config.llmApiUrl || 'https://api.deepseek.com',
-              llmMaxTokens: config.llmMaxTokens,
-              llmTemperature: config.llmTemperature,
-              proxy: config.proxyEnabled !== undefined ? {
-                enabled: config.proxyEnabled,
-                httpProxy: config.httpProxy || '',
-                httpsProxy: config.httpsProxy || '',
-              } : { enabled: false, httpProxy: '', httpsProxy: '' },
-              comfyUIHost: config.comfyUIHost || 'http://localhost:8188',
-            });
-          }
+        const result = await configApi.get();
+        console.log('[Settings/index] API response:', result);
+        if (result.success && result.data) {
+          const config = result.data as any;
+          setFormData({
+            llmProvider: config.llmProvider || 'deepseek',
+            llmModel: config.llmModel || 'deepseek-chat',
+            llmApiKey: '', // API Key 不从前端获取
+            llmApiUrl: config.llmApiUrl || 'https://api.deepseek.com',
+            llmMaxTokens: config.llmMaxTokens,
+            llmTemperature: config.llmTemperature,
+            proxy: config.proxyEnabled !== undefined ? {
+              enabled: config.proxyEnabled,
+              httpProxy: config.httpProxy || '',
+              httpsProxy: config.httpsProxy || '',
+            } : { enabled: false, httpProxy: '', httpsProxy: '' },
+            comfyUIHost: config.comfyUIHost || 'http://localhost:8188',
+          });
         }
       } catch (error) {
         console.error('加载配置失败:', error);
@@ -70,31 +66,26 @@ export default function Settings() {
     setSaving(true);
     
     try {
-      const res = await fetch(`${API_BASE}/config/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          llm: {
-            provider: formData.llmProvider,
-            model: formData.llmModel,
-            apiKey: formData.llmApiKey,
-            apiUrl: formData.llmApiUrl,
-            maxTokens: formData.llmMaxTokens,
-            temperature: formData.llmTemperature,
-          },
-          proxy: formData.proxy,
-          comfyUIHost: formData.comfyUIHost,
-        }),
-      });
+      const result = await configApi.update({
+        llm: {
+          provider: formData.llmProvider,
+          model: formData.llmModel,
+          apiKey: formData.llmApiKey,
+          apiUrl: formData.llmApiUrl,
+          maxTokens: formData.llmMaxTokens,
+          temperature: formData.llmTemperature,
+        },
+        proxy: formData.proxy,
+        comfyUIHost: formData.comfyUIHost,
+      } as any);
       
-      if (res.ok) {
+      if (result.success) {
         isUserModifiedRef.current = false;
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         toast.success(t('systemSettings.configSaved'));
       } else {
-        const errorData = await res.json();
-        console.error('保存配置失败:', errorData);
+        console.error('保存配置失败:', result.message);
         toast.error(t('systemSettings.configSaveFailed'));
       }
     } catch (error) {

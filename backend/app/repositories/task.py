@@ -166,3 +166,122 @@ class TaskRepository:
         workflow_ids = {t.workflow_id for t in tasks if t.workflow_id}
         
         return tasks, novel_ids, chapter_ids, workflow_ids
+    
+    def get_active_shot_task(
+        self, 
+        novel_id: str, 
+        chapter_id: str, 
+        shot_index: int, 
+        task_type: str = "shot_image"
+    ) -> Optional[Task]:
+        """获取分镜进行中的任务"""
+        return self.db.query(Task).filter(
+            Task.novel_id == novel_id,
+            Task.chapter_id == chapter_id,
+            Task.type == task_type,
+            Task.name.like(f"%镜{shot_index}%"),
+            Task.status.in_(["pending", "running"])
+        ).first()
+    
+    def get_failed_shot_task(
+        self, 
+        novel_id: str, 
+        chapter_id: str, 
+        shot_index: int, 
+        task_type: str = "shot_video"
+    ) -> Optional[Task]:
+        """获取失败的分镜任务"""
+        return self.db.query(Task).filter(
+            Task.novel_id == novel_id,
+            Task.chapter_id == chapter_id,
+            Task.type == task_type,
+            Task.name.like(f"%镜{shot_index}%"),
+            Task.status == "failed"
+        ).first()
+    
+    def get_transition_task(
+        self, 
+        novel_id: str, 
+        chapter_id: str, 
+        from_index: int, 
+        to_index: int
+    ) -> Optional[Task]:
+        """获取转场视频任务"""
+        return self.db.query(Task).filter(
+            Task.novel_id == novel_id,
+            Task.chapter_id == chapter_id,
+            Task.type == "transition_video",
+            Task.name.like(f"%镜{from_index}-镜{to_index}%"),
+            Task.status.in_(["pending", "running"])
+        ).first()
+    
+    def create_shot_image_task(
+        self,
+        novel_id: str,
+        chapter_id: str,
+        shot_index: int,
+        chapter_title: str,
+        workflow_id: str,
+        workflow_name: str
+    ) -> Task:
+        """创建分镜图片生成任务"""
+        task = Task(
+            type="shot_image",
+            name=f"生成分镜图: 镜{shot_index}",
+            description=f"为章节 '{chapter_title}' 的分镜 {shot_index} 生成图片",
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            status="pending",
+            workflow_id=workflow_id,
+            workflow_name=workflow_name
+        )
+        return self.create(task)
+    
+    def create_shot_video_task(
+        self,
+        novel_id: str,
+        chapter_id: str,
+        shot_index: int,
+        shot_duration: int,
+        chapter_title: str,
+        workflow_id: str,
+        workflow_name: str
+    ) -> Task:
+        """创建分镜视频生成任务"""
+        task = Task(
+            type="shot_video",
+            name=f"生成视频: 镜{shot_index}",
+            description=f"为章节 '{chapter_title}' 的分镜 {shot_index} 生成视频 (时长: {shot_duration}s)",
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            status="pending",
+            workflow_id=workflow_id,
+            workflow_name=workflow_name
+        )
+        return self.create(task)
+    
+    def create_transition_video_task(
+        self,
+        novel_id: str,
+        chapter_id: str,
+        from_index: int,
+        to_index: int,
+        chapter_title: str,
+        workflow_id: str,
+        workflow_name: str,
+        frame_count: int = 49
+    ) -> Task:
+        """创建转场视频生成任务"""
+        task = Task(
+            type="transition_video",
+            name=f"生成转场视频: 镜{from_index}→镜{to_index}",
+            description=f"为章节 '{chapter_title}' 的分镜 {from_index} 到 {to_index} 生成转场过渡视频",
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            status="pending",
+            progress=0,
+            current_step="等待处理",
+            workflow_id=workflow_id,
+            workflow_name=workflow_name
+        )
+        return self.create(task)

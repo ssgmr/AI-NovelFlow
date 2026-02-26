@@ -80,3 +80,43 @@ class SceneRepository:
         """删除场景"""
         self.db.delete(scene)
         self.db.commit()
+    
+    def list_all(self) -> List[Scene]:
+        """获取所有场景（按创建时间倒序）"""
+        return self.db.query(Scene).order_by(Scene.created_at.desc()).all()
+    
+    def delete_by_novel(self, novel_id: str) -> int:
+        """删除小说的所有场景，返回删除数量"""
+        count = self.db.query(Scene).filter(Scene.novel_id == novel_id).delete()
+        self.db.commit()
+        return count
+    
+    def create_from_schema(self, novel_id: str, name: str, description: str = "", 
+                          setting: str = "") -> Scene:
+        """从 Schema 数据创建场景"""
+        return self.create(
+            novel_id=novel_id,
+            name=name,
+            description=description,
+            setting=setting
+        )
+    
+    def update_from_schema(self, scene: Scene, name: str = None, 
+                          description: str = None, setting: str = None) -> Scene:
+        """从 Schema 数据更新场景"""
+        update_data = {}
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if setting is not None:
+            update_data["setting"] = setting
+        return self.update(scene, **update_data)
+    
+    def update_setting(self, scene: Scene, setting: str) -> Scene:
+        """更新场景设定"""
+        return self.update(scene, setting=setting)
+    
+    def update_image(self, scene: Scene, image_url: str, generating_status: str = "completed") -> Scene:
+        """更新场景图片"""
+        return self.update(scene, image_url=image_url, generating_status=generating_status)
