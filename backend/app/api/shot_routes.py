@@ -1,3 +1,6 @@
+"""
+分镜路由 - 分镜图/视频/转场生成相关接口
+"""
 import json
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
@@ -6,26 +9,19 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.novel import Novel, Chapter
-from app.models.prompt_template import PromptTemplate
 from app.models.task import Task
 from app.models.workflow import Workflow
-from app.schemas.novel import NovelCreate
-from app.services.llm_service import LLMService
 from app.services.comfyui import ComfyUIService
 from app.services.file_storage import file_storage
 from app.services.novel_service import NovelService, generate_shot_task, generate_shot_video_task, generate_transition_video_task
 from app.services.task_service import TaskService
-from app.repositories import NovelRepository, ChapterRepository, CharacterRepository, SceneRepository
+from app.repositories import NovelRepository, ChapterRepository, TaskRepository, WorkflowRepository
+from app.schemas.shot import TransitionVideoRequest, BatchTransitionRequest, MergeVideosRequest
 from app.utils.time_utils import format_datetime
 
-# 注意：不要在模块级别创建 LLMService 实例
-# 因为配置可能在运行时更新，每次使用时应创建新实例
+router = APIRouter()
+
 comfyui_service = ComfyUIService()
-
-
-def get_llm_service() -> LLMService:
-    """获取 LLMService 实例（每次调用创建新实例以获取最新配置）"""
-    return LLMService()
 
 
 def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
@@ -38,449 +34,14 @@ def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
     return ChapterRepository(db)
 
 
-def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
-    """获取 CharacterRepository 实例"""
-    return CharacterRepository(db)
+def get_task_repo(db: Session = Depends(get_db)) -> TaskRepository:
+    """获取 TaskRepository 实例"""
+    return TaskRepository(db)
 
 
-def get_scene_repo(db: Session = Depends(get_db)) -> SceneRepository:
-    """获取 SceneRepository 实例"""
-    return SceneRepository(db)
-
-
-router = APIRouter()
-
-
-# ==================== 小说 CRUD ====================
-
-@router.get("/", response_model=dict)
-async def list_novels(novel_repo: NovelRepository = Depends(get_novel_repo)):
-    """获取小说列表"""
-    result = novel_repo.list_with_cover()
-    return {
-        "success": True,
-        "data": result
-    }
-
-
-@router.post("/", response_model=dict)
-async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
-    """创建新小说"""
-    # 如果没有指定提示词模板，使用默认系统模板
-    prompt_template_id = novel.prompt_template_id
-    if not prompt_template_id:
-        default_template = db.query(PromptTemplate).filter(
-            PromptTemplate.is_system == True
-        ).order_by(PromptTemplate.created_at.asc()).first()
-        if default_template:
-            prompt_template_id = default_template.id
-    
-    db_novel = Novel(
-        title=novel.title,
-        author=novel.author,
-        description=novel.description,
-        prompt_template_id=prompt_template_id,
-        chapter_split_prompt_template_id=novel.chapter_split_prompt_template_id,
-        aspect_ratio=novel.aspect_ratio or "16:9",
-    )
-    db.add(db_novel)
-    db.commit()
-    db.refresh(db_novel)
-    return {
-        "success": True,
-        "data": {
-            "id": db_novel.id,
-            "title": db_novel.title,
-            "author": db_novel.author,
-            "description": db_novel.description,
-            "cover": db_novel.cover,
-            "status": db_novel.status,
-            "chapterCount": db_novel.chapter_count,
-            "promptTemplateId": db_novel.prompt_template_id,
-            "chapterSplitPromptTemplateId": db_novel.chapter_split_prompt_template_id,
-            "aspectRatio": db_novel.aspect_ratio or "16:9",
-            "createdAt": format_datetime(db_novel.created_at),
-        }
-    }
-
-
-@router.get("/{novel_id}", response_model=dict)
-async def get_novel(novel_id: str, novel_repo: NovelRepository = Depends(get_novel_repo)):
-    """获取小说详情"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    return {
-        "success": True,
-        "data": novel_repo.to_response(novel)
-    }
-
-
-@router.put("/{novel_id}", response_model=dict)
-async def update_novel(
-    novel_id: str, 
-    data: dict, 
-    db: Session = Depends(get_db), 
-    novel_repo: NovelRepository = Depends(get_novel_repo)
-):
-    """更新小说信息"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    # 更新字段
-    update_fields = {
-        "title": "title",
-        "author": "author", 
-        "description": "description",
-        "promptTemplateId": "prompt_template_id",
-        "chapterSplitPromptTemplateId": "chapter_split_prompt_template_id",
-        "aspectRatio": "aspect_ratio",
-    }
-    
-    for api_field, db_field in update_fields.items():
-        if api_field in data:
-            setattr(novel, db_field, data[api_field])
-    
-    db.commit()
-    db.refresh(novel)
-    
-    return {
-        "success": True,
-        "data": {
-            **novel_repo.to_response(novel),
-            "updatedAt": format_datetime(novel.updated_at),
-        }
-    }
-
-
-@router.delete("/{novel_id}")
-async def delete_novel(
-    novel_id: str, 
-    db: Session = Depends(get_db), 
-    novel_repo: NovelRepository = Depends(get_novel_repo)
-):
-    """删除小说"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    db.delete(novel)
-    db.commit()
-    
-    return {"success": True, "message": "删除成功"}
-
-
-# ==================== 小说解析 ====================
-
-@router.post("/{novel_id}/parse", response_model=dict)
-async def parse_novel(
-    novel_id: str, 
-    db: Session = Depends(get_db), 
-    novel_repo: NovelRepository = Depends(get_novel_repo), 
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """解析小说内容，提取角色和场景"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    # 获取所有章节内容
-    chapters = chapter_repo.list_by_novel(novel_id)
-    full_text = "\n\n".join([c.content for c in chapters if c.content])
-    
-    # 更新状态为解析中
-    novel.status = "processing"
-    db.commit()
-    
-    # 异步解析
-    async def do_parse():
-        try:
-            result = await get_llm_service().parse_novel_text(full_text)
-            
-            # 保存解析结果到各个章节
-            for chapter in chapters:
-                if chapter.content:
-                    chapter.parsed_data = result
-            
-            novel.status = "completed"
-            db.commit()
-        except Exception as e:
-            novel.status = "failed"
-            db.commit()
-    
-    asyncio.create_task(do_parse())
-    
-    return {"success": True, "message": "解析任务已启动"}
-
-
-@router.post("/{novel_id}/parse-characters/", response_model=dict)
-async def parse_characters(
-    novel_id: str, 
-    sync: bool = False,
-    start_chapter: int = None,
-    end_chapter: int = None,
-    is_incremental: bool = False,
-    db: Session = Depends(get_db),
-    novel_repo: NovelRepository = Depends(get_novel_repo),
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
-    character_repo: CharacterRepository = Depends(get_character_repo)
-):
-    """解析小说内容，自动提取角色信息（支持章节范围和增量更新）"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    # 获取指定章节范围的章节
-    chapters = chapter_repo.get_by_range(novel_id, start_chapter, end_chapter)
-    
-    if not chapters:
-        return {"success": False, "message": "指定章节范围内没有内容"}
-    
-    service = NovelService(db)
-    return await service.parse_characters(
-        novel_id=novel_id,
-        chapters=chapters,
-        start_chapter=start_chapter,
-        end_chapter=end_chapter,
-        is_incremental=is_incremental,
-        character_repo=character_repo
-    )
-
-
-# ==================== 章节 CRUD ====================
-
-@router.get("/{novel_id}/chapters", response_model=dict)
-async def list_chapters(
-    novel_id: str, 
-    novel_repo: NovelRepository = Depends(get_novel_repo), 
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """获取章节列表"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    chapters = chapter_repo.list_by_novel(novel_id)
-    return {
-        "success": True,
-        "data": [chapter_repo.to_response(c) for c in chapters]
-    }
-
-
-@router.post("/{novel_id}/chapters", response_model=dict)
-async def create_chapter(
-    novel_id: str, 
-    data: dict, 
-    db: Session = Depends(get_db), 
-    novel_repo: NovelRepository = Depends(get_novel_repo), 
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """创建章节"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    chapter = Chapter(
-        novel_id=novel_id,
-        number=data.get("number", 1),
-        title=data["title"],
-        content=data.get("content", ""),
-    )
-    db.add(chapter)
-    
-    # 更新章节数
-    novel.chapter_count = chapter_repo.count_by_novel(novel_id) + 1
-    
-    db.commit()
-    db.refresh(chapter)
-    
-    return {
-        "success": True,
-        "data": chapter_repo.to_response(chapter)
-    }
-
-
-@router.get("/{novel_id}/chapters/{chapter_id}", response_model=dict)
-async def get_chapter(
-    novel_id: str, 
-    chapter_id: str, 
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """获取章节详情"""
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    return {
-        "success": True,
-        "data": chapter_repo.to_detail_response(chapter)
-    }
-
-
-@router.put("/{novel_id}/chapters/{chapter_id}", response_model=dict)
-async def update_chapter(
-    novel_id: str, 
-    chapter_id: str, 
-    data: dict, 
-    db: Session = Depends(get_db),
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """更新章节"""
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    if "title" in data:
-        chapter.title = data["title"]
-    if "content" in data:
-        chapter.content = data["content"]
-    if "parsedData" in data:
-        chapter.parsed_data = data["parsedData"]
-    
-    db.commit()
-    db.refresh(chapter)
-    
-    return {
-        "success": True,
-        "data": {
-            **chapter_repo.to_response(chapter),
-            "content": chapter.content,
-            "parsedData": chapter.parsed_data,
-            "updatedAt": format_datetime(chapter.updated_at),
-        }
-    }
-
-
-@router.delete("/{novel_id}/chapters/{chapter_id}")
-async def delete_chapter(
-    novel_id: str, 
-    chapter_id: str, 
-    db: Session = Depends(get_db), 
-    novel_repo: NovelRepository = Depends(get_novel_repo), 
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
-):
-    """删除章节"""
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    db.delete(chapter)
-    
-    # 更新小说章节数
-    novel = novel_repo.get_by_id(novel_id)
-    if novel:
-        novel.chapter_count = chapter_repo.count_by_novel(novel_id) - 1
-    
-    db.commit()
-    
-    return {"success": True, "message": "删除成功"}
-
-
-# ==================== 章节角色/场景解析 ====================
-
-@router.post("/{novel_id}/chapters/{chapter_id}/parse-characters/", response_model=dict)
-async def parse_chapter_characters(
-    novel_id: str,
-    chapter_id: str,
-    is_incremental: bool = True,
-    db: Session = Depends(get_db),
-    novel_repo: NovelRepository = Depends(get_novel_repo),
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
-    character_repo: CharacterRepository = Depends(get_character_repo)
-):
-    """解析单章节内容，提取角色信息（支持增量更新）"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    if not chapter.content:
-        return {"success": False, "message": "章节内容为空"}
-    
-    service = NovelService(db)
-    return await service.parse_characters(
-        novel_id=novel_id,
-        chapters=[chapter],
-        start_chapter=chapter.number,
-        end_chapter=chapter.number,
-        is_incremental=is_incremental,
-        character_repo=character_repo
-    )
-
-
-@router.post("/{novel_id}/chapters/{chapter_id}/parse-scenes/", response_model=dict)
-async def parse_chapter_scenes(
-    novel_id: str,
-    chapter_id: str,
-    is_incremental: bool = True,
-    db: Session = Depends(get_db),
-    novel_repo: NovelRepository = Depends(get_novel_repo),
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
-    scene_repo: SceneRepository = Depends(get_scene_repo)
-):
-    """解析单章节内容，提取场景信息（支持增量更新）"""
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    if not chapter.content:
-        return {"success": False, "message": "章节内容为空"}
-    
-    service = NovelService(db)
-    return await service.parse_scenes(
-        novel_id=novel_id,
-        chapter=chapter,
-        is_incremental=is_incremental,
-        scene_repo=scene_repo
-    )
-
-
-# ==================== 章节拆分 ====================
-
-@router.post("/{novel_id}/chapters/{chapter_id}/split", response_model=dict)
-async def split_chapter(
-    novel_id: str, 
-    chapter_id: str, 
-    db: Session = Depends(get_db),
-    novel_repo: NovelRepository = Depends(get_novel_repo),
-    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
-    character_repo: CharacterRepository = Depends(get_character_repo),
-    scene_repo: SceneRepository = Depends(get_scene_repo)
-):
-    """使用小说配置的拆分提示词将章节拆分为分镜"""
-    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    
-    novel = novel_repo.get_by_id(novel_id)
-    if not novel:
-        raise HTTPException(status_code=404, detail="小说不存在")
-    
-    # 获取当前小说的所有角色和场景列表
-    character_names = character_repo.get_names_by_novel(novel_id)
-    scene_names = scene_repo.get_names_by_novel(novel_id)
-    
-    service = NovelService(db)
-    return await service.split_chapter(
-        novel=novel,
-        chapter=chapter,
-        character_names=character_names,
-        scene_names=scene_names
-    )
+def get_workflow_repo(db: Session = Depends(get_db)) -> WorkflowRepository:
+    """获取 WorkflowRepository 实例"""
+    return WorkflowRepository(db)
 
 
 # ==================== 分镜图生成 ====================
@@ -490,20 +51,21 @@ async def generate_shot_image(
     novel_id: str,
     chapter_id: str,
     shot_index: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
 ):
     """为指定分镜生成图片（创建后台任务）"""
     # 获取章节
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
     # 获取小说
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
@@ -521,13 +83,7 @@ async def generate_shot_image(
     shot_description = shot.get("description", "")
     
     # 检查是否已有进行中的任务
-    existing_task = db.query(Task).filter(
-        Task.novel_id == novel_id,
-        Task.chapter_id == chapter_id,
-        Task.type == "shot_image",
-        Task.name.like(f"%镜{shot_index}%"),
-        Task.status.in_(["pending", "running"])
-    ).first()
+    existing_task = task_repo.get_active_shot_task(novel_id, chapter_id, shot_index, "shot_image")
     
     if existing_task:
         return {
@@ -540,10 +96,7 @@ async def generate_shot_image(
         }
     
     # 获取激活的分镜生图工作流
-    workflow = db.query(Workflow).filter(
-        Workflow.type == "shot",
-        Workflow.is_active == True
-    ).first()
+    workflow = workflow_repo.get_active_by_type("shot")
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置分镜生图工作流")
@@ -570,20 +123,15 @@ async def generate_shot_image(
     
     db.commit()
     
-    # 创建任务记录
-    task = Task(
-        type="shot_image",
-        name=f"生成分镜图: 镜{shot_index}",
-        description=f"为章节 '{chapter.title}' 的分镜 {shot_index} 生成图片",
+    # 使用 Repository 创建任务记录
+    task = task_repo.create_shot_image_task(
         novel_id=novel_id,
         chapter_id=chapter_id,
-        status="pending",
+        shot_index=shot_index,
+        chapter_title=chapter.title,
         workflow_id=workflow.id,
         workflow_name=workflow.name
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
     
     print(f"[GenerateShot] Created task {task.id} for shot {shot_index}")
     
@@ -616,20 +164,21 @@ async def generate_shot_video(
     novel_id: str,
     chapter_id: str,
     shot_index: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
 ):
     """为指定分镜生成视频（基于已生成的分镜图片）"""
     # 获取章节
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
     # 获取小说
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
@@ -660,13 +209,7 @@ async def generate_shot_video(
         raise HTTPException(status_code=400, detail="该分镜尚未生成图片，请先生成分镜图片")
     
     # 检查是否已有进行中的视频生成任务
-    existing_task = db.query(Task).filter(
-        Task.novel_id == novel_id,
-        Task.chapter_id == chapter_id,
-        Task.type == "shot_video",
-        Task.name.like(f"%镜{shot_index}%"),
-        Task.status.in_(["pending", "running"])
-    ).first()
+    existing_task = task_repo.get_active_shot_task(novel_id, chapter_id, shot_index, "shot_video")
     
     if existing_task:
         return {
@@ -679,18 +222,11 @@ async def generate_shot_video(
         }
     
     # 检查是否有失败的任务，如果有则删除旧任务以便重新生成
-    failed_task = db.query(Task).filter(
-        Task.novel_id == novel_id,
-        Task.chapter_id == chapter_id,
-        Task.type == "shot_video",
-        Task.name.like(f"%镜{shot_index}%"),
-        Task.status == "failed"
-    ).first()
+    failed_task = task_repo.get_failed_shot_task(novel_id, chapter_id, shot_index, "shot_video")
     
     if failed_task:
         print(f"[GenerateVideo] Deleting failed task {failed_task.id} for shot {shot_index} to allow regeneration")
-        db.delete(failed_task)
-        db.commit()
+        task_repo.delete(failed_task)
     
     # 清除该分镜的旧视频记录
     shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
@@ -703,10 +239,7 @@ async def generate_shot_video(
             db.commit()
     
     # 获取激活的视频生成工作流
-    workflow = db.query(Workflow).filter(
-        Workflow.type == "video",
-        Workflow.is_active == True
-    ).first()
+    workflow = workflow_repo.get_active_by_type("video")
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置视频生成工作流，请在系统设置中配置")
@@ -716,20 +249,16 @@ async def generate_shot_video(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
-    # 创建任务记录
-    task = Task(
-        type="shot_video",
-        name=f"生成视频: 镜{shot_index}",
-        description=f"为章节 '{chapter.title}' 的分镜 {shot_index} 生成视频 (时长: {shot_duration}s)",
+    # 使用 Repository 创建任务记录
+    task = task_repo.create_shot_video_task(
         novel_id=novel_id,
         chapter_id=chapter_id,
-        status="pending",
+        shot_index=shot_index,
+        shot_duration=shot_duration,
+        chapter_title=chapter.title,
         workflow_id=workflow.id,
         workflow_name=workflow.name
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
     
     print(f"[GenerateVideo] Created task {task.id} for shot {shot_index}")
     
@@ -761,35 +290,23 @@ async def generate_shot_video(
 async def generate_transition_video(
     novel_id: str,
     chapter_id: str,
-    data: dict,
-    db: Session = Depends(get_db)
+    data: TransitionVideoRequest,
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
 ):
     """
     生成转场视频（两个分镜之间）
-    
-    Request Body:
-    {
-        "from_index": 1,       // 起始分镜索引 (1-based)
-        "to_index": 2,         // 结束分镜索引 (1-based)
-        "frame_count": 49,     // 可选，总帧数（8的倍数+1）
-        "workflow_id": "xxx"   // 可选，指定工作流ID（不指定则使用默认）
-    }
     """
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
-    from_index = data.get("from_index")
-    to_index = data.get("to_index")
-    frame_count = data.get("frame_count", 49)
-    workflow_id = data.get("workflow_id")
-    
-    if not from_index or not to_index:
-        raise HTTPException(status_code=400, detail="缺少 from_index 或 to_index")
+    from_index = data.from_index
+    to_index = data.to_index
+    frame_count = data.frame_count
+    workflow_id = data.workflow_id
     
     # 解析分镜数据
     parsed_data = json.loads(chapter.parsed_data) if chapter.parsed_data else {}
@@ -808,13 +325,7 @@ async def generate_transition_video(
         raise HTTPException(status_code=400, detail="分镜视频尚未生成，请先生成分镜视频")
     
     # 检查是否已有进行中的转场视频任务
-    existing_task = db.query(Task).filter(
-        Task.novel_id == novel_id,
-        Task.chapter_id == chapter_id,
-        Task.type == "transition_video",
-        Task.name.like(f"%镜{from_index}-镜{to_index}%"),
-        Task.status.in_(["pending", "running"])
-    ).first()
+    existing_task = task_repo.get_transition_task(novel_id, chapter_id, from_index, to_index)
     
     if existing_task:
         return {
@@ -826,14 +337,11 @@ async def generate_transition_video(
     
     # 获取转场视频工作流
     if workflow_id:
-        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        workflow = workflow_repo.get_by_id(workflow_id)
         if not workflow:
             raise HTTPException(status_code=400, detail="指定的工作流不存在")
     else:
-        workflow = db.query(Workflow).filter(
-            Workflow.type == "transition",
-            Workflow.is_active == True
-        ).first()
+        workflow = workflow_repo.get_active_by_type("transition")
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置转场视频工作流，请在系统设置中配置")
@@ -843,22 +351,17 @@ async def generate_transition_video(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
-    # 创建任务记录
-    task = Task(
-        type="transition_video",
-        name=f"生成转场视频: 镜{from_index}→镜{to_index}",
-        description=f"为章节 '{chapter.title}' 的分镜 {from_index} 到 {to_index} 生成转场过渡视频",
+    # 使用 Repository 创建任务记录
+    task = task_repo.create_transition_video_task(
         novel_id=novel_id,
         chapter_id=chapter_id,
-        status="pending",
-        progress=0,
-        current_step="等待处理",
+        from_index=from_index,
+        to_index=to_index,
+        chapter_title=chapter.title,
         workflow_id=workflow.id,
-        workflow_name=workflow.name
+        workflow_name=workflow.name,
+        frame_count=frame_count
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
     
     print(f"[Transition] Created task {task.id} for transition {from_index}->{to_index} using workflow {workflow.name}")
     
@@ -887,14 +390,14 @@ async def generate_transition_video(
 async def generate_all_transitions(
     novel_id: str,
     chapter_id: str,
-    data: dict = {},
-    db: Session = Depends(get_db)
+    data: BatchTransitionRequest = BatchTransitionRequest(),
+    db: Session = Depends(get_db),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
 ):
     """一键生成所有相邻分镜之间的转场视频"""
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
@@ -912,19 +415,16 @@ async def generate_all_transitions(
     if len(shot_videos) < len(shots):
         raise HTTPException(status_code=400, detail="部分分镜视频尚未生成，请先生成所有分镜视频")
     
-    frame_count = data.get("frame_count", 49)
-    workflow_id = data.get("workflow_id")
+    frame_count = data.frame_count
+    workflow_id = data.workflow_id
     
     # 获取转场视频工作流
     if workflow_id:
-        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+        workflow = workflow_repo.get_by_id(workflow_id)
         if not workflow:
             raise HTTPException(status_code=400, detail="指定的工作流不存在")
     else:
-        workflow = db.query(Workflow).filter(
-            Workflow.type == "transition",
-            Workflow.is_active == True
-        ).first()
+        workflow = workflow_repo.get_active_by_type("transition")
     
     if not workflow:
         raise HTTPException(status_code=400, detail="未配置转场视频工作流")
@@ -936,33 +436,22 @@ async def generate_all_transitions(
         to_idx = i + 1
         
         # 检查是否已有进行中的任务
-        existing_task = db.query(Task).filter(
-            Task.novel_id == novel_id,
-            Task.chapter_id == chapter_id,
-            Task.type == "transition_video",
-            Task.name.like(f"%镜{from_idx}-镜{to_idx}%"),
-            Task.status.in_(["pending", "running"])
-        ).first()
+        existing_task = task_repo.get_transition_task(novel_id, chapter_id, from_idx, to_idx)
         
         if existing_task:
             task_ids.append(existing_task.id)
             continue
         
-        task = Task(
-            type="transition_video",
-            name=f"生成转场视频: 镜{from_idx}→镜{to_idx}",
-            description=f"为章节 '{chapter.title}' 的分镜 {from_idx} 到 {to_idx} 生成转场过渡视频",
+        task = task_repo.create_transition_video_task(
             novel_id=novel_id,
             chapter_id=chapter_id,
-            status="pending",
-            progress=0,
-            current_step="等待处理",
+            from_index=from_idx,
+            to_index=to_idx,
+            chapter_title=chapter.title,
             workflow_id=workflow.id,
-            workflow_name=workflow.name
+            workflow_name=workflow.name,
+            frame_count=frame_count
         )
-        db.add(task)
-        db.commit()
-        db.refresh(task)
         task_ids.append(task.id)
         
         asyncio.create_task(
@@ -991,17 +480,15 @@ async def generate_all_transitions(
 async def download_chapter_materials(
     novel_id: str,
     chapter_id: str,
-    db: Session = Depends(get_db)
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
 ):
     """下载章节素材 ZIP 包"""
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
@@ -1025,22 +512,20 @@ async def download_chapter_materials(
 async def merge_chapter_videos(
     novel_id: str,
     chapter_id: str,
-    data: dict,
-    db: Session = Depends(get_db)
+    data: MergeVideosRequest,
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
 ):
     """合并章节视频"""
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
-    include_transitions = data.get("include_transitions", False)
+    include_transitions = data.include_transitions
     
     # 获取视频列表
     shot_videos = json.loads(chapter.shot_videos) if chapter.shot_videos else []
@@ -1065,6 +550,7 @@ async def merge_chapter_videos(
             "success": False,
             "message": "视频文件不存在"
         }
+    
     
     # 获取转场视频路径
     trans_paths = []
@@ -1116,17 +602,16 @@ async def merge_chapter_videos(
 async def clear_chapter_resources(
     novel_id: str,
     chapter_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
 ):
     """清除章节的所有生成资源（用于重新拆分分镜头前）"""
-    novel = db.query(Novel).filter(Novel.id == novel_id).first()
+    novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
     
@@ -1158,7 +643,8 @@ async def upload_shot_image(
     chapter_id: str,
     shot_index: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
 ):
     """上传分镜图片"""
     # 验证文件类型
@@ -1170,10 +656,7 @@ async def upload_shot_image(
         )
     
     # 获取章节
-    chapter = db.query(Chapter).filter(
-        Chapter.id == chapter_id,
-        Chapter.novel_id == novel_id
-    ).first()
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
     
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")

@@ -5,8 +5,9 @@ from typing import Optional
 from app.core.database import get_db
 from app.utils.time_utils import format_datetime
 from app.models.test_case import TestCase
-from app.models.novel import Novel, Chapter, Character
+from app.models.novel import Novel
 from app.repositories import TestCaseRepository
+from app.schemas.test_case import TestCaseCreate, TestCaseUpdate
 
 router = APIRouter()
 
@@ -20,12 +21,9 @@ def get_testcase_repo(db: Session = Depends(get_db)) -> TestCaseRepository:
 async def list_test_cases(
     type: Optional[str] = None,
     is_preset: Optional[bool] = None,
-    db: Session = Depends(get_db),
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """获取测试用例列表"""
-    test_cases = testcase_repo.list_by_filters(test_type=type, is_preset=is_preset)
-    
     # 预设测试用例名称到翻译键的映射
     PRESET_NAME_KEYS = {
         "皇帝的新装 - 完整流程测试": "testCases.presets.emperor.name",
@@ -43,14 +41,16 @@ async def list_test_cases(
         "主要角色：小马、马妈妈、老牛、小松鼠": "testCases.presets.xiaoMa.notes",
     }
     
-    # 获取关联的小说信息
+    # 使用 Repository 获取数据
+    test_cases_with_details = testcase_repo.list_test_cases_with_details(
+        test_type=type, 
+        is_preset=is_preset
+    )
+    
     result = []
-    for tc in test_cases:
-        novel = db.query(Novel).filter(Novel.id == tc.novel_id).first()
-        
-        # 获取统计数据
-        chapter_count = db.query(Chapter).filter(Chapter.novel_id == tc.novel_id).count()
-        character_count = db.query(Character).filter(Character.novel_id == tc.novel_id).count()
+    for item in test_cases_with_details:
+        tc = item["test_case"]
+        novel = item["novel"]
         
         # 如果是预设测试用例，添加翻译键
         name_key = PRESET_NAME_KEYS.get(tc.name) if tc.is_preset else None
@@ -68,8 +68,8 @@ async def list_test_cases(
             "isPreset": tc.is_preset,
             "novelId": tc.novel_id,
             "novelTitle": novel.title if novel else "未知",
-            "chapterCount": chapter_count,
-            "characterCount": character_count,
+            "chapterCount": item["chapter_count"],
+            "characterCount": item["character_count"],
             "expectedCharacterCount": tc.expected_character_count,
             "expectedShotCount": tc.expected_shot_count,
             "notes": tc.notes,
@@ -86,22 +86,17 @@ async def list_test_cases(
 @router.get("/{test_case_id}", response_model=dict)
 async def get_test_case(
     test_case_id: str, 
-    db: Session = Depends(get_db),
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """获取测试用例详情"""
-    tc = testcase_repo.get_by_id(test_case_id)
-    if not tc:
+    data = testcase_repo.get_test_case_with_novel(test_case_id)
+    if not data:
         raise HTTPException(status_code=404, detail="测试用例不存在")
     
-    # 获取小说详情
-    novel = db.query(Novel).filter(Novel.id == tc.novel_id).first()
-    
-    # 获取章节列表
-    chapters = db.query(Chapter).filter(Chapter.novel_id == tc.novel_id).order_by(Chapter.number).all()
-    
-    # 获取角色列表
-    characters = db.query(Character).filter(Character.novel_id == tc.novel_id).all()
+    tc = data["test_case"]
+    novel = data["novel"]
+    chapters = data["chapters"]
+    characters = data["characters"]
     
     return {
         "success": True,
@@ -145,24 +140,23 @@ async def get_test_case(
 
 @router.post("/", response_model=dict)
 async def create_test_case(
-    data: dict, 
-    db: Session = Depends(get_db),
+    data: TestCaseCreate,
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """创建测试用例"""
     # 验证小说存在
-    novel = db.query(Novel).filter(Novel.id == data.get('novelId')).first()
+    novel = testcase_repo.get_novel_by_id(data.novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
 
     test_case = TestCase(
-        name=data.get('name'),
-        description=data.get('description'),
-        novel_id=data.get('novelId'),
-        type=data.get('type', 'full'),
-        expected_character_count=data.get('expectedCharacterCount'),
-        expected_shot_count=data.get('expectedShotCount'),
-        notes=data.get('notes'),
+        name=data.name,
+        description=data.description,
+        novel_id=data.novel_id,
+        type=data.type,
+        expected_character_count=data.expected_character_count,
+        expected_shot_count=data.expected_shot_count,
+        notes=data.notes,
         is_preset=False,  # 用户创建的不是预设
     )
     test_case = testcase_repo.create(test_case)
@@ -181,8 +175,7 @@ async def create_test_case(
 @router.put("/{test_case_id}", response_model=dict)
 async def update_test_case(
     test_case_id: str, 
-    data: dict, 
-    db: Session = Depends(get_db),
+    data: TestCaseUpdate,
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """更新测试用例"""
@@ -190,23 +183,12 @@ async def update_test_case(
     if not tc:
         raise HTTPException(status_code=404, detail="测试用例不存在")
     
-    if "name" in data:
-        tc.name = data["name"]
-    if "description" in data:
-        tc.description = data["description"]
-    if "type" in data:
-        tc.type = data["type"]
-    if "isActive" in data:
-        tc.is_active = data["isActive"]
-    if "expectedCharacterCount" in data:
-        tc.expected_character_count = data["expectedCharacterCount"]
-    if "expectedShotCount" in data:
-        tc.expected_shot_count = data["expectedShotCount"]
-    if "notes" in data:
-        tc.notes = data["notes"]
+    # 使用 Schema 更新字段
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(tc, key, value)
     
-    db.commit()
-    db.refresh(tc)
+    tc = testcase_repo.update(tc)
     
     return {
         "success": True,
@@ -222,7 +204,6 @@ async def update_test_case(
 @router.delete("/{test_case_id}")
 async def delete_test_case(
     test_case_id: str, 
-    db: Session = Depends(get_db),
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """删除测试用例"""
@@ -242,7 +223,6 @@ async def delete_test_case(
 @router.post("/{test_case_id}/run")
 async def run_test_case(
     test_case_id: str,
-    db: Session = Depends(get_db),
     testcase_repo: TestCaseRepository = Depends(get_testcase_repo)
 ):
     """运行测试用例"""

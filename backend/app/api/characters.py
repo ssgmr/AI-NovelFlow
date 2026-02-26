@@ -11,7 +11,8 @@ from app.services.llm_service import LLMService
 from app.services.prompt_builder import (
     build_character_prompt
 )
-from app.repositories import NovelRepository, CharacterRepository
+from app.repositories import NovelRepository, CharacterRepository, PromptTemplateRepository
+from app.schemas.character import CharacterCreate, CharacterUpdate
 
 router = APIRouter()
 settings = get_settings()
@@ -33,13 +34,22 @@ def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
     return CharacterRepository(db)
 
 
+def get_prompt_template_repo(db: Session = Depends(get_db)) -> PromptTemplateRepository:
+    """获取 PromptTemplateRepository 实例"""
+    return PromptTemplateRepository(db)
+
+
 @router.get("/", response_model=dict)
-async def list_characters(novel_id: str = None, db: Session = Depends(get_db), novel_repo: NovelRepository = Depends(get_novel_repo), character_repo: CharacterRepository = Depends(get_character_repo)):
+async def list_characters(
+    novel_id: str = None, 
+    novel_repo: NovelRepository = Depends(get_novel_repo), 
+    character_repo: CharacterRepository = Depends(get_character_repo)
+):
     """获取角色列表"""
     if novel_id:
         characters = character_repo.list_by_novel(novel_id)
     else:
-        characters = db.query(Character).order_by(Character.created_at.desc()).all()
+        characters = character_repo.list_all()
     
     result = []
     for c in characters:
@@ -100,25 +110,22 @@ async def get_character(character_id: str, novel_repo: NovelRepository = Depends
 
 @router.post("/", response_model=dict)
 async def create_character(
-    data: dict,
-    db: Session = Depends(get_db),
+    data: CharacterCreate,
+    character_repo: CharacterRepository = Depends(get_character_repo),
     novel_repo: NovelRepository = Depends(get_novel_repo)
 ):
     """创建角色"""
     # 验证小说存在
-    novel = novel_repo.get_by_id(data.get('novelId'))
+    novel = novel_repo.get_by_id(data.novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    character = Character(
-        novel_id=data.get('novelId'),
-        name=data.get('name'),
-        description=data.get('description', ''),
-        appearance=data.get('appearance', ''),
+    character = character_repo.create_from_schema(
+        novel_id=data.novel_id,
+        name=data.name,
+        description=data.description or "",
+        appearance=data.appearance or ""
     )
-    db.add(character)
-    db.commit()
-    db.refresh(character)
     
     return {
         "success": True,
@@ -138,22 +145,21 @@ async def create_character(
 @router.put("/{character_id}", response_model=dict)
 async def update_character(
     character_id: str,
-    data: dict,
-    db: Session = Depends(get_db),
-    novel_repo: NovelRepository = Depends(get_novel_repo),
-    character_repo: CharacterRepository = Depends(get_character_repo)
+    data: CharacterUpdate,
+    character_repo: CharacterRepository = Depends(get_character_repo),
+    novel_repo: NovelRepository = Depends(get_novel_repo)
 ):
     """更新角色"""
     character = character_repo.get_by_id(character_id)
     if not character:
         raise HTTPException(status_code=404, detail="角色不存在")
     
-    character.name = data.get('name', character.name)
-    character.description = data.get('description', character.description)
-    character.appearance = data.get('appearance', character.appearance)
-    
-    db.commit()
-    db.refresh(character)
+    character = character_repo.update_from_schema(
+        character=character,
+        name=data.name,
+        description=data.description,
+        appearance=data.appearance
+    )
     
     novel = novel_repo.get_by_id(character.novel_id)
     
@@ -173,20 +179,23 @@ async def update_character(
 
 
 @router.delete("/{character_id}")
-async def delete_character(character_id: str, db: Session = Depends(get_db), character_repo: CharacterRepository = Depends(get_character_repo)):
+async def delete_character(character_id: str, character_repo: CharacterRepository = Depends(get_character_repo)):
     """删除角色"""
     character = character_repo.get_by_id(character_id)
     if not character:
         raise HTTPException(status_code=404, detail="角色不存在")
     
-    db.delete(character)
-    db.commit()
+    character_repo.delete(character)
     
     return {"success": True, "message": "删除成功"}
 
 
 @router.delete("/")
-async def delete_characters_by_novel(novel_id: str = Query(..., description="小说ID"), db: Session = Depends(get_db), novel_repo: NovelRepository = Depends(get_novel_repo)):
+async def delete_characters_by_novel(
+    novel_id: str = Query(..., description="小说ID"), 
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    character_repo: CharacterRepository = Depends(get_character_repo)
+):
     """删除指定小说的所有角色"""
     # 检查小说是否存在
     novel = novel_repo.get_by_id(novel_id)
@@ -194,8 +203,7 @@ async def delete_characters_by_novel(novel_id: str = Query(..., description="小
         raise HTTPException(status_code=404, detail="小说不存在")
     
     # 删除该小说的所有角色
-    result = db.query(Character).filter(Character.novel_id == novel_id).delete()
-    db.commit()
+    result = character_repo.delete_by_novel(novel_id)
     
     # 删除角色图片目录
     from app.services.file_storage import file_storage
@@ -224,7 +232,12 @@ async def clear_characters_dir(novel_id: str = Query(..., description="小说ID"
 
 
 @router.get("/{character_id}/prompt", response_model=dict)
-async def get_character_prompt(character_id: str, db: Session = Depends(get_db), novel_repo: NovelRepository = Depends(get_novel_repo), character_repo: CharacterRepository = Depends(get_character_repo)):
+async def get_character_prompt(
+    character_id: str, 
+    novel_repo: NovelRepository = Depends(get_novel_repo), 
+    character_repo: CharacterRepository = Depends(get_character_repo),
+    prompt_template_repo: PromptTemplateRepository = Depends(get_prompt_template_repo)
+):
     """获取角色生成时使用的拼接后提示词"""
     character = character_repo.get_by_id(character_id)
     if not character:
@@ -236,15 +249,11 @@ async def get_character_prompt(character_id: str, db: Session = Depends(get_db),
     # 获取提示词模板
     template = None
     if novel and novel.prompt_template_id:
-        template = db.query(PromptTemplate).filter(
-            PromptTemplate.id == novel.prompt_template_id
-        ).first()
+        template = prompt_template_repo.get_by_id(novel.prompt_template_id)
     
     # 如果没有指定模板，使用默认系统模板
     if not template:
-        template = db.query(PromptTemplate).filter(
-            PromptTemplate.is_system == True
-        ).order_by(PromptTemplate.created_at.asc()).first()
+        template = prompt_template_repo.get_first_system_template()
     
     # 构建提示词
     prompt = build_character_prompt(
@@ -271,7 +280,6 @@ async def get_character_prompt(character_id: str, db: Session = Depends(get_db),
 @router.post("/{character_id}/generate-appearance", response_model=dict)
 async def generate_appearance(
     character_id: str,
-    db: Session = Depends(get_db),
     character_repo: CharacterRepository = Depends(get_character_repo)
 ):
     """使用 DeepSeek AI 智能生成角色外貌描述"""
@@ -288,8 +296,7 @@ async def generate_appearance(
         )
         
         # 更新角色
-        character.appearance = appearance
-        db.commit()
+        character_repo.update_appearance(character, appearance)
         
         return {
             "success": True,
@@ -310,7 +317,6 @@ async def generate_appearance(
 async def upload_character_image(
     character_id: str,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
     character_repo: CharacterRepository = Depends(get_character_repo),
     novel_repo: NovelRepository = Depends(get_novel_repo)
 ):
@@ -350,10 +356,7 @@ async def upload_character_image(
         image_url = f"/api/files/{relative_path}"
         
         # 更新角色记录
-        character.image_url = image_url
-        character.generating_status = "completed"  # 标记为已完成
-        db.commit()
-        db.refresh(character)
+        character_repo.update_image(character, image_url)
         
         novel = novel_repo.get_by_id(character.novel_id)
         

@@ -50,6 +50,13 @@ class ChapterRepository:
         
         return query.order_by(Chapter.number).all()
     
+    def list_by_ids(self, novel_id: str, chapter_ids: List[str]) -> List[Chapter]:
+        """根据 ID 列表获取章节"""
+        return self.db.query(Chapter).filter(
+            Chapter.novel_id == novel_id,
+            Chapter.id.in_(chapter_ids)
+        ).order_by(Chapter.number).all()
+    
     def create(self, novel_id: str, number: int, title: str, content: str = "") -> Chapter:
         """创建章节"""
         chapter = Chapter(
