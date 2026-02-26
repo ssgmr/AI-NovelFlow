@@ -8,6 +8,7 @@ import {
   Film,
   CheckCircle
 } from 'lucide-react';
+import { API_BASE } from '../../api';
 
 // 步骤定义 - 每个步骤有独特的颜色主题
 export const STEPS_CONFIG = [
@@ -21,8 +22,8 @@ export const STEPS_CONFIG = [
   { key: 'compose', icon: CheckCircle, color: 'from-green-500 to-emerald-500' }
 ];
 
-// API 基础路径
-export const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+// 导出 API_BASE 供子模块使用
+export { API_BASE };
 
 // 默认转场时长（秒）
 export const DEFAULT_TRANSITION_DURATION = 2;

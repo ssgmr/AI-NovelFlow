@@ -165,6 +165,20 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+// 提示词模板
+export interface PromptTemplate {
+  id: string;
+  name: string;
+  nameKey?: string;
+  description: string;
+  descriptionKey?: string;
+  template: string;
+  type: string;
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface TestCase {
   id: string;
   name: string;

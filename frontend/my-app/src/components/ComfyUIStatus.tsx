@@ -1,24 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Server, Loader2, Thermometer, MemoryStick } from 'lucide-react';
 import { useTranslation } from '../stores/i18nStore';
-
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
-
-interface SystemStats {
-  status: 'online' | 'offline';
-  gpuUsage: number;
-  vramUsed: number;
-  vramTotal: number;
-  vramPercent: number;
-  queueSize: number;
-  temperature?: number;
-  gpuSource?: 'real' | 'estimated';
-  gpuName?: string;  // 显卡型号
-  // RAM 信息
-  ramUsed?: number;
-  ramTotal?: number;
-  ramPercent?: number;
-}
+import { healthApi, type SystemStats } from '../api/health';
 
 export default function ComfyUIStatus() {
   const { t } = useTranslation();
@@ -45,25 +28,22 @@ export default function ComfyUIStatus() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE}/health/comfyui`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'ok') {
-          setStats({
-            status: 'online',
-            gpuUsage: data.data?.gpu_usage || 0,
-            vramUsed: data.data?.vram_used || 0,
-            vramTotal: data.data?.vram_total || 16,
-            vramPercent: ((data.data?.vram_used || 0) / (data.data?.vram_total || 16)) * 100,
-            queueSize: (data.data?.queue_running || 0) + (data.data?.queue_pending || 0),
-            temperature: data.data?.temperature,
-            gpuSource: data.data?.gpu_source,
-            gpuName: data.data?.device_name,
-            ramUsed: data.data?.ram_used,
-            ramTotal: data.data?.ram_total,
-            ramPercent: data.data?.ram_percent,
-          });
-        }
+      const data = await healthApi.getComfyUIStatus();
+      if (data.status === 'ok') {
+        setStats({
+          status: 'online',
+          gpuUsage: data.data?.gpu_usage || 0,
+          vramUsed: data.data?.vram_used || 0,
+          vramTotal: data.data?.vram_total || 16,
+          vramPercent: ((data.data?.vram_used || 0) / (data.data?.vram_total || 16)) * 100,
+          queueSize: (data.data?.queue_running || 0) + (data.data?.queue_pending || 0),
+          temperature: data.data?.temperature,
+          gpuSource: data.data?.gpu_source,
+          gpuName: data.data?.device_name,
+          ramUsed: data.data?.ram_used,
+          ramTotal: data.data?.ram_total,
+          ramPercent: data.data?.ram_percent,
+        });
       }
     } catch (error) {
       console.error('Failed to fetch GPU stats:', error);
