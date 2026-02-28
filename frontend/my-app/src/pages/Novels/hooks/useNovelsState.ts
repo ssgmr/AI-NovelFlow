@@ -4,23 +4,25 @@ import { useTranslation } from '../../../stores/i18nStore';
 import { toast } from '../../../stores/toastStore';
 import { promptTemplateApi } from '../../../api/promptTemplates';
 import { sceneApi } from '../../../api/scenes';
+import { propApi } from '../../../api/props';
 import type { PromptTemplate } from '../../../types';
 import type { ChapterRange, ConfirmDialogState, ParseType } from '../types';
 
 // 模板类型列表
-const TEMPLATE_TYPES = ['style', 'character_parse', 'scene_parse', 'character', 'scene', 'chapter_split'] as const;
+const TEMPLATE_TYPES = ['style', 'character_parse', 'scene_parse', 'prop_parse', 'character', 'scene', 'prop', 'chapter_split'] as const;
 type TemplateType = typeof TEMPLATE_TYPES[number];
 
 export function useNovelsState() {
   const { t } = useTranslation();
   const { novels, isLoading, fetchNovels, createNovel, deleteNovel, importNovel, updateNovel } = useNovelStore();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingNovel, setEditingNovel] = useState<any>(null);
   const [importing, setImporting] = useState(false);
   const [parsingNovelId, setParsingNovelId] = useState<string | null>(null);
   const [parsingScenesNovelId, setParsingScenesNovelId] = useState<string | null>(null);
+  const [parsingPropsNovelId, setParsingPropsNovelId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
     isOpen: false,
     novelId: null,
@@ -31,7 +33,7 @@ export function useNovelsState() {
     endChapter: null,
     isIncremental: true
   });
-  
+
   // 使用 Record 存储各类型模板
   const [templatesByType, setTemplatesByType] = useState<Record<string, PromptTemplate[]>>({});
 
@@ -159,6 +161,43 @@ export function useNovelsState() {
     }
   };
 
+  const confirmParseProps = async () => {
+    const novelId = confirmDialog.novelId;
+    if (!novelId) return;
+
+    closeParseConfirm();
+    setParsingPropsNovelId(novelId);
+
+    try {
+      const data = await propApi.parseProps(novelId, {
+        startChapter: chapterRange.startChapter ?? undefined,
+        endChapter: chapterRange.endChapter ?? undefined,
+        isIncremental: chapterRange.isIncremental
+      });
+      if (data.success) {
+        const stats = (data.data as any)?.statistics || { created: 0, updated: 0 };
+        let message = '';
+        if ((stats.created ?? 0) > 0 || (stats.updated ?? 0) > 0) {
+          message = t('novels.parsePropsResult', { created: stats.created || 0, updated: stats.updated || 0 });
+        }
+        if (message) {
+          toast.success(message);
+        } else {
+          toast.info(t('novels.noNewProps'));
+        }
+        setChapterRange({ startChapter: null, endChapter: null, isIncremental: true });
+        window.location.href = `/props?novel=${novelId}`;
+      } else {
+        toast.error(t('novels.parseError') + ': ' + data.message);
+      }
+    } catch (error) {
+      console.error(t('novels.parseFailed') + ':', error);
+      toast.error(t('novels.parseNetworkError'));
+    } finally {
+      setParsingPropsNovelId(null);
+    }
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,12 +219,13 @@ export function useNovelsState() {
     importing,
     parsingNovelId,
     parsingScenesNovelId,
+    parsingPropsNovelId,
     confirmDialog,
     chapterRange,
     setChapterRange,
     templatesByType,
     filteredNovels,
-    
+
     // Actions
     fetchNovels,
     createNovel,
@@ -196,6 +236,7 @@ export function useNovelsState() {
     closeParseConfirm,
     confirmParseCharacters,
     confirmParseScenes,
+    confirmParseProps,
     getTemplateDisplayName,
   };
 }
