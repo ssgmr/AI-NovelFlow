@@ -128,12 +128,6 @@ export default {
       jsonEditableTip: '編集可能、JSON形式が正しいことを確認してください',
       saving: '保存中...',
       close: '閉じる',
-      extension: {
-        referenceImageCount: '参照画像数',
-        single: 'シングル',
-        dual: 'デュアル',
-        triple: 'トリプル',
-      },
       mappingConfig: 'ノードマッピング',
       mappingConfigIncomplete: 'マッピング設定が不完全です、クリックして設定',
       loadingFailed: 'ワークフロー詳細の読み込みに失敗しました',

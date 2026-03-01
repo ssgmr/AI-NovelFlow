@@ -29,11 +29,14 @@ export function PropImages({
 }: PropImagesProps) {
   const { t } = useTranslation();
 
-  // 检查工作流是否配置了道具参考图节点
+  // 检查工作流是否配置了道具参考图节点或自定义参考图节点
   const hasPropNode = !!activeShotWorkflow?.nodeMapping?.prop_reference_image_node_id;
+  const hasCustomReferenceNode = Object.keys(activeShotWorkflow?.nodeMapping || {}).some(
+    key => key.startsWith('custom_reference_image_node_') && activeShotWorkflow?.nodeMapping?.[key]
+  );
 
-  // 如果工作流没有配置道具参考图节点，不显示组件
-  if (!hasPropNode) {
+  // 如果工作流没有配置道具参考图节点或自定义参考图节点，不显示组件
+  if (!hasPropNode && !hasCustomReferenceNode) {
     return null;
   }
 

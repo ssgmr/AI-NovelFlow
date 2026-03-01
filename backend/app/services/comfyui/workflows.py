@@ -91,7 +91,11 @@ class WorkflowBuilder:
         style: str = "anime style, high quality, detailed",
         reference_images: Dict[str, str] = None
     ) -> Dict[str, Any]:
-        """构建分镜图片工作流"""
+        """构建分镜图片工作流
+        
+        注意：参考图节点的检测和断开逻辑已移至 shot_image_service 的 _upload_references_and_update_workflow 方法中，
+        因为只有在上传参考图之后才能正确判断哪些节点没有图片。
+        """
         workflow = json.loads(workflow_json)
         
         # 替换 ##STYLE## 占位符
@@ -118,22 +122,13 @@ class WorkflowBuilder:
             workflow[height_node_id]["inputs"]["value"] = height
         
         # 处理参考图节点 - 设置已上传的图片
+        # 注意：此处的 reference_images 参数用于预设置已知的图片文件名
+        # 实际上传和断开未上传节点的逻辑在 shot_image_service 中处理
         if reference_images:
             for ref_key, filename in reference_images.items():
                 node_id = node_mapping.get(f"{ref_key}_node_id")
                 if node_id and node_id in workflow:
                     workflow[node_id]["inputs"]["image"] = filename
-
-        # 处理未上传图片的参考图节点 - 断开下游连接而不是删除节点
-        reference_node_keys = [key for key in node_mapping if key.endswith("_node_id") and "reference" in key]
-        for ref_key in reference_node_keys:
-            node_id = node_mapping.get(ref_key)
-            if node_id and node_id in workflow:
-                # 检查该节点是否有有效的图片
-                image_value = workflow[node_id].get("inputs", {}).get("image", "")
-                # 如果没有有效图片，断开下游参考链路
-                if not image_value or image_value in ["", "example.png", "placeholder.png"]:
-                    self.disconnect_reference_chain(workflow, node_id)
         
         # 设置随机种子
         if seed is None:
@@ -323,6 +318,10 @@ class WorkflowBuilder:
         当参考图节点未上传图片时，应该断开下游使用 latent、pixels、image 类型输入的连接，
         而不是直接删除节点，这样可以避免工作流报错，兼容性更好。
 
+        匹配规则：
+        - latent、pixels：精确匹配
+        - image：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+
         Args:
             workflow: 工作流字典
             start_node_id: 起始节点 ID（通常是 LoadImage 节点）
@@ -331,7 +330,9 @@ class WorkflowBuilder:
             修改后的工作流
         """
         # 需要断开的输入类型
-        DISCONNECT_INPUT_TYPES = {"latent", "pixels", "image"}
+        # latent 和 pixels 精确匹配
+        # image 支持后跟数字（如 image1, image2, image_1 等）
+        EXACT_MATCH_TYPES = {"latent", "pixels"}
 
         # 追踪已访问的节点，避免循环
         visited = set()
@@ -358,8 +359,22 @@ class WorkflowBuilder:
                     if isinstance(input_value, list) and len(input_value) >= 2:
                         source_node_id = str(input_value[0])
                         if source_node_id == current_node_id:
-                            # 检查输入类型是否需要断开
-                            if input_name.lower() in DISCONNECT_INPUT_TYPES:
+                            input_name_lower = input_name.lower()
+                            should_disconnect = False
+
+                            # 精确匹配 latent 和 pixels
+                            if input_name_lower in EXACT_MATCH_TYPES:
+                                should_disconnect = True
+                            # image 类型：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+                            elif input_name_lower == "image":
+                                should_disconnect = True
+                            elif input_name_lower.startswith("image"):
+                                suffix = input_name_lower[5:]  # 去掉 "image" 前缀
+                                # 允许空字符串（即 "image"）或纯数字或 _数字
+                                if suffix.isdigit() or (suffix.startswith("_") and suffix[1:].isdigit()):
+                                    should_disconnect = True
+
+                            if should_disconnect:
                                 inputs_to_disconnect.append(input_name)
                             # 将下游节点加入队列继续追踪
                             if node_id not in visited:

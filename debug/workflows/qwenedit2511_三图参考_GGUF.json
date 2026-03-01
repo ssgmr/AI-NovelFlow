@@ -1,0 +1,378 @@
+{
+  "38": {
+    "inputs": {
+      "samples": [
+        "46",
+        0
+      ],
+      "vae": [
+        "259",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "46": {
+    "inputs": {
+      "seed": 672456962056457,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "258",
+        0
+      ],
+      "positive": [
+        "264",
+        0
+      ],
+      "negative": [
+        "265",
+        0
+      ],
+      "latent_image": [
+        "252",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "49": {
+    "inputs": {
+      "image": "downloaded-image (1).png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "52": {
+    "inputs": {
+      "image": "z-image-turbo_00001_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "102": {
+    "inputs": {
+      "filename_prefix": "qwen2511",
+      "images": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "246": {
+    "inputs": {
+      "aspect_ratio": "custom",
+      "proportional_width": [
+        "266",
+        0
+      ],
+      "proportional_height": [
+        "267",
+        0
+      ],
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "8",
+      "scale_to_side": "width",
+      "scale_to_length": [
+        "266",
+        0
+      ],
+      "background_color": "#000000",
+      "image": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "按宽高比缩放_V2"
+    }
+  },
+  "247": {
+    "inputs": {
+      "aspect_ratio": "custom",
+      "proportional_width": [
+        "266",
+        0
+      ],
+      "proportional_height": [
+        "267",
+        0
+      ],
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "8",
+      "scale_to_side": "width",
+      "scale_to_length": [
+        "266",
+        0
+      ],
+      "background_color": "#000000",
+      "image": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "按宽高比缩放_V2"
+    }
+  },
+  "250": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "CLIP加载器"
+    }
+  },
+  "252": {
+    "inputs": {
+      "width": [
+        "254",
+        1
+      ],
+      "height": [
+        "254",
+        2
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "空Latent"
+    }
+  },
+  "254": {
+    "inputs": {
+      "image": [
+        "246",
+        0
+      ]
+    },
+    "class_type": "GetImageSizeAndCount",
+    "_meta": {
+      "title": "获取图像尺寸数量"
+    }
+  },
+  "256": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "269",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoRA加载器(仅模型)"
+    }
+  },
+  "257": {
+    "inputs": {
+      "shift": 3.1,
+      "model": [
+        "256",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "模型采样算法AuraFlow"
+    }
+  },
+  "258": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "257",
+        0
+      ]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFG归一化"
+    }
+  },
+  "259": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAE加载器"
+    }
+  },
+  "262": {
+    "inputs": {
+      "prompt": [
+        "268",
+        0
+      ],
+      "clip": [
+        "250",
+        0
+      ],
+      "vae": [
+        "259",
+        0
+      ],
+      "image1": [
+        "246",
+        0
+      ],
+      "image2": [
+        "247",
+        0
+      ],
+      "image3": [
+        "270",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlus (Positive)"
+    }
+  },
+  "263": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "250",
+        0
+      ],
+      "vae": [
+        "259",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "文本编码（QwenImageEditPlus）"
+    }
+  },
+  "264": {
+    "inputs": {
+      "reference_latents_method": "index_timestep_zero",
+      "conditioning": [
+        "262",
+        0
+      ]
+    },
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "_meta": {
+      "title": "Edit Model Reference Method"
+    }
+  },
+  "265": {
+    "inputs": {
+      "reference_latents_method": "index_timestep_zero",
+      "conditioning": [
+        "263",
+        0
+      ]
+    },
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "_meta": {
+      "title": "Edit Model Reference Method"
+    }
+  },
+  "266": {
+    "inputs": {
+      "value": 768
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "整数"
+    }
+  },
+  "267": {
+    "inputs": {
+      "value": 1344
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "整数"
+    }
+  },
+  "268": {
+    "inputs": {
+      "text": ""
+    },
+    "class_type": "CR Text",
+    "_meta": {
+      "title": "文本"
+    }
+  },
+  "269": {
+    "inputs": {
+      "unet_name": "qwen-image-edit-2511-Q4_K_M.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
+  "270": {
+    "inputs": {
+      "aspect_ratio": "custom",
+      "proportional_width": [
+        "266",
+        0
+      ],
+      "proportional_height": [
+        "267",
+        0
+      ],
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "8",
+      "scale_to_side": "width",
+      "scale_to_length": [
+        "266",
+        0
+      ],
+      "background_color": "#000000",
+      "image": [
+        "271",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "按宽高比缩放_V2"
+    }
+  },
+  "271": {
+    "inputs": {
+      "image": "二八大杠自行车_20260228_234408.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  }
+}

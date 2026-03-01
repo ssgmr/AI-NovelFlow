@@ -27,7 +27,6 @@ export interface Workflow {
     scene_reference_image_node_id?: string;
   };
   extension?: {
-    reference_image_count?: 'single' | 'dual' | 'triple';
     [key: string]: any;
   };
 }

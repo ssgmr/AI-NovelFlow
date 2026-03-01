@@ -5,9 +5,9 @@
 """
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
-from app.models.novel import Novel, Chapter, Character, Scene
+from app.models.novel import Novel, Chapter, Character, Scene, Prop
 from app.models.prompt_template import PromptTemplate
 from app.models.task import Task
 from app.models.workflow import Workflow
@@ -83,10 +83,12 @@ async def generate_shot_image_task(
         shot = shots[shot_index - 1]
         shot_characters = shot.get("characters", [])
         shot_scene = shot.get("scene", "")
-        
+        shot_props = shot.get("props", [])  # 获取道具列表
+
         print(f"[ShotTask {task_id}] Novel: {novel_id}, Chapter: {chapter_id}, Shot: {shot_index}")
         print(f"[ShotTask {task_id}] Description: {shot_description}")
         print(f"[ShotTask {task_id}] Characters: {shot_characters}")
+        print(f"[ShotTask {task_id}] Props: {shot_props}")
         
         # 获取工作流
         workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
@@ -120,6 +122,11 @@ async def generate_shot_image_task(
             db, task, novel_id, shot_scene, task_id
         )
         
+        # 处理道具图
+        prop_reference_paths = await _process_prop_references(
+            db, task, novel_id, shot_props, task_id
+        )
+        
         # 构建工作流
         task.current_step = "构建工作流..."
         db.commit()
@@ -136,7 +143,8 @@ async def generate_shot_image_task(
         await _upload_references_and_update_workflow(
             comfyui_service, submitted_workflow, node_mapping,
             character_reference_path, scene_reference_path,
-            task, db, task_id
+            task, db, task_id,
+            prop_reference_paths=prop_reference_paths
         )
         
         # 调用 ComfyUI 生成图片
@@ -291,21 +299,89 @@ async def _process_scene_reference(
     return None
 
 
+async def _process_prop_references(
+    db, task, novel_id: str, shot_props: list, task_id: str
+) -> Optional[Dict[str, str]]:
+    """
+    处理道具参考图片
+    
+    Args:
+        db: 数据库会话
+        task: 任务对象
+        novel_id: 小说 ID
+        shot_props: 道具名称列表
+        task_id: 任务 ID
+    
+    Returns:
+        道具名称到图片路径的映射字典 {道具名称: 图片路径}
+    """
+    if not shot_props:
+        return None
+
+    task.current_step = f"查找道具图: {', '.join(shot_props)}"
+    db.commit()
+
+    prop_reference_paths = {}
+    print(f"[ShotTask {task_id}] Looking for {len(shot_props)} props: {shot_props}")
+
+    for prop_name in shot_props:
+        prop = db.query(Prop).filter(
+            Prop.novel_id == novel_id,
+            Prop.name == prop_name
+        ).first()
+        
+        print(f"[ShotTask {task_id}] Prop '{prop_name}': found={prop is not None}, has_image={prop.image_url if prop else None}")
+        
+        if prop and prop.image_url:
+            full_path = url_to_local_path(prop.image_url)
+            if full_path:
+                prop_reference_paths[prop_name] = full_path
+                print(f"[ShotTask {task_id}] Found prop image: {prop_name} -> {full_path}")
+
+    print(f"[ShotTask {task_id}] Total prop images found: {len(prop_reference_paths)}")
+    
+    if prop_reference_paths:
+        task.current_step = f"已找到 {len(prop_reference_paths)} 个道具图片"
+        db.commit()
+    
+    return prop_reference_paths if prop_reference_paths else None
+
+
 async def _upload_references_and_update_workflow(
     comfyui_service, submitted_workflow: dict, node_mapping: dict,
     character_reference_path: Optional[str], scene_reference_path: Optional[str],
-    task, db, task_id: str
+    task, db, task_id: str,
+    prop_reference_paths: Optional[Dict[str, str]] = None
 ):
-    """上传参考图并更新工作流"""
-    if not character_reference_path and not scene_reference_path:
+    """
+    上传参考图并更新工作流
+    
+    Args:
+        comfyui_service: ComfyUI 服务实例
+        submitted_workflow: 工作流字典
+        node_mapping: 节点映射
+        character_reference_path: 角色参考图路径
+        scene_reference_path: 场景参考图路径
+        task: 任务对象
+        db: 数据库会话
+        task_id: 任务 ID
+        prop_reference_paths: 道具参考图路径字典 {道具名称: 图片路径}
+    """
+    # 收集所有需要上传的参考图
+    has_any_reference = character_reference_path or scene_reference_path or prop_reference_paths
+    
+    if not has_any_reference:
+        # 没有任何参考图，断开所有参考图节点的下游连接
+        _disconnect_all_reference_nodes(submitted_workflow, node_mapping)
         task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
         db.commit()
         return
-    
+
     task.current_step = "上传参考图..."
     db.commit()
     print(f"[ShotTask {task_id}] Uploading reference images before submission")
-    
+
+    # 上传角色参考图
     character_uploaded_filename = None
     if character_reference_path:
         upload_result = await comfyui_service.client.upload_image(character_reference_path)
@@ -314,7 +390,8 @@ async def _upload_references_and_update_workflow(
             print(f"[ShotTask {task_id}] Character image uploaded successfully: {character_uploaded_filename}")
         else:
             print(f"[ShotTask {task_id}] Failed to upload character image: {upload_result.get('message')}")
-    
+
+    # 上传场景参考图
     scene_uploaded_filename = None
     if scene_reference_path:
         upload_result = await comfyui_service.client.upload_image(scene_reference_path)
@@ -323,35 +400,245 @@ async def _upload_references_and_update_workflow(
             print(f"[ShotTask {task_id}] Scene image uploaded successfully: {scene_uploaded_filename}")
         else:
             print(f"[ShotTask {task_id}] Failed to upload scene image: {upload_result.get('message')}")
+
+    # 上传道具参考图
+    prop_uploaded_filenames = {}  # {道具名称: 上传后的文件名}
+    if prop_reference_paths:
+        for prop_name, prop_path in prop_reference_paths.items():
+            if prop_path:
+                upload_result = await comfyui_service.client.upload_image(prop_path)
+                if upload_result.get("success"):
+                    prop_uploaded_filenames[prop_name] = upload_result.get("filename")
+                    print(f"[ShotTask {task_id}] Prop '{prop_name}' image uploaded successfully: {upload_result.get('filename')}")
+                else:
+                    print(f"[ShotTask {task_id}] Failed to upload prop '{prop_name}' image: {upload_result.get('message')}")
+
+    # 设置工作流节点中的图片
+    character_node_id = node_mapping.get("character_reference_image_node_id")
+    scene_node_id = node_mapping.get("scene_reference_image_node_id")
+
+    print(f"[ShotTask {task_id}] Node mapping - character_node: {character_node_id}, scene_node: {scene_node_id}")
+
+    # 设置角色参考图
+    if character_uploaded_filename and character_node_id:
+        node_id_str = str(character_node_id)
+        if node_id_str in submitted_workflow:
+            submitted_workflow[node_id_str]["inputs"]["image"] = character_uploaded_filename
+            print(f"[ShotTask {task_id}] Set LoadImage node {node_id_str} to character image: {character_uploaded_filename}")
+        else:
+            print(f"[ShotTask {task_id}] Warning: character_reference_image_node_id '{node_id_str}' not found in workflow")
+
+    # 设置场景参考图
+    if scene_uploaded_filename and scene_node_id:
+        node_id_str = str(scene_node_id)
+        if node_id_str in submitted_workflow:
+            submitted_workflow[node_id_str]["inputs"]["image"] = scene_uploaded_filename
+            print(f"[ShotTask {task_id}] Set LoadImage node {node_id_str} to scene image: {scene_uploaded_filename}")
+        else:
+            print(f"[ShotTask {task_id}] Warning: scene_reference_image_node_id '{node_id_str}' not found in workflow")
+
+    # 设置道具参考图
+    # 道具节点映射格式: custom_reference_image_node_<索引>
+    if prop_uploaded_filenames:
+        index = 1
+        for prop_name, uploaded_filename in prop_uploaded_filenames.items():
+            prop_node_id = node_mapping.get(f"custom_reference_image_node_{index}")
+            if prop_node_id:
+                node_id_str = str(prop_node_id)
+                if node_id_str in submitted_workflow:
+                    submitted_workflow[node_id_str]["inputs"]["image"] = uploaded_filename
+                    print(f"[ShotTask {task_id}] Set LoadImage node {node_id_str} to prop '{prop_name}' image: {uploaded_filename}")
+                else:
+                    print(f"[ShotTask {task_id}] Warning: prop_reference_image_node_id '{node_id_str}' not found in workflow")
+            index += 1
+
+    # 清空未设置参考图的节点（工作流中可能有默认图片，需要清除才能正确断开下游）
+    _clear_unset_reference_nodes(
+        submitted_workflow, node_mapping,
+        character_reference_path, scene_reference_path, prop_reference_paths
+    )
+
+    # 检测并断开未上传图片的参考图节点的下游连接
+    _disconnect_unuploaded_reference_nodes(submitted_workflow, node_mapping)
+
+    task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+    db.commit()
+    print(f"[ShotTask {task_id}] Saved workflow with reference images to task")
+
+
+def _clear_unset_reference_nodes(
+    workflow: dict, node_mapping: dict,
+    character_reference_path: Optional[str],
+    scene_reference_path: Optional[str],
+    prop_reference_paths: Optional[Dict[str, str]]
+):
+    """
+    清空未设置参考图的节点的 image 输入
+
+    工作流中的 LoadImage 节点可能有默认图片数据。
+    在用户未设置参考图时，需要将对应节点的 image 输入置空，
+    这样后续的断开逻辑才能正确检测到未上传图片的节点。
+
+    Args:
+        workflow: 工作流字典
+        node_mapping: 节点映射
+        character_reference_path: 角色参考图路径（None 表示未设置）
+        scene_reference_path: 场景参考图路径（None 表示未设置）
+        prop_reference_paths: 道具参考图路径字典（None 或缺失项表示未设置）
+    """
+    # 清空未设置的角色参考图节点
+    character_node_id = node_mapping.get("character_reference_image_node_id")
+    if character_node_id and not character_reference_path:
+        node_id_str = str(character_node_id)
+        if node_id_str in workflow and "inputs" in workflow[node_id_str]:
+            workflow[node_id_str]["inputs"]["image"] = ""
+            print(f"[Workflow] Cleared character reference node {node_id_str} - no reference image provided")
+
+    # 清空未设置的场景参考图节点
+    scene_node_id = node_mapping.get("scene_reference_image_node_id")
+    if scene_node_id and not scene_reference_path:
+        node_id_str = str(scene_node_id)
+        if node_id_str in workflow and "inputs" in workflow[node_id_str]:
+            workflow[node_id_str]["inputs"]["image"] = ""
+            print(f"[Workflow] Cleared scene reference node {node_id_str} - no reference image provided")
+
+    # 清空未设置的道具参考图节点
+    # 道具节点映射格式: custom_reference_image_node_<索引>
+    index = 1
+    while True:
+        prop_node_id = node_mapping.get(f"custom_reference_image_node_{index}")
+        if not prop_node_id:
+            break
+
+        # 检查该索引对应的道具是否有参考图
+        has_prop_image = False
+        if prop_reference_paths:
+            # 按顺序检查，第 index 个道具
+            prop_names = list(prop_reference_paths.keys())
+            if index <= len(prop_names):
+                prop_name = prop_names[index - 1]
+                has_prop_image = bool(prop_reference_paths.get(prop_name))
+
+        if not has_prop_image:
+            node_id_str = str(prop_node_id)
+            if node_id_str in workflow and "inputs" in workflow[node_id_str]:
+                workflow[node_id_str]["inputs"]["image"] = ""
+                print(f"[Workflow] Cleared prop reference node {node_id_str} (index {index}) - no reference image provided")
+
+        index += 1
+
+
+def _disconnect_all_reference_nodes(workflow: dict, node_mapping: dict):
+    """
+    断开所有参考图节点的下游连接
     
-    if character_uploaded_filename or scene_uploaded_filename:
-        character_node_id = node_mapping.get("character_reference_image_node_id")
-        scene_node_id = node_mapping.get("scene_reference_image_node_id")
-        
-        print(f"[ShotTask {task_id}] Node mapping - character_node: {character_node_id}, scene_node: {scene_node_id}")
-        
-        if character_uploaded_filename and character_node_id:
-            node_id_str = str(character_node_id)
-            if node_id_str in submitted_workflow:
-                submitted_workflow[node_id_str]["inputs"]["image"] = character_uploaded_filename
-                print(f"[ShotTask {task_id}] Set LoadImage node {node_id_str} to character image: {character_uploaded_filename}")
-            else:
-                print(f"[ShotTask {task_id}] Warning: character_reference_image_node_id '{node_id_str}' not found in workflow")
-        
-        if scene_uploaded_filename and scene_node_id:
-            node_id_str = str(scene_node_id)
-            if node_id_str in submitted_workflow:
-                submitted_workflow[node_id_str]["inputs"]["image"] = scene_uploaded_filename
-                print(f"[ShotTask {task_id}] Set LoadImage node {node_id_str} to scene image: {scene_uploaded_filename}")
-            else:
-                print(f"[ShotTask {task_id}] Warning: scene_reference_image_node_id '{node_id_str}' not found in workflow")
-        
-        task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
-        db.commit()
-        print(f"[ShotTask {task_id}] Saved workflow with LoadImage replacement to task")
-    else:
-        task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
-        db.commit()
+    Args:
+        workflow: 工作流字典
+        node_mapping: 节点映射
+    """
+    reference_node_keys = [key for key in node_mapping if key.endswith("_node_id") and "reference" in key.lower()]
+    for ref_key in reference_node_keys:
+        node_id = node_mapping.get(ref_key)
+        if node_id and str(node_id) in workflow:
+            _disconnect_reference_chain(workflow, str(node_id))
+            print(f"[Workflow] Disconnected reference node {node_id} (key: {ref_key}) - no reference image provided")
+
+
+def _disconnect_unuploaded_reference_nodes(workflow: dict, node_mapping: dict):
+    """
+    检测并断开未上传图片的参考图节点的下游连接
+    
+    Args:
+        workflow: 工作流字典
+        node_mapping: 节点映射
+    """
+    default_node = ["character_reference_image_node_id", "scene_reference_image_node_id"]
+    reference_node_keys = [key for key in node_mapping if key.startswith("custom_reference_image_node_") or key in default_node]
+    for ref_key in reference_node_keys:
+        node_id = node_mapping.get(ref_key)
+        if node_id and str(node_id) in workflow:
+            node_id_str = str(node_id)
+            # 检查该节点是否有有效的图片
+            image_value = workflow[node_id_str].get("inputs", {}).get("image", "")
+            # 如果没有有效图片，断开下游参考链路
+            if not image_value or image_value in ["", ""]:
+                _disconnect_reference_chain(workflow, node_id_str)
+                print(f"[Workflow] Disconnected reference node {node_id_str} (key: {ref_key}) - no image uploaded")
+
+
+def _disconnect_reference_chain(workflow: Dict[str, Any], start_node_id: str) -> Dict[str, Any]:
+    """
+    从 LoadImage 节点开始，断开下游参考图链路的输入连接
+
+    当参考图节点未上传图片时，应该断开下游使用 latent、pixels、image 类型输入的连接，
+    而不是直接删除节点，这样可以避免工作流报错，兼容性更好。
+
+    匹配规则：
+    - latent、pixels：精确匹配
+    - image：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+
+    Args:
+        workflow: 工作流字典
+        start_node_id: 起始节点 ID（通常是 LoadImage 节点）
+
+    Returns:
+        修改后的工作流
+    """
+    # 需要断开的输入类型
+    EXACT_MATCH_TYPES = {"latent", "pixels"}
+
+    # 追踪已访问的节点，避免循环
+    visited = set()
+    # 待处理的节点队列
+    queue = [str(start_node_id)]
+
+    while queue:
+        current_node_id = queue.pop(0)
+
+        if current_node_id in visited:
+            continue
+        visited.add(current_node_id)
+
+        # 查找所有引用当前节点的下游节点
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+
+            inputs = node.get("inputs", {})
+            inputs_to_disconnect = []
+
+            for input_name, input_value in inputs.items():
+                # 检查是否是连接到当前节点的输入
+                if isinstance(input_value, list) and len(input_value) >= 2:
+                    source_node_id = str(input_value[0])
+                    if source_node_id == current_node_id:
+                        input_name_lower = input_name.lower()
+                        should_disconnect = False
+
+                        # 精确匹配 latent 和 pixels
+                        if input_name_lower in EXACT_MATCH_TYPES:
+                            should_disconnect = True
+                        # image 类型：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+                        elif input_name_lower == "image":
+                            should_disconnect = True
+                        elif input_name_lower.startswith("image"):
+                            suffix = input_name_lower[5:]  # 去掉 "image" 前缀
+                            # 允许空字符串（即 "image"）或纯数字或 _数字
+                            if suffix.isdigit() or (suffix.startswith("_") and suffix[1:].isdigit()):
+                                should_disconnect = True
+
+                        if should_disconnect:
+                            inputs_to_disconnect.append(input_name)
+                        # 将下游节点加入队列继续追踪
+                        if node_id not in visited:
+                            queue.append(str(node_id))
+
+            # 断开匹配的输入连接
+            for input_name in inputs_to_disconnect:
+                del inputs[input_name]
+                print(f"[Workflow] Disconnected input '{input_name}' from node {node_id} (source: {current_node_id})")
+
+    return workflow
 
 
 async def _save_generated_image(

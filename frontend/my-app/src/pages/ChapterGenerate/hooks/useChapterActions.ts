@@ -40,9 +40,6 @@ interface ShotWorkflow {
   id: string;
   name: string;
   isActive: boolean;
-  extension?: {
-    reference_image_count?: string;
-  };
 }
 
 /**

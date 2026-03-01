@@ -56,9 +56,6 @@ interface ShotWorkflow {
     prop_reference_image_node_id?: string;
     [key: string]: string | undefined;
   };
-  extension?: {
-    reference_image_count?: string;
-  };
 }
 
 export default function ChapterGenerate() {

@@ -53,7 +53,6 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "description": "Flux2-Klein-9B 双图参考工作流，支持角色参考图+场景参考图，保持场景一致性",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Flux2-Klein-9B 双图参考工作流，支持角色参考图+场景参考图，保持场景一致性",
         "node_mapping": {"prompt_node_id": "110", "save_image_node_id": "9", "width_node_id": "123", "height_node_id": "125", "character_reference_image_node_id": "76", "scene_reference_image_node_id": "128"},
-        "extension": {"reference_image_count": "dual"},
     },
     {
         "filename": "shot_flux2_klein.json",
@@ -62,7 +61,6 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "nameKey": f"{NAME_KEY_PREFIX}.Flux2-Klein-9B 分镜生图",
         "description": "Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图",
-        "extension": {"reference_image_count": "single"},
     },
     {
         "filename": "video_ltx2_direct.json",
