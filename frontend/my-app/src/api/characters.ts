@@ -33,7 +33,7 @@ export const characterApi = {
 
   /** 生成人设图任务 */
   generatePortrait: (characterId: string) => 
-    api.post(`/tasks/character/${characterId}/generate-portrait/`),
+    api.post(`/characters/${characterId}/generate-portrait/`),
 
   /** 上传角色图片 */
   uploadImage: async (characterId: string, file: File) => {

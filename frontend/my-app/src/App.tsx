@@ -16,6 +16,7 @@ const ChapterDetail = lazy(() => import('./pages/ChapterDetail'));
 const ChapterGenerate = lazy(() => import('./pages/ChapterGenerate/index'));
 const Characters = lazy(() => import('./pages/Characters'));
 const Scenes = lazy(() => import('./pages/Scenes'));
+const Props = lazy(() => import('./pages/Props'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const TestCases = lazy(() => import('./pages/TestCases'));
 const PromptConfig = lazy(() => import('./pages/PromptConfig'));
@@ -78,6 +79,7 @@ function App() {
           <Route path="novels/:id/chapters/:cid/generate" element={<LazyPage><ChapterGenerate /></LazyPage>} />
           <Route path="characters" element={<LazyPage><Characters /></LazyPage>} />
           <Route path="scenes" element={<LazyPage><Scenes /></LazyPage>} />
+          <Route path="props" element={<LazyPage><Props /></LazyPage>} />
           <Route path="tasks" element={<LazyPage><Tasks /></LazyPage>} />
           <Route path="test-cases" element={<LazyPage><TestCases /></LazyPage>} />
           <Route path="prompt-config" element={<LazyPage><PromptConfig /></LazyPage>} />

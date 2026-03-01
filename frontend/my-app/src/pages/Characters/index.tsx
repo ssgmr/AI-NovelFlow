@@ -127,7 +127,12 @@ export default function Characters() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await characterApi.create(formData);
+      const data = await characterApi.create({
+        novel_id: formData.novelId,
+        name: formData.name,
+        description: formData.description,
+        appearance: formData.appearance,
+      });
       if (data.success) {
         setCharacters([data.data!, ...characters]);
         setShowCreateModal(false);

@@ -1,3 +1,6 @@
+"""
+角色路由 - 角色 CRUD 和图像生成相关接口
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -5,38 +8,16 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.utils.time_utils import format_datetime
 from app.services.comfyui import ComfyUIService
-from app.services.llm_service import LLMService
 from app.services.file_storage import file_storage
-from app.services.prompt_builder import (
-    build_character_prompt,
-    get_style
-)
+from app.services.prompt_builder import build_character_prompt, get_style
+from app.services.character_service import CharacterService
 from app.repositories import NovelRepository, CharacterRepository, PromptTemplateRepository
 from app.schemas.character import CharacterCreate, CharacterUpdate
+from app.api.deps import get_novel_repo, get_character_repo, get_prompt_template_repo, get_llm_service
 
 router = APIRouter()
 settings = get_settings()
 comfyui_service = ComfyUIService()
-
-
-def get_llm_service() -> LLMService:
-    """获取 LLMService 实例（每次调用创建新实例以获取最新配置）"""
-    return LLMService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
-    """获取 CharacterRepository 实例"""
-    return CharacterRepository(db)
-
-
-def get_prompt_template_repo(db: Session = Depends(get_db)) -> PromptTemplateRepository:
-    """获取 PromptTemplateRepository 实例"""
-    return PromptTemplateRepository(db)
 
 
 @router.get("/", response_model=dict)
@@ -322,6 +303,16 @@ async def generate_appearance(
             "success": False,
             "message": f"生成失败: {str(e)}"
         }
+
+
+@router.post("/{character_id}/generate-portrait", response_model=dict)
+async def generate_character_portrait(
+    character_id: str,
+    db: Session = Depends(get_db)
+):
+    """生成角色人设图任务"""
+    character_service = CharacterService(db)
+    return character_service.create_character_portrait_task(character_id)
 
 
 @router.post("/{character_id}/upload-image", response_model=dict)

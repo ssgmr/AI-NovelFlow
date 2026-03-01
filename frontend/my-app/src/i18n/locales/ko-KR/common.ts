@@ -45,6 +45,9 @@ export default {
     other: '기타',
     failed: '실패',
     optional: '선택사항',
+    add: '추가',
+    remove: '제거',
+    select: '선택',
   },
 
   status: {

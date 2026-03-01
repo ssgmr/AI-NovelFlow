@@ -1,5 +1,5 @@
 """
-PromptTemplate API 层
+提示词模板 API 路由
 
 提示词模板相关的路由定义
 """
@@ -11,13 +11,9 @@ from app.core.database import get_db
 from app.schemas.prompt_template import PromptTemplateCreate, PromptTemplateUpdate
 from app.services.prompt_template_service import PromptTemplateService
 from app.repositories import PromptTemplateRepository
+from app.api.deps import get_prompt_template_repo
 
 router = APIRouter(tags=["prompt_templates"])
-
-
-def get_template_repo(db: Session = Depends(get_db)) -> PromptTemplateRepository:
-    """获取 PromptTemplateRepository 实例"""
-    return PromptTemplateRepository(db)
 
 
 def get_template_service(db: Session = Depends(get_db)) -> PromptTemplateService:

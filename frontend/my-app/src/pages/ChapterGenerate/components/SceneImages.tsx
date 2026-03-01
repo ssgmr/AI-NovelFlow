@@ -12,7 +12,7 @@ interface SceneImagesProps {
   onRegenerateScene: (name: string) => void;
   onImageClick: (url: string) => void;
   aspectStyle: React.CSSProperties;
-  activeShotWorkflow: any;
+  activeShotWorkflow?: any;
 }
 
 /**
@@ -30,6 +30,14 @@ export function SceneImages({
   activeShotWorkflow,
 }: SceneImagesProps) {
   const { t } = useTranslation();
+
+  // 检查工作流是否配置了场景参考图节点
+  const hasSceneNode = !!activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id;
+
+  // 如果工作流没有配置场景参考图节点，不显示组件
+  if (!hasSceneNode) {
+    return null;
+  }
 
   const currentShotData = parsedData?.shots?.[currentShot - 1];
   const currentShotScene = currentShotData?.scene || '';
@@ -51,21 +59,13 @@ export function SceneImages({
             ({novelAspectRatio || '16:9'})
           </span>
         </h3>
-        <Link 
+        <Link
           to={`/scenes?novel_id=${novelId}`}
           className="text-sm text-green-600 hover:text-green-700 hover:underline flex items-center gap-1"
         >
           {t('chapterGenerate.aiGenerateScene')}
         </Link>
       </div>
-
-      {activeShotWorkflow && activeShotWorkflow.extension?.reference_image_count !== 'dual' && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-          <span className="text-sm text-amber-700">
-            {t('chapterGenerate.dualReferenceWorkflowNotActive')}
-          </span>
-        </div>
-      )}
 
       <div className="flex gap-4 flex-wrap">
         {sortedScenes.length > 0 ? (
@@ -75,7 +75,7 @@ export function SceneImages({
 
             return (
               <div key={idx} className={`text-center relative ${isInCurrentShot ? 'order-first' : ''}`}>
-                <div 
+                <div
                   className={`rounded-xl bg-gradient-to-br from-green-400 to-teal-500 flex items-center justify-center mb-2 overflow-hidden relative cursor-pointer ${
                     isInCurrentShot ? 'ring-2 ring-green-500 ring-offset-2' : ''
                   }`}
@@ -94,7 +94,7 @@ export function SceneImages({
                   )}
                 </div>
                 <p className="text-sm font-medium">{name}</p>
-                <button 
+                <button
                   onClick={() => onRegenerateScene(name)}
                   className="text-xs text-green-600 hover:underline mt-1"
                 >

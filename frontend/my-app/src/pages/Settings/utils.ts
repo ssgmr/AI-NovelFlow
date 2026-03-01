@@ -88,7 +88,8 @@ export const getTypeNames = (t: any) => ({
   scene: t('systemSettings.workflow.scene'),
   shot: t('systemSettings.workflow.shot'),
   video: t('systemSettings.workflow.video'),
-  transition: t('systemSettings.workflow.transition')
+  transition: t('systemSettings.workflow.transition'),
+  prop: t('systemSettings.workflow.prop')
 });
 
 /**
@@ -122,6 +123,7 @@ export const checkWorkflowMappingComplete = (workflow: any): boolean => {
   switch (workflow.type) {
     case 'character':
     case 'scene':
+    case 'prop':
       return !!(
         mapping.prompt_node_id &&
         mapping.prompt_node_id !== 'auto' &&
@@ -140,14 +142,17 @@ export const checkWorkflowMappingComplete = (workflow: any): boolean => {
         mapping.height_node_id &&
         mapping.height_node_id !== 'auto'
       );
-      const hasSingleReference = shotMapping.reference_image_node_id && shotMapping.reference_image_node_id !== 'auto';
       const hasDualReference = (
         shotMapping.character_reference_image_node_id &&
         shotMapping.character_reference_image_node_id !== 'auto' &&
         shotMapping.scene_reference_image_node_id &&
         shotMapping.scene_reference_image_node_id !== 'auto'
       );
-      return hasBasicFields && (hasSingleReference || hasDualReference);
+      // 检查是否有自定义参考图节点
+      const hasCustomReference = Object.keys(shotMapping).some(
+        key => key.startsWith('custom_reference_image_node_') && shotMapping[key] && shotMapping[key] !== 'auto'
+      );
+      return hasBasicFields && (hasDualReference || hasCustomReference);
     case 'video':
       const videoMapping = mapping as any;
       return !!(

@@ -4,6 +4,7 @@ import { toast } from '../../../stores/toastStore';
 import { useTranslation } from '../../../stores/i18nStore';
 import { novelApi } from '../../../api/novels';
 import { chapterApi, type ParseResult } from '../../../api/chapters';
+import { propApi } from '../../../api/props';
 import type { Chapter, Novel } from '../../../types';
 import type { ParseResultData, PreviewImageState } from '../types';
 
@@ -21,8 +22,10 @@ export function useChapterDetailState() {
   const [previewImage, setPreviewImage] = useState<PreviewImageState>({ isOpen: false, url: null, index: 0, images: [] });
   const [parsingChapter, setParsingChapter] = useState(false);
   const [parsingScenes, setParsingScenes] = useState(false);
+  const [parsingProps, setParsingProps] = useState(false);
   const [parseResult, setParseResult] = useState<ParseResultData | null>(null);
   const [parseScenesResult, setParseScenesResult] = useState<ParseResultData | null>(null);
+  const [parsePropsResult, setParsePropsResult] = useState<ParseResultData | null>(null);
 
   useEffect(() => { if (id && cid) fetchData(); }, [id, cid]);
 
@@ -80,7 +83,8 @@ export function useChapterDetailState() {
     try {
       const data = await chapterApi.parseCharacters(id!, cid!);
       if (data.success) {
-        const stats: ParseResult = data.data?.statistics || { created: 0, updated: 0, total: 0 };
+        // statistics 在返回对象的根级别，不是在 data 里
+        const stats: ParseResult = (data as any).statistics || data.data?.statistics || { created: 0, updated: 0, total: 0 };
         setParseResult({ created: stats.created || 0, updated: stats.updated || 0, total: stats.total || 0 });
         if (stats.created > 0) toast.success(t('chapterDetail.parseResult', { created: stats.created, updated: stats.updated }));
         else toast.info(t('chapterDetail.noNewCharacters'));
@@ -102,7 +106,8 @@ export function useChapterDetailState() {
     try {
       const data = await chapterApi.parseScenes(id!, cid!);
       if (data.success) {
-        const stats: ParseResult = data.data?.statistics || { created: 0, updated: 0, total: 0 };
+        // statistics 在返回对象的根级别，不是在 data 里
+        const stats: ParseResult = (data as any).statistics || data.data?.statistics || { created: 0, updated: 0, total: 0 };
         setParseScenesResult({ created: stats.created || 0, updated: stats.updated || 0, total: stats.total || 0 });
         if (stats.created > 0 || stats.updated > 0) toast.success(t('chapterDetail.parseScenesResult', { created: stats.created || 0, updated: stats.updated || 0 }));
         else toast.info(t('chapterDetail.noNewScenes'));
@@ -114,6 +119,32 @@ export function useChapterDetailState() {
       toast.error(t('chapterDetail.parseScenesFailed'));
     } finally {
       setParsingScenes(false);
+    }
+  };
+
+  const handleParseProps = async () => {
+    if (!content.trim()) { toast.warning(t('chapterDetail.chapterEmptyError')); return; }
+    setParsingProps(true);
+    setParsePropsResult(null);
+    try {
+      const data = await propApi.parseChapterProps(id!, cid!, true);
+      if (data.success) {
+        // statistics 在返回对象的根级别，不是在 data 里
+        const stats = (data as any)?.statistics || (data.data as any)?.statistics || { created: 0, updated: 0 };
+        setParsePropsResult({ created: stats.created || 0, updated: stats.updated || 0, total: stats.total || 0 });
+        if ((stats.created ?? 0) > 0 || (stats.updated ?? 0) > 0) {
+          toast.success(t('chapterDetail.parsePropsResult', { created: stats.created || 0, updated: stats.updated || 0 }));
+        } else {
+          toast.info(t('chapterDetail.noNewProps'));
+        }
+      } else {
+        toast.error(t('chapterDetail.parsePropsFailed') + ': ' + data.message);
+      }
+    } catch (error) {
+      console.error(t('chapterDetail.parsePropsFailed') + ':', error);
+      toast.error(t('chapterDetail.parsePropsFailed'));
+    } finally {
+      setParsingProps(false);
     }
   };
 
@@ -147,9 +178,9 @@ export function useChapterDetailState() {
   return {
     // State
     id, cid, chapter, novel, isLoading, isSaving, content, setContent, title, setTitle,
-    previewImage, parsingChapter, parsingScenes, parseResult, parseScenesResult,
+    previewImage, parsingChapter, parsingScenes, parsingProps, parseResult, parseScenesResult, parsePropsResult,
     // Actions
-    handleSave, handleDelete, handleGenerate, handleParseCharacters, handleParseScenes,
+    handleSave, handleDelete, handleGenerate, handleParseCharacters, handleParseScenes, handleParseProps,
     openImagePreview, closeImagePreview, navigatePreview,
   };
 }

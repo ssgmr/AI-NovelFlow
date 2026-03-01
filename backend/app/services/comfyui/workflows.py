@@ -88,7 +88,8 @@ class WorkflowBuilder:
         node_mapping: Dict[str, str],
         aspect_ratio: str = "16:9",
         seed: Optional[int] = None,
-        style: str = "anime style, high quality, detailed"
+        style: str = "anime style, high quality, detailed",
+        reference_images: Dict[str, str] = None
     ) -> Dict[str, Any]:
         """构建分镜图片工作流"""
         workflow = json.loads(workflow_json)
@@ -115,6 +116,24 @@ class WorkflowBuilder:
         
         if height_node_id and height_node_id in workflow:
             workflow[height_node_id]["inputs"]["value"] = height
+        
+        # 处理参考图节点 - 设置已上传的图片
+        if reference_images:
+            for ref_key, filename in reference_images.items():
+                node_id = node_mapping.get(f"{ref_key}_node_id")
+                if node_id and node_id in workflow:
+                    workflow[node_id]["inputs"]["image"] = filename
+
+        # 处理未上传图片的参考图节点 - 断开下游连接而不是删除节点
+        reference_node_keys = [key for key in node_mapping if key.endswith("_node_id") and "reference" in key]
+        for ref_key in reference_node_keys:
+            node_id = node_mapping.get(ref_key)
+            if node_id and node_id in workflow:
+                # 检查该节点是否有有效的图片
+                image_value = workflow[node_id].get("inputs", {}).get("image", "")
+                # 如果没有有效图片，断开下游参考链路
+                if not image_value or image_value in ["", "example.png", "placeholder.png"]:
+                    self.disconnect_reference_chain(workflow, node_id)
         
         # 设置随机种子
         if seed is None:
@@ -288,11 +307,73 @@ class WorkflowBuilder:
                     workflow[nid]["inputs"]["image"] = filename
                     return True
                 load_image_count += 1
-        
+
         return False
-    
+
+    # ==================== 参考图节点处理 ====================
+
+    def disconnect_reference_chain(
+        self,
+        workflow: Dict[str, Any],
+        start_node_id: str
+    ) -> Dict[str, Any]:
+        """
+        从 LoadImage 节点开始，断开下游参考图链路的输入连接
+
+        当参考图节点未上传图片时，应该断开下游使用 latent、pixels、image 类型输入的连接，
+        而不是直接删除节点，这样可以避免工作流报错，兼容性更好。
+
+        Args:
+            workflow: 工作流字典
+            start_node_id: 起始节点 ID（通常是 LoadImage 节点）
+
+        Returns:
+            修改后的工作流
+        """
+        # 需要断开的输入类型
+        DISCONNECT_INPUT_TYPES = {"latent", "pixels", "image"}
+
+        # 追踪已访问的节点，避免循环
+        visited = set()
+        # 待处理的节点队列
+        queue = [str(start_node_id)]
+
+        while queue:
+            current_node_id = queue.pop(0)
+
+            if current_node_id in visited:
+                continue
+            visited.add(current_node_id)
+
+            # 查找所有引用当前节点的下游节点
+            for node_id, node in workflow.items():
+                if not isinstance(node, dict):
+                    continue
+
+                inputs = node.get("inputs", {})
+                inputs_to_disconnect = []
+
+                for input_name, input_value in inputs.items():
+                    # 检查是否是连接到当前节点的输入
+                    if isinstance(input_value, list) and len(input_value) >= 2:
+                        source_node_id = str(input_value[0])
+                        if source_node_id == current_node_id:
+                            # 检查输入类型是否需要断开
+                            if input_name.lower() in DISCONNECT_INPUT_TYPES:
+                                inputs_to_disconnect.append(input_name)
+                            # 将下游节点加入队列继续追踪
+                            if node_id not in visited:
+                                queue.append(str(node_id))
+
+                # 断开匹配的输入连接
+                for input_name in inputs_to_disconnect:
+                    del inputs[input_name]
+                    print(f"[Workflow] Disconnected input '{input_name}' from node {node_id} (source: {current_node_id})")
+
+        return workflow
+
     # ==================== 辅助方法 ====================
-    
+
     def get_aspect_ratio_dimensions(self, aspect_ratio: str) -> Tuple[int, int]:
         """根据画面比例返回对应的图片尺寸"""
         return self.ASPECT_RATIOS.get(aspect_ratio, (1088, 1920))

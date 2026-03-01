@@ -1,4 +1,4 @@
-import enUS from '../en-US/chapters';
+﻿import enUS from '../en-US/chapters';
 
 // Chapter related translations - Japanese
 export default {
@@ -101,6 +101,12 @@ export default {
     parseScenesFailed: 'シーン解析失敗',
     noNewScenes: '新しいシーンが見つかりません',
     viewScenes: 'シーンを見る',
+    parseProps: 'プロップ解析',
+    parsePropsComplete: 'プロップ解析完了',
+    parsePropsResult: '{created} 個のプロップを追加、{updated} 個を更新',
+    parsePropsFailed: 'プロップ解析失敗',
+    noNewProps: '新しいプロップが見つかりません',
+    viewProps: 'プロップを見る',
   },
 
   chapterGenerate: {
@@ -206,6 +212,11 @@ export default {
     sceneImages: 'シーン画像',
     aiGenerateScene: 'AIシーン生成',
     noSceneImages: 'シーン画像がありません',
+
+    // Prop Images
+    propImages: 'プロップ画像',
+    aiGenerateProp: 'AI プロップ画像生成',
+    noPropImages: 'プロップ画像がありません',
     
     selectCharacterFromLibrary: 'キャラクターライブラリから選択...',
     selectSceneFromLibrary: 'シーンライブラリから選択...',
@@ -218,6 +229,14 @@ export default {
     removeCharacter: 'キャラクターを削除',
     removeScene: 'シーンを削除',
     orAddCustom: 'または手動入力',
+    
+    // プロップ関連
+    props: 'プロップ',
+    selectPropFromChapter: '章のプロップリストから選択...',
+    selectPropFromLibrary: 'プロップライブラリから選択...',
+    removeProp: 'プロップを削除',
+    noPropsInLibrary: 'プロップライブラリにプロップがありません。まずプロップを解析または追加してください',
+    allPropsAdded: 'ライブラリのすべてのプロップが追加されました',
     charactersLabel: 'キャラクター',
     uploadImage: '画像をアップロード',
     uploadSuccess: '画像のアップロードに成功しました',

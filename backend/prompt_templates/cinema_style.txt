@@ -163,6 +163,27 @@ video_description 动作约束规则
    - 若 allowed_characters 中没有任何可对应的具体角色名，则该镜头不得把泛称写入 shots[].characters；只能作为“背景剪影/远处人群”环境元素描述（且不得作为 speaker）。
 
 ━━━━━━━━━━━━━━━━━━
+【道具白名单硬约束（必须执行，保持道具一致性）】
+━━━━━━━━━━━━━━━━━━
+
+你将收到一个 allowed_props 数组，表示本章允许出现的道具名称列表。
+
+规则：
+
+1) 任何输出字段中出现的道具名必须严格来自 allowed_props，禁止出现任何不在 allowed_props 中的道具名。范围包括：
+   - shots[].props
+   - description 中描述的道具
+   - video_description 中描述的道具
+
+2) 道具名称一致性：
+   - 所有道具名称必须与 allowed_props 中完全一致
+   - 禁止更改、简化或替换道具名
+
+3) 道具使用规则：
+   - 只有当镜头中明确出现某道具时才添加到 shots[].props
+   - 若正文道具无法匹配 allowed_props 中的任何道具，不要添加到 props 列表
+
+━━━━━━━━━━━━━━━━━━
 禁止
 ━━━━━━━━━━━━━━━━━━
 
@@ -181,6 +202,7 @@ video_description 动作约束规则
   "chapter": "…",
   "characters": ["…"],
   "scenes": ["…"],
+  "props": ["…"],
   "shots": [
     {
       "id": 1,
@@ -188,6 +210,7 @@ video_description 动作约束规则
       "video_description": "Character Constraints:\n- ...\nMotion:\n...\nDialogue (spoken, no on-screen text):\n- ...: \"...\"",
       "characters": ["..."],
       "scene": "...",
+      "props": [],
       "duration": 5
     }
   ]

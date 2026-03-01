@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../stores/i18nStore';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Loader2,
   RefreshCw,
   Image as ImageIcon,
@@ -15,14 +15,14 @@ import {
   AlertTriangle,
   Upload,
   Clock,
-  Grid3x3
+  Grid3x3,
 } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import ComfyUIStatus from '../../components/ComfyUIStatus';
 
 // 导入拆分后的组件和 hooks
 import { STEPS_CONFIG, API_BASE } from './constants';
-import type { ParsedData, Character, Scene } from './types';
+import type { ParsedData, Character, Scene, Prop } from './types';
 import DownloadMaterialsCard from './components/DownloadMaterialsCard';
 import MergeVideosCard from './components/MergeVideosCard';
 import TransitionVideoItem from './components/TransitionVideoItem';
@@ -42,6 +42,7 @@ import { Tabs } from './components/Tabs';
 import { JsonEditor } from './components/JsonEditor';
 import { CharacterImages } from './components/CharacterImages';
 import { SceneImages } from './components/SceneImages';
+import { PropImages } from './components/PropImages';
 import { getAspectRatioStyle, getInvalidSceneShots as getInvalidSceneShotsUtil } from './utils';
 
 // Shot 工作流类型
@@ -49,6 +50,12 @@ interface ShotWorkflow {
   id: string;
   name: string;
   isActive: boolean;
+  nodeMapping?: {
+    character_reference_image_node_id?: string;
+    scene_reference_image_node_id?: string;
+    prop_reference_image_node_id?: string;
+    [key: string]: string | undefined;
+  };
   extension?: {
     reference_image_count?: string;
   };
@@ -67,15 +74,18 @@ export default function ChapterGenerate() {
     editableJson,
     characters,
     scenes,
+    props,
     loading,
     fetchNovel,
     fetchChapter,
     fetchCharacters,
     fetchScenes,
+    fetchProps,
     setParsedData,
     setEditableJson,
     getCharacterImage,
     getSceneImage,
+    getPropImage,
   } = useChapterData();
 
   const {
@@ -162,12 +172,15 @@ export default function ChapterGenerate() {
     cid,
     characters,
     scenes,
+    props,
     parsedData,
     shotImages,
     shotVideos,
     transitionVideos,
     mergedImage,
     getCharacterImage,
+    getSceneImage,
+    getPropImage,
     setParsedData,
     setEditableJson,
     setShotImages,
@@ -203,11 +216,12 @@ export default function ChapterGenerate() {
       fetchNovel(id);
       fetchCharacters(id);
       fetchScenes(id);
+      fetchProps(id);
       fetchChapter(id, cid);
       fetchTransitionWorkflows();
       fetchShotWorkflows();
     }
-  }, [cid, id]);
+  }, [cid, id, fetchProps]);
 
   // 从章节数据初始化状态
   useEffect(() => {
@@ -391,7 +405,7 @@ export default function ChapterGenerate() {
               {loading ? t('chapterGenerate.loading') : chapter?.content || t('chapterGenerate.noContent')}
             </p>
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-              {hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual' && (
+              {hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -404,11 +418,11 @@ export default function ChapterGenerate() {
                   </div>
                 </div>
               )}
-              <button 
+              <button
                 onClick={actions.handleSplitChapterClick}
                 disabled={isSplitting}
                 className={`w-full py-3 px-4 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual'
+                  hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
                 }`}
@@ -435,6 +449,7 @@ export default function ChapterGenerate() {
               editorKey={editorKey}
               availableScenes={scenes.map(s => s.name)}
               availableCharacters={characters.map(c => c.name)}
+              availableProps={props.map(p => p.name)}
               activeShotWorkflow={activeShotWorkflow}
             />
           </div>
@@ -448,6 +463,7 @@ export default function ChapterGenerate() {
             getCharacterImage={getCharacterImage}
             onRegenerateCharacter={actions.handleRegenerateCharacter}
             aspectStyle={aspectStyle}
+            activeShotWorkflow={activeShotWorkflow}
           />
 
           {/* 场景图片 */}
@@ -462,6 +478,18 @@ export default function ChapterGenerate() {
               setPreviewImageUrl(url);
               setShowImagePreview(true);
             }}
+            aspectStyle={aspectStyle}
+            activeShotWorkflow={activeShotWorkflow}
+          />
+
+          {/* 道具图片 */}
+          <PropImages
+            parsedData={parsedData}
+            currentShot={currentShot}
+            novelAspectRatio={novel?.aspectRatio || '1:1'}
+            novelId={id}
+            getPropImage={getPropImage}
+            onRegenerateProp={actions.handleRegenerateProp}
             aspectStyle={aspectStyle}
             activeShotWorkflow={activeShotWorkflow}
           />

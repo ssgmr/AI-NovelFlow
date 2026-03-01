@@ -15,6 +15,9 @@ from app.schemas.character import (
     CharacterUpdate as CharacterSchemaUpdate,
     CharacterResponse as CharacterSchemaResponse,
 )
+from app.schemas.prop import (
+    PropBase, PropCreate, PropUpdate, PropResponse,
+)
 from app.schemas.shot import (
     TransitionVideoRequest, BatchTransitionRequest, MergeVideosRequest,
 )
@@ -30,6 +33,8 @@ __all__ = [
     "SceneBase", "SceneCreate", "SceneUpdate", "SceneResponse", "ParseScenesRequest",
     # Character Schema (aliased)
     "CharacterSchemaBase", "CharacterSchemaCreate", "CharacterSchemaUpdate", "CharacterSchemaResponse",
+    # Prop
+    "PropBase", "PropCreate", "PropUpdate", "PropResponse",
     # Shot
     "TransitionVideoRequest", "BatchTransitionRequest", "MergeVideosRequest",
 ]

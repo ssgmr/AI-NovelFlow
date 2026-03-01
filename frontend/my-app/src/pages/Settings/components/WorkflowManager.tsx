@@ -1,7 +1,7 @@
 // 工作流管理组件
 
 import { useState, useEffect } from 'react';
-import { Plus, User, Image as ImageIcon, Film, Mountain } from 'lucide-react';
+import { Plus, User, Image as ImageIcon, Film, Mountain, Box } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 import { toast } from '../../../stores/toastStore';
 import { getWorkflowDisplayName, getTypeNames } from '../utils';
@@ -19,7 +19,8 @@ const typeIcons = {
   scene: Mountain,
   shot: ImageIcon,
   video: Film,
-  transition: Film
+  transition: Film,
+  prop: Box
 };
 
 interface WorkflowManagerProps {
@@ -123,7 +124,7 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
     }
   };
 
-  const getWorkflowsByType = (type: 'character' | 'scene' | 'shot' | 'video' | 'transition') => {
+  const getWorkflowsByType = (type: 'character' | 'scene' | 'shot' | 'video' | 'transition' | 'prop') => {
     return workflows.filter(w => w.type === type);
   };
 
@@ -146,7 +147,7 @@ export default function WorkflowManager({ onRefresh }: WorkflowManagerProps) {
       </div>
 
       {/* 按类型分组显示工作流 */}
-      {(['character', 'scene', 'shot', 'video', 'transition'] as const).map(type => {
+      {(['character', 'scene', 'prop', 'shot', 'video', 'transition'] as const).map(type => {
         const typeWorkflows = getWorkflowsByType(type);
         if (typeWorkflows.length === 0) return null;
         

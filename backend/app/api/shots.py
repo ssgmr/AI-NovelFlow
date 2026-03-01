@@ -17,31 +17,11 @@ from app.services.novel_service import NovelService, generate_shot_task, generat
 from app.services.task_service import TaskService
 from app.repositories import NovelRepository, ChapterRepository, TaskRepository, WorkflowRepository
 from app.schemas.shot import TransitionVideoRequest, BatchTransitionRequest, MergeVideosRequest
+from app.api.deps import get_novel_repo, get_chapter_repo, get_task_repo, get_workflow_repo
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
-
 comfyui_service = ComfyUIService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
-    """获取 ChapterRepository 实例"""
-    return ChapterRepository(db)
-
-
-def get_task_repo(db: Session = Depends(get_db)) -> TaskRepository:
-    """获取 TaskRepository 实例"""
-    return TaskRepository(db)
-
-
-def get_workflow_repo(db: Session = Depends(get_db)) -> WorkflowRepository:
-    """获取 WorkflowRepository 实例"""
-    return WorkflowRepository(db)
 
 
 # ==================== 分镜图生成 ====================

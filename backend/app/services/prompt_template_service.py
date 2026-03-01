@@ -130,13 +130,35 @@ SYSTEM_SCENE_IMAGE_TEMPLATES: List[Dict] = [
     }
 ]
 
+# 系统预设的道具解析提示词模板（从小说文本解析道具信息）
+SYSTEM_PROP_PARSE_TEMPLATES: List[Dict] = [
+    {
+        "name": "标准道具解析",
+        "description": "适用于大多数小说的道具解析",
+        "template": load_template("prop_parse.txt"),
+        "type": "prop_parse"
+    }
+]
+
+# 系统预设的道具图生成提示词模板
+SYSTEM_PROP_TEMPLATES: List[Dict] = [
+    {
+        "name": "标准道具图",
+        "description": "适用于大多数道具的标准图生成",
+        "template": load_template("prop.txt"),
+        "type": "prop"
+    }
+]
+
 # 合并所有系统模板
 SYSTEM_PROMPT_TEMPLATES = (
     SYSTEM_STYLE_TEMPLATES +
     SYSTEM_CHARACTER_PARSE_TEMPLATES +
     SYSTEM_SCENE_PARSE_TEMPLATES +
+    SYSTEM_PROP_PARSE_TEMPLATES +
     SYSTEM_CHARACTER_TEMPLATES +
     SYSTEM_SCENE_IMAGE_TEMPLATES +
+    SYSTEM_PROP_TEMPLATES +
     SYSTEM_CHAPTER_SPLIT_TEMPLATES
 )
 

@@ -70,8 +70,10 @@ export interface Novel {
   stylePromptTemplateId?: string;  // 风格提示词模板
   characterParsePromptTemplateId?: string;  // 角色解析提示词模板
   sceneParsePromptTemplateId?: string;  // 场景解析提示词模板
+  propParsePromptTemplateId?: string;  // 道具解析提示词模板
   promptTemplateId?: string;  // 角色生成提示词模板
   scenePromptTemplateId?: string;  // 场景生成提示词模板
+  propPromptTemplateId?: string;  // 道具生成提示词模板
   chapterSplitPromptTemplateId?: string;  // 分镜拆分提示词模板
   aspectRatio?: string;  // 画面比例: 16:9, 9:16, 4:3, 3:4, 1:1
   createdAt: string;
@@ -121,6 +123,25 @@ export interface Scene {
   imageUrl?: string;
   generatingStatus?: string;
   sceneTaskId?: string;
+  novelName?: string;
+  startChapter?: number;
+  endChapter?: number;
+  isIncremental?: boolean;
+  sourceRange?: string;
+  lastParsedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Prop {
+  id: string;
+  novelId: string;
+  name: string;
+  description: string;
+  appearance: string;
+  imageUrl?: string;
+  generatingStatus?: 'pending' | 'running' | 'completed' | 'failed';
+  propTaskId?: string;
   novelName?: string;
   startChapter?: number;
   endChapter?: number;

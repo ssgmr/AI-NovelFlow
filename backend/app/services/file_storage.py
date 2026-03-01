@@ -160,6 +160,16 @@ class FileStorageService:
         safe_name = self._sanitize_filename(scene_name)
         return save_dir / f"{safe_name}_{timestamp}.png"
     
+    def get_prop_image_path(self, novel_id: str, prop_name: str) -> Path:
+        """获取道具图片保存路径（用于生成前）"""
+        story_dir = self._get_story_dir(novel_id)
+        save_dir = story_dir / "props"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = self._sanitize_filename(prop_name)
+        return save_dir / f"{safe_name}_{timestamp}.png"
+    
     def get_shot_image_path(self, novel_id: str, chapter_id: str, 
                            shot_number: int) -> Path:
         """获取分镜图片保存路径"""
@@ -625,6 +635,32 @@ class FileStorageService:
                 
         except Exception as e:
             print(f"[FileStorage] Failed to delete scenes directory: {e}")
+            return False
+
+    def delete_props_dir(self, novel_id: str) -> bool:
+        """
+        删除小说的道具图片目录
+
+        Args:
+            novel_id: 小说ID
+
+        Returns:
+            是否成功删除
+        """
+        try:
+            story_dir = self._get_story_dir(novel_id)
+            props_dir = story_dir / "props"
+
+            if props_dir.exists():
+                shutil.rmtree(props_dir)
+                print(f"[FileStorage] Deleted props directory: {props_dir}")
+                return True
+            else:
+                print(f"[FileStorage] Props directory not found: {props_dir}")
+                return True  # 目录不存在也算成功（已经不存在了）
+
+        except Exception as e:
+            print(f"[FileStorage] Failed to delete props directory: {e}")
             return False
 
 

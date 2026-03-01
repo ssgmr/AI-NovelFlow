@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  Users, 
-  MapPin, 
-  Plus, 
-  Trash2, 
-  X, 
-  AlertCircle 
+import {
+  Users,
+  MapPin,
+  Package,
+  Plus,
+  Trash2,
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 import type { JsonTableEditorProps } from '../types';
@@ -15,14 +16,17 @@ export default function JsonTableEditor({
   onChange, 
   availableScenes = [], 
   availableCharacters = [], 
+  availableProps = [], 
   activeShotWorkflow 
 }: JsonTableEditorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string>('');
-  const [activeSection, setActiveSection] = useState<'characters' | 'scenes' | 'shots'>('shots');
+  const [activeSection, setActiveSection] = useState<'characters' | 'scenes' | 'shots' | 'props'>('shots');
   // 存储角色输入的临时值（key: shotIndex, value: 输入字符串）
   const [characterInputs, setCharacterInputs] = useState<Record<number, string>>({});
+  // 存储道具输入的临时值（key: shotIndex, value: 输入字符串）
+  const [propInputs, setPropInputs] = useState<Record<number, string>>({});
   // 当前选中的分镜索引
   const [activeShotIndex, setActiveShotIndex] = useState<number>(0);
   
@@ -122,6 +126,7 @@ export default function JsonTableEditor({
       video_description: '',
       characters: [],
       scene: '',
+      props: [],
       duration: 4
     };
     updateJson({ ...data, shots: [...(data.shots || []), newShot] });
@@ -163,8 +168,8 @@ export default function JsonTableEditor({
         <button
           onClick={() => setActiveSection('shots')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-            activeSection === 'shots' 
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+            activeSection === 'shots'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
               : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -173,8 +178,8 @@ export default function JsonTableEditor({
         <button
           onClick={() => setActiveSection('characters')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-            activeSection === 'characters' 
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+            activeSection === 'characters'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
               : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
@@ -183,12 +188,22 @@ export default function JsonTableEditor({
         <button
           onClick={() => setActiveSection('scenes')}
           className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-            activeSection === 'scenes' 
-              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+            activeSection === 'scenes'
+              ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
               : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
           {t('chapterGenerate.scenes')} ({data.scenes?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveSection('props')}
+          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+            activeSection === 'props'
+              ? 'text-amber-600 border-b-2 border-amber-600 bg-amber-50'
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          {t('chapterGenerate.props')} ({data.props?.length || 0})
         </button>
       </div>
 
@@ -308,10 +323,70 @@ export default function JsonTableEditor({
           </div>
         )}
 
+        {activeSection === 'props' && (
+          <div className="space-y-2">
+            {/* 已添加的道具列表 */}
+            {data.props?.map((prop: string, idx: number) => (
+              <div key={idx} className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                <span className="flex-1 px-3 py-2 bg-amber-50 text-amber-700 rounded-md text-sm font-medium">
+                  {prop}
+                </span>
+                <button
+                  onClick={() => {
+                    const newProps = (data.props || []).filter((_: string, i: number) => i !== idx);
+                    updateJson({ ...data, props: newProps });
+                  }}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                  title={t('chapterGenerate.removeProp')}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+            {/* 从道具库添加道具 */}
+            {(() => {
+              const existingProps = data.props || [];
+              const availableToAdd = availableProps.filter(p => !existingProps.includes(p));
+
+              if (availableToAdd.length === 0) {
+                return (
+                  <div className="text-center py-3 text-gray-400 text-sm">
+                    {availableProps.length === 0
+                      ? t('chapterGenerate.noPropsInLibrary')
+                      : t('chapterGenerate.allPropsAdded')}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex items-center gap-2">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const newProps = [...(data.props || []), e.target.value];
+                        updateJson({ ...data, props: newProps });
+                        e.target.value = '';
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    defaultValue=""
+                  >
+                    <option value="">{t('chapterGenerate.selectPropFromLibrary')}</option>
+                    {availableToAdd.map((prop) => (
+                      <option key={prop} value={prop}>{prop}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {activeSection === 'shots' && (
-          <div className={`space-y-3 h-full flex flex-col ${hasInvalidScenes && activeShotWorkflow?.extension?.reference_image_count === 'dual' ? 'border-2 border-red-400 rounded-lg p-2' : ''}`}>
-            {/* 场景验证错误提示 - 只有双图工作流时才显示 */}
-            {hasInvalidScenes && activeShotWorkflow?.extension?.reference_image_count === 'dual' && (
+          <div className={`space-y-3 h-full flex flex-col ${hasInvalidScenes && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id ? 'border-2 border-red-400 rounded-lg p-2' : ''}`}>
+            {/* 场景验证错误提示 - 只有配置了场景参考图节点时才显示 */}
+            {hasInvalidScenes && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -332,7 +407,7 @@ export default function JsonTableEditor({
               <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-2">
                 {data.shots.map((shot: any, idx: number) => {
                   const isInvalidScene = shot.scene && !availableScenes.includes(shot.scene);
-                  const showInvalid = isInvalidScene && activeShotWorkflow?.extension?.reference_image_count === 'dual';
+                  const showInvalid = isInvalidScene && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id;
                   return (
                     <button
                       key={idx}
@@ -486,6 +561,51 @@ export default function JsonTableEditor({
                               .filter((c: string) => !(shot.characters || []).includes(c))
                               .map((char: string) => (
                                 <option key={char} value={char}>{char}</option>
+                              ))}
+                          </select>
+                        </div>
+                        
+                        {/* 道具选择器 - 从当前章节道具列表选择 */}
+                        <div className="space-y-2">
+                          <label className="block text-xs text-gray-500 mb-1">{t('chapterGenerate.props')}</label>
+                          {/* 已选道具标签 */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {(shot.props || []).map((prop: string, propIdx: number) => (
+                              <span
+                                key={propIdx}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium"
+                              >
+                                <Package className="h-3 w-3" />
+                                {prop}
+                                <button
+                                  onClick={() => {
+                                    const newProps = (shot.props || []).filter((_: string, i: number) => i !== propIdx);
+                                    updateShot(idx, 'props', newProps);
+                                  }}
+                                  className="ml-1 hover:text-red-500"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          {/* 从章节道具列表选择 */}
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value && !(shot.props || []).includes(e.target.value)) {
+                                const newProps = [...(shot.props || []), e.target.value];
+                                updateShot(idx, 'props', newProps);
+                              }
+                              e.target.value = '';
+                            }}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded-md text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            defaultValue=""
+                          >
+                            <option value="">{t('chapterGenerate.selectPropFromChapter')}</option>
+                            {(data.props || [])
+                              .filter((p: string) => !(shot.props || []).includes(p))
+                              .map((prop: string) => (
+                                <option key={prop} value={prop}>{prop}</option>
                               ))}
                           </select>
                         </div>

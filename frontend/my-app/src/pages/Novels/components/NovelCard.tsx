@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Trash2, Edit2, Users, MapPin, Play, Sparkles, Loader2 } from 'lucide-react';
+import { BookOpen, Trash2, Edit2, Users, MapPin, Play, Sparkles, Loader2, Package } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 import type { Novel, PromptTemplate } from '../../../types';
 
@@ -8,9 +8,10 @@ interface NovelCardProps {
   templatesByType: Record<string, PromptTemplate[]>;
   parsingNovelId: string | null;
   parsingScenesNovelId: string | null;
+  parsingPropsNovelId: string | null;
   onDelete: (id: string) => void;
   onEdit: (novel: Novel) => void;
-  onParseConfirm: (novelId: string, type: 'characters' | 'scenes') => void;
+  onParseConfirm: (novelId: string, type: 'characters' | 'scenes' | 'props') => void;
   getTemplateDisplayName: (template: PromptTemplate | undefined) => string;
 }
 
@@ -25,6 +26,7 @@ export function NovelCard({
   templatesByType,
   parsingNovelId,
   parsingScenesNovelId,
+  parsingPropsNovelId,
   onDelete,
   onEdit,
   onParseConfirm,
@@ -123,6 +125,19 @@ export function NovelCard({
               )}
               <span>{t('novels.aiParseScenes')}</span>
             </button>
+            <button
+              onClick={() => onParseConfirm(novel.id, 'props')}
+              disabled={parsingPropsNovelId === novel.id}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-600 hover:bg-amber-200 transition-colors disabled:opacity-50 text-sm"
+              title={t('novels.aiParseProps')}
+            >
+              {parsingPropsNovelId === novel.id ? (
+                <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+              ) : (
+                <Sparkles className="h-4 w-4 flex-shrink-0" />
+              )}
+              <span>{t('novels.aiParseProps')}</span>
+            </button>
             <Link
               to={`/characters?novel=${novel.id}`}
               className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 transition-colors flex-shrink-0"
@@ -136,6 +151,13 @@ export function NovelCard({
               title={t('novels.viewScenes')}
             >
               <MapPin className="h-4 w-4" />
+            </Link>
+            <Link
+              to={`/props?novel=${novel.id}`}
+              className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+              title={t('novels.viewProps')}
+            >
+              <Package className="h-4 w-4" />
             </Link>
             <Link
               to={`/novels/${novel.id}`}

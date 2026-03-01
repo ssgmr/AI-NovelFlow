@@ -68,6 +68,14 @@ class TaskRepository:
             Task.status.in_(["pending", "running"])
         ).first()
     
+    def get_active_by_prop(self, prop_id: str) -> Optional[Task]:
+        """获取道具进行中的任务"""
+        return self.db.query(Task).filter(
+            Task.prop_id == prop_id,
+            Task.type == "prop_image",
+            Task.status.in_(["pending", "running"])
+        ).first()
+        
     def get_active_by_chapter_shot(
         self, 
         novel_id: str, 

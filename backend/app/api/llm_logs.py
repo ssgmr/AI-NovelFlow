@@ -1,4 +1,8 @@
-"""LLM调用日志API"""
+"""
+LLM 调用日志 API 路由
+
+LLM 调用日志相关的路由定义
+"""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc

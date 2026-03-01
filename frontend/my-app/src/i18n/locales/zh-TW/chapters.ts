@@ -57,6 +57,12 @@ export default {
     parseScenesFailed: '場景解析失敗',
     noNewScenes: '未發現新場景',
     viewScenes: '查看場景',
+    parseProps: '解析道具',
+    parsePropsComplete: '道具解析完成',
+    parsePropsResult: '新增 {created} 個道具，更新 {updated} 個道具',
+    parsePropsFailed: '道具解析失敗',
+    noNewProps: '未發現新道具',
+    viewProps: '查看道具',
   },
 
   chapterGenerate: {
@@ -64,6 +70,10 @@ export default {
     default: '預設',
     reset: '還原',
     dualReferenceWorkflowNotActive: '當前未切到雙圖分鏡生成工作流，場景圖暫不可用',
+    // 道具圖
+    propImages: '道具圖',
+    aiGenerateProp: 'AI 生成道具圖',
+    noPropImages: '暫無道具圖',
     selectCharacterFromLibrary: '從角色庫選擇...',
     selectSceneFromLibrary: '從場景庫選擇...',
     selectCharacterFromChapter: '從章節角色列表選擇...',
@@ -76,5 +86,12 @@ export default {
     removeScene: '移除場景',
     orAddCustom: '或手動輸入',
     charactersLabel: '角色',
+    // 道具相關
+    props: '道具',
+    selectPropFromChapter: '從章節道具列表選擇...',
+    selectPropFromLibrary: '從道具庫選擇...',
+    removeProp: '移除道具',
+    noPropsInLibrary: '道具庫中沒有道具，請先解析或添加道具',
+    allPropsAdded: '道具庫中的道具已全部添加',
   },
 };

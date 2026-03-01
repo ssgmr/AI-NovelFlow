@@ -17,7 +17,8 @@ WORKFLOW_TYPES = {
     "scene": "场景生成",
     "shot": "分镜生图",
     "video": "分镜生视频",
-    "transition": "分镜生转场视频"
+    "transition": "分镜生转场视频",
+    "prop": "道具生成"
 }
 
 
@@ -26,7 +27,8 @@ DEFAULT_WORKFLOWS = {
     "character": "character_default.json",
     "scene": "scene_default.json",
     "shot": "shot_default.json",
-    "video": "video_default.json"
+    "video": "video_default.json",
+    "prop": "prop_default.json"
 }
 
 
@@ -114,6 +116,15 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "nameKey": f"{NAME_KEY_PREFIX}.Z-image-turbo 场景生成",
         "description": "Z-image-turbo 场景生成工作流",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Z-image-turbo 场景生成工作流",
+        "node_mapping": {"prompt_node_id": "133", "save_image_node_id": "9"},
+    },
+    {
+        "filename": "prop_default.json",
+        "type": "prop",
+        "name": "Z-image-turbo 道具生成",
+        "nameKey": f"{NAME_KEY_PREFIX}.Z-image-turbo 道具生成",
+        "description": "Z-image-turbo 道具生成工作流",
+        "descriptionKey": f"{DESC_KEY_PREFIX}.Z-image-turbo 道具生成工作流",
         "node_mapping": {"prompt_node_id": "133", "save_image_node_id": "9"},
     },
 ]

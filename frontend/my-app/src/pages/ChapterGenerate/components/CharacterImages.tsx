@@ -11,6 +11,7 @@ interface CharacterImagesProps {
   getCharacterImage: (name: string) => string | undefined;
   onRegenerateCharacter: (name: string) => void;
   aspectStyle: React.CSSProperties;
+  activeShotWorkflow?: any;
 }
 
 /**
@@ -24,8 +25,17 @@ export function CharacterImages({
   getCharacterImage,
   onRegenerateCharacter,
   aspectStyle,
+  activeShotWorkflow,
 }: CharacterImagesProps) {
   const { t } = useTranslation();
+
+  // 检查工作流是否配置了角色参考图节点
+  const hasCharacterNode = !!activeShotWorkflow?.nodeMapping?.character_reference_image_node_id;
+
+  // 如果工作流没有配置角色参考图节点，不显示组件
+  if (!hasCharacterNode) {
+    return null;
+  }
 
   const currentShotData = parsedData?.shots?.[currentShot - 1];
   const currentShotCharacters = currentShotData?.characters || [];
@@ -47,7 +57,7 @@ export function CharacterImages({
             ({novelAspectRatio || '16:9'})
           </span>
         </h3>
-        <Link 
+        <Link
           to={`/characters?novel=${novelId}`}
           className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
         >
@@ -62,7 +72,7 @@ export function CharacterImages({
 
             return (
               <div key={idx} className={`text-center relative ${isInCurrentShot ? 'order-first' : ''}`}>
-                <div 
+                <div
                   className={`rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center mb-2 overflow-hidden relative ${
                     isInCurrentShot ? 'ring-2 ring-green-500 ring-offset-2' : ''
                   }`}
@@ -80,7 +90,7 @@ export function CharacterImages({
                   )}
                 </div>
                 <p className="text-sm font-medium">{name}</p>
-                <button 
+                <button
                   onClick={() => onRegenerateCharacter(name)}
                   className="text-xs text-blue-600 hover:underline mt-1"
                 >

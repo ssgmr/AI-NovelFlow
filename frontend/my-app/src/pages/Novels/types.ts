@@ -8,8 +8,10 @@ export interface NovelFormData {
   stylePromptTemplateId: string;
   characterParsePromptTemplateId: string;
   sceneParsePromptTemplateId: string;
+  propParsePromptTemplateId: string;
   promptTemplateId: string;  // 角色生成模板
   scenePromptTemplateId: string;
+  propPromptTemplateId: string;
   chapterSplitPromptTemplateId: string;
   aspectRatio: string;
 }
@@ -23,7 +25,7 @@ export interface ChapterRange {
 export interface ConfirmDialogState {
   isOpen: boolean;
   novelId: string | null;
-  type: 'characters' | 'scenes';
+  type: 'characters' | 'scenes' | 'props';
 }
 
-export type ParseType = 'characters' | 'scenes';
+export type ParseType = 'characters' | 'scenes' | 'props';

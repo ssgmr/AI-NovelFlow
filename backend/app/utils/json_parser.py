@@ -90,23 +90,23 @@ def safe_parse_llm_json(content: str, default: Optional[Dict[str, Any]] = None) 
 def extract_json_objects(content: str) -> list:
     """
     从文本中提取所有 JSON 对象
-    
+
     Args:
         content: 可能包含多个 JSON 对象的文本
-        
+
     Returns:
         解析后的字典列表
     """
     results = []
-    
+
     # 处理 think 标签
     if "<think" in content:
         content = re.sub(r'<think[^>]*>.*?</think\s*>', '', content, flags=re.DOTALL | re.IGNORECASE)
-    
+
     # 查找所有 JSON 对象
     brace_count = 0
     start = None
-    
+
     for i, char in enumerate(content):
         if char == '{':
             if brace_count == 0:
@@ -121,5 +121,33 @@ def extract_json_objects(content: str) -> list:
                 except json.JSONDecodeError:
                     pass
                 start = None
-    
+
     return results
+
+
+def clean_llm_response(content: str) -> str:
+    """
+    清理 LLM 返回的非 JSON 文本内容
+
+    处理以下格式:
+    1. 移除 <think>...</think> 标签及其内容
+    2. 移除 </think> 等特殊标签
+
+    Args:
+        content: LLM 返回的原始内容
+
+    Returns:
+        清理后的纯文本内容
+    """
+    if not content:
+        return ""
+
+    text = content.strip()
+
+    # 1. 移除 <think>...</think> 标签及其内容
+    text = re.sub(r'<think[^>]*>.*?</think\s*>', '', text, flags=re.DOTALL | re.IGNORECASE)
+
+    # 2. 移除 </think> 标签 (常见于某些模型的推理输出)
+    text = re.sub(r'<\|.*?\|>', '', text)
+
+    return text.strip()

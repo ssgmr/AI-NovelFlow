@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../../stores/i18nStore';
 import { toast } from '../../../stores/toastStore';
 import { API_BASE } from '../constants';
-import type { ParsedData, Character, Scene } from '../types';
+import type { ParsedData, Character, Scene, Prop } from '../types';
 import { mergeCharacterImages } from '../utils';
 
 interface UseChapterActionsParams {
@@ -11,12 +11,15 @@ interface UseChapterActionsParams {
   cid: string | undefined;
   characters: Character[];
   scenes: Scene[];
+  props: Prop[];
   parsedData: ParsedData | null;
   shotImages: Record<number, string>;
   shotVideos: Record<number, string>;
   transitionVideos: Record<string, string>;
   mergedImage: string | null;
   getCharacterImage: (name: string) => string | undefined;
+  getSceneImage: (name: string) => string | null;
+  getPropImage: (name: string) => string | null;
   setParsedData: (data: ParsedData | null) => void;
   setEditableJson: (json: string) => void;
   setShotImages: (images: Record<number, string> | ((prev: Record<number, string>) => Record<number, string>)) => void;
@@ -50,12 +53,15 @@ export default function useChapterActions({
   cid,
   characters,
   scenes,
+  props,
   parsedData,
   shotImages,
   shotVideos,
   transitionVideos,
   mergedImage,
   getCharacterImage,
+  getSceneImage,
+  getPropImage,
   setParsedData,
   setEditableJson,
   setShotImages,
@@ -93,6 +99,16 @@ export default function useChapterActions({
       navigate(`/scenes?novel_id=${id}`);
     }
   }, [scenes, id, navigate]);
+
+  // 跳转到道具库页面
+  const handleRegenerateProp = useCallback((propName: string) => {
+    const prop = props.find(p => p.name === propName);
+    if (prop) {
+      navigate(`/props?novel_id=${id}&highlight=${prop.id}`);
+    } else {
+      navigate(`/props?novel_id=${id}`);
+    }
+  }, [props, id, navigate]);
 
   // 合并角色图
   const handleMergeCharacterImages = useCallback(async () => {
@@ -224,6 +240,7 @@ export default function useChapterActions({
   return {
     handleRegenerateCharacter,
     handleRegenerateScene,
+    handleRegenerateProp,
     handleMergeCharacterImages,
     handleSplitChapterClick,
     doSplitChapter,

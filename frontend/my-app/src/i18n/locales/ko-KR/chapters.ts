@@ -101,6 +101,12 @@ export default {
     parseScenesFailed: '장면 분석 실패',
     noNewScenes: '새 장면을 찾을 수 없습니다',
     viewScenes: '장면 보기',
+    parseProps: '소품 분석',
+    parsePropsComplete: '소품 분석 완료',
+    parsePropsResult: '{created}개 소품 추가, {updated}개 업데이트',
+    parsePropsFailed: '소품 분석 실패',
+    noNewProps: '새 소품을 찾을 수 없습니다',
+    viewProps: '소품 보기',
   },
 
   chapterGenerate: {
@@ -206,7 +212,12 @@ export default {
     sceneImages: '장면 이미지',
     aiGenerateScene: 'AI 장면 생성',
     noSceneImages: '장면 이미지가 없습니다',
-    
+
+    // Prop Images
+    propImages: '소품 이미지',
+    aiGenerateProp: 'AI 소품 이미지 생성',
+    noPropImages: '소품 이미지가 없습니다',
+
     selectCharacterFromLibrary: '캐릭터 라이브러리에서 선택...',
     selectSceneFromLibrary: '장면 라이브러리에서 선택...',
     selectCharacterFromChapter: '챕터 캐릭터 목록에서 선택...',
@@ -218,6 +229,14 @@ export default {
     removeCharacter: '캐릭터 제거',
     removeScene: '장면 제거',
     orAddCustom: '또는 직접 입력',
+    
+    // 소품 관련
+    props: '소품',
+    selectPropFromChapter: '챕터 소품 목록에서 선택...',
+    selectPropFromLibrary: '소품 라이브러리에서 선택...',
+    removeProp: '소품 제거',
+    noPropsInLibrary: '소품 라이브러리에 소품이 없습니다. 먼저 소품을 해석하거나 추가하세요',
+    allPropsAdded: '라이브러리의 모든 소품이 추가되었습니다',
     charactersLabel: '캐릭터',
     uploadImage: '이미지 업로드',
     uploadSuccess: '이미지 업로드 성공',

@@ -347,3 +347,8 @@ class ComfyUIService:
     async def cancel_all_matching_tasks(self, prompt_ids: List[str]) -> Dict[str, Any]:
         """取消所有匹配的任务"""
         return await self.client.cancel_all_matching_tasks(prompt_ids)
+
+
+def get_comfyui_service() -> ComfyUIService:
+    """获取 ComfyUI 服务实例"""
+    return ComfyUIService()

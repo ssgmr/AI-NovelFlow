@@ -51,6 +51,13 @@ export default {
     parseScenesFailed: '场景解析失败',
     noNewScenes: '未发现新场景',
     viewScenes: '查看场景',
+    // 道具解析相关
+    parseProps: '解析道具',
+    parsePropsComplete: '道具解析完成',
+    parsePropsResult: '新增 {created} 个道具，更新 {updated} 个道具',
+    parsePropsFailed: '道具解析失败',
+    noNewProps: '未发现新道具',
+    viewProps: '查看道具',
     characterImageAlt: '角色图片 {index}',
     shotImages: '分镜图片',
     shotImageAlt: '分镜图片 {index}',
@@ -160,6 +167,14 @@ export default {
     removeScene: '移除场景',
     orAddCustom: '或手动输入',
     
+    // 道具相关
+    props: '道具',
+    selectPropFromChapter: '从章节道具列表选择...',
+    selectPropFromLibrary: '从道具库选择...',
+    removeProp: '移除道具',
+    noPropsInLibrary: '道具库中没有道具，请先解析或添加道具',
+    allPropsAdded: '道具库中的道具已全部添加',
+
     // 合并视频
     mergeVideo: '合并视频',
     noShotVideos: '暂无分镜视频',
@@ -185,11 +200,16 @@ export default {
     mergedCharacterImageTitle: '合并角色图',
     characterImage: '角色图',
     
-    // 场景图
+        // 场景图
     sceneImages: '场景图片',
-    aiGenerateScene: 'AI生成场景图',
+    aiGenerateScene: 'AI 生成场景图',
     noSceneImages: '暂无场景图片',
     
+    // 道具图
+    propImages: '道具图片',
+    aiGenerateProp: 'AI 生成道具图',
+    noPropImages: '暂无道具图片',
+
     // 分镜图
     noShotsToGenerate: '没有可分镜生成的图片',
     pendingShotsInQueue: '已有 {count} 个分镜在队列中，请等待完成后再试',

@@ -11,13 +11,9 @@ from app.core.database import get_db
 from app.repositories import WorkflowRepository
 from app.services.workflow_service import WorkflowService
 from app.constants.workflow import WORKFLOW_TYPES
+from app.api.deps import get_workflow_repo
 
 router = APIRouter()
-
-
-def get_workflow_repo(db: Session = Depends(get_db)) -> WorkflowRepository:
-    """获取 WorkflowRepository 实例"""
-    return WorkflowRepository(db)
 
 
 def get_workflow_service(db: Session = Depends(get_db)) -> WorkflowService:

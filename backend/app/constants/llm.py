@@ -169,8 +169,7 @@ def get_character_appearance_prompt(style: str = "anime") -> str:
 要求：
 1. 描述要具体、详细，包含：发型、发色、眼睛、服装、配饰、表情、姿态
 2. 使用英文（AI绘图模型对英文理解更好）
-3. 添加画风提示词，如：{style} style, high quality, detailed
-4. 避免模糊词汇，使用具体的颜色和样式描述
+3. 避免模糊词汇，使用具体的颜色和样式描述
 
 示例输出格式：
 Young female character, long flowing silver hair with blue highlights, sharp blue eyes, delicate features, wearing traditional Chinese hanfu in white and blue colors, jade hairpin, gentle smile, standing pose, clean background, anime style, high quality, detailed, 8k"""
@@ -219,9 +218,8 @@ def get_scene_setting_prompt(style: str = "anime") -> str:
    - 色调和氛围
    - 透视角度
 2. 使用英文（AI绘图模型对英文理解更好）
-3. 添加画风提示词，如：{style} style, high quality, detailed, environment design, background art
-4. 避免模糊词汇，使用具体的颜色和样式描述
-5. 必须添加 "no characters, empty scene" 确保不生成人物
+3. 避免模糊词汇，使用具体的颜色和样式描述
+4. 必须添加 "no characters, empty scene" 确保不生成人物
 
 示例输出格式：
 Traditional Chinese courtyard, ancient wooden architecture with curved roofs, red pillars and golden decorations, stone pathway, blooming cherry blossom trees, soft morning sunlight filtering through leaves, peaceful atmosphere, spring season, wide angle view, anime style, high quality, detailed, environment design, no characters, empty scene"""
@@ -234,3 +232,34 @@ DEFAULT_CHARACTER_APPEARANCE_FALLBACK = "{character_name}, detailed character, h
 
 # 场景设定生成失败时的默认回退格式
 DEFAULT_SCENE_SETTING_FALLBACK = "{scene_name}, environment design, background art, high quality, detailed, no characters, empty scene"
+
+
+# ==================== 默认道具外观生成提示词 ====================
+
+def get_prop_appearance_prompt(style: str = "anime") -> str:
+    """获取道具外观生成提示词模板
+
+    Args:
+        style: 画风风格
+
+    Returns:
+        系统提示词字符串
+    """
+    return f"""你是一个专业的道具设定助手。请根据提供的道具信息，生成一段详细的外观描述，用于AI绘图生成道具图片。
+
+要求：
+1. 描述要具体、详细，包含：
+   - 道具的形状、尺寸
+   - 材质和质感（金属、木质、布料等）
+   - 颜色和图案
+   - 特殊装饰或细节
+   - 光泽和反射效果
+2. 使用英文（AI绘图模型对英文理解更好）
+3. 避免模糊词汇，使用具体的颜色和样式描述
+4. 描述应该是独立的道具外观，不包含人物或背景
+
+示例输出格式：
+Ancient Chinese sword, ornate golden hilt with dragon patterns, blade made of polished steel with visible hamon pattern, red tassel attached to the pommel, intricate engravings on the guard, gleaming metal surface, traditional craftsmanship, anime style, high quality, detailed, item design, clean background"""
+
+# 道具外观生成失败时的默认回退格式
+DEFAULT_PROP_APPEARANCE_FALLBACK = "{prop_name}, item design, prop, high quality, detailed"

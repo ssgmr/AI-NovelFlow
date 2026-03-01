@@ -1,4 +1,8 @@
-"""系统配置 API - 支持持久化存储到数据库"""
+"""
+系统配置 API 路由
+
+支持持久化存储到数据库
+"""
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional

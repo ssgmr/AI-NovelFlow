@@ -12,6 +12,7 @@ interface JsonEditorProps {
   editorKey: number;
   availableScenes: string[];
   availableCharacters: string[];
+  availableProps: string[];
   activeShotWorkflow: any;
 }
 
@@ -28,8 +29,9 @@ export function JsonEditor({
   editorKey,
   availableScenes,
   availableCharacters,
+  availableProps,
   activeShotWorkflow,
-}: JsonEditorProps) {
+                           }: JsonEditorProps) {
   const { t } = useTranslation();
 
   return (
@@ -87,6 +89,7 @@ export function JsonEditor({
           onChange={onChange}
           availableScenes={availableScenes}
           availableCharacters={availableCharacters}
+          availableProps={availableProps}
           activeShotWorkflow={activeShotWorkflow}
         />
       )}

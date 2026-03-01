@@ -12,6 +12,7 @@ class PromptBuilder:
     # 默认风格
     DEFAULT_CHARACTER_STYLE = "anime style, high quality, detailed"
     DEFAULT_SCENE_STYLE = "anime style, high quality, detailed, environment"
+    DEFAULT_PROP_STYLE = "anime style, high quality, detailed, item design"
     DEFAULT_STYLE = "anime style, high quality, detailed"
 
     @staticmethod
@@ -38,6 +39,8 @@ class PromptBuilder:
         # 根据类型选择默认风格
         if style_type == "scene":
             default_style = PromptBuilder.DEFAULT_SCENE_STYLE
+        elif style_type == "prop":
+            default_style = PromptBuilder.DEFAULT_PROP_STYLE
         else:
             default_style = PromptBuilder.DEFAULT_CHARACTER_STYLE
         
@@ -158,6 +161,55 @@ class PromptBuilder:
 
         return base_prompt
 
+    @classmethod
+    def build_prop_prompt(
+            cls,
+            name: str,
+            appearance: str,
+            description: str = "",
+            template: Optional[str] = None,
+            style: Optional[str] = None
+    ) -> str:
+        """
+        构建道具图提示词
+
+        Args:
+            name: 道具名称
+            appearance: 外观描述（用于生成道具图）
+            description: 道具描述（备用）
+            template: 提示词模板
+            style: 风格描述
+
+        Returns:
+            构建完成的提示词
+        """
+        if template:
+            # 使用模板构建提示词
+            prompt = template.replace("{appearance}", appearance or "").replace("{description}", description or "").replace("{name}", name or "")
+            # 替换 style 占位符
+            if "##STYLE##" in prompt:
+                final_style = style or cls.DEFAULT_PROP_STYLE
+                prompt = prompt.replace("##STYLE##", final_style)
+            return cls._clean_prompt(prompt)
+
+        # 默认提示词
+        base_prompt = "item design, prop design, object, "
+
+        if name:
+            base_prompt += f"{name}, "
+
+        if appearance:
+            base_prompt += appearance + ", "
+        elif description:
+            base_prompt += description + ", "
+
+        if style:
+            base_prompt += style + ", "
+
+        base_prompt += "high quality, detailed, clean background, professional artwork"
+
+        return base_prompt
+
     @staticmethod
     def _clean_prompt(prompt: str) -> str:
         """
@@ -206,3 +258,14 @@ def build_scene_prompt(
 ) -> str:
     """构建场景提示词（便捷函数）"""
     return PromptBuilder.build_scene_prompt(name, setting, description, template, style)
+
+
+def build_prop_prompt(
+        name: str,
+        appearance: str,
+        description: str = "",
+        template: Optional[str] = None,
+        style: Optional[str] = None
+) -> str:
+    """构建道具提示词（便捷函数）"""
+    return PromptBuilder.build_prop_prompt(name, appearance, description, template, style)

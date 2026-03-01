@@ -15,13 +15,13 @@ interface UploadModalProps {
 
 export function UploadModal({ isOpen, onClose, onSuccess, extensionConfigs, typeNames }: UploadModalProps) {
   const { t } = useTranslation();
-  const [uploadType, setUploadType] = useState<'character' | 'scene' | 'shot' | 'video' | 'transition'>('character');
+  const [uploadType, setUploadType] = useState<'character' | 'scene' | 'shot' | 'video' | 'transition' | 'prop'>('character');
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null });
   const [uploadExtension, setUploadExtension] = useState<Record<string, string> | null>(null);
   const [uploading, setUploading] = useState(false);
 
   // 当上传类型改变时，重置扩展属性
-  const handleTypeChange = (type: 'character' | 'scene' | 'shot' | 'video' | 'transition') => {
+  const handleTypeChange = (type: 'character' | 'scene' | 'shot' | 'video' | 'transition' | 'prop') => {
     setUploadType(type);
     const config = extensionConfigs[type];
     if (config) {
@@ -95,6 +95,7 @@ export function UploadModal({ isOpen, onClose, onSuccess, extensionConfigs, type
               <option value="shot">{typeNames.shot}</option>
               <option value="video">{typeNames.video}</option>
               <option value="transition">{typeNames.transition}</option>
+              <option value="prop">{typeNames.prop}</option>
             </select>
           </div>
           <div>

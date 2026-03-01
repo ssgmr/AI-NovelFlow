@@ -170,7 +170,12 @@ export default function Scenes() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await sceneApi.create(formData);
+      const data = await sceneApi.create({
+        novel_id: formData.novelId,
+        name: formData.name,
+        description: formData.description,
+        setting: formData.setting,
+      });
       if (data.success) {
         setScenes([data.data!, ...scenes]);
         setShowCreateModal(false);

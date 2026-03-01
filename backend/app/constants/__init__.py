@@ -58,9 +58,11 @@ from app.constants.llm import (
     DEFAULT_VIDEO_PROMPT_EXPAND_SYSTEM,
     DEFAULT_CHARACTER_APPEARANCE_FALLBACK,
     DEFAULT_SCENE_SETTING_FALLBACK,
+    DEFAULT_PROP_APPEARANCE_FALLBACK,
     # 提示词生成函数
     get_character_appearance_prompt,
     get_scene_setting_prompt,
+    get_prop_appearance_prompt,
 )
 
 from app.constants.prompt_template import (
@@ -119,8 +121,10 @@ __all__ = [
     "DEFAULT_VIDEO_PROMPT_EXPAND_SYSTEM",
     "DEFAULT_CHARACTER_APPEARANCE_FALLBACK",
     "DEFAULT_SCENE_SETTING_FALLBACK",
+    "DEFAULT_PROP_APPEARANCE_FALLBACK",
     "get_character_appearance_prompt",
     "get_scene_setting_prompt",
+    "get_prop_appearance_prompt",
     # Prompt Template
     "PromptTemplateType",
     "PROMPT_TEMPLATE_TYPES",

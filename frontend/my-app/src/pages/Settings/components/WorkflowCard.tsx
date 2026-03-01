@@ -1,4 +1,4 @@
-import { Star, Edit2, Download, Trash2, Settings as SettingsIcon, User, Image as ImageIcon, Film, Mountain } from 'lucide-react';
+import { Star, Edit2, Download, Trash2, Settings as SettingsIcon, User, Image as ImageIcon, Film, Mountain, Box } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 import { toast } from '../../../stores/toastStore';
 import { getWorkflowDisplayName, getWorkflowDisplayDescription, checkWorkflowMappingComplete } from '../utils';
@@ -10,7 +10,8 @@ const typeIcons = {
   scene: Mountain,
   shot: ImageIcon,
   video: Film,
-  transition: Film
+  transition: Film,
+  prop: Box
 };
 
 const typeColors = {
@@ -18,7 +19,8 @@ const typeColors = {
   scene: 'bg-green-100 text-green-600',
   shot: 'bg-amber-100 text-amber-600',
   video: 'bg-pink-100 text-pink-600',
-  transition: 'bg-purple-100 text-purple-600'
+  transition: 'bg-purple-100 text-purple-600',
+  prop: 'bg-orange-100 text-orange-600'
 };
 
 interface WorkflowCardProps {

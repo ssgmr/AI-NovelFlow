@@ -76,6 +76,14 @@ class PropRepository:
         self.db.delete(prop)
         self.db.commit()
     
+    def update_image(self, prop: Prop, image_url: str) -> Prop:
+        """更新道具图片URL"""
+        prop.image_url = image_url
+        prop.generating_status = "completed"
+        self.db.commit()
+        self.db.refresh(prop)
+        return prop
+    
     def list_all(self) -> List[Prop]:
         """获取所有道具（按创建时间倒序）"""
         return self.db.query(Prop).order_by(Prop.created_at.desc()).all()

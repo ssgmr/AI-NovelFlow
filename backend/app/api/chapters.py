@@ -6,30 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.novel import Chapter
-from app.repositories import NovelRepository, ChapterRepository, CharacterRepository, SceneRepository
+from app.repositories import NovelRepository, ChapterRepository, CharacterRepository, SceneRepository, PropRepository
+from app.api.deps import get_novel_repo, get_chapter_repo, get_character_repo, get_scene_repo, get_prop_repo
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
-    """获取 ChapterRepository 实例"""
-    return ChapterRepository(db)
-
-
-def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
-    """获取 CharacterRepository 实例"""
-    return CharacterRepository(db)
-
-
-def get_scene_repo(db: Session = Depends(get_db)) -> SceneRepository:
-    """获取 SceneRepository 实例"""
-    return SceneRepository(db)
 
 
 # ==================== 章节 CRUD ====================
@@ -214,25 +195,61 @@ async def parse_chapter_scenes(
 ):
     """解析单章节内容，提取场景信息（支持增量更新）"""
     from app.services.novel_service import NovelService
-    
+
     novel = novel_repo.get_by_id(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
-    
+
     chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
+
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
-    
+
     if not chapter.content:
         return {"success": False, "message": "章节内容为空"}
-    
+
     service = NovelService(db)
     return await service.parse_scenes(
         novel_id=novel_id,
         chapter=chapter,
         is_incremental=is_incremental,
         scene_repo=scene_repo
+    )
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/parse-props/", response_model=dict)
+async def parse_chapter_props(
+    novel_id: str,
+    chapter_id: str,
+    is_incremental: bool = True,
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    prop_repo: PropRepository = Depends(get_prop_repo)
+):
+    """解析单章节内容，提取道具信息（支持增量更新）"""
+    from app.services.novel_service import NovelService
+
+    novel = novel_repo.get_by_id(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
+
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    if not chapter.content:
+        return {"success": False, "message": "章节内容为空"}
+
+    service = NovelService(db)
+    return await service.parse_props(
+        novel_id=novel_id,
+        chapters=[chapter],
+        start_chapter=chapter.number,
+        end_chapter=chapter.number,
+        is_incremental=is_incremental,
+        prop_repo=prop_repo
     )
 
 
@@ -246,7 +263,8 @@ async def split_chapter(
     novel_repo: NovelRepository = Depends(get_novel_repo),
     chapter_repo: ChapterRepository = Depends(get_chapter_repo),
     character_repo: CharacterRepository = Depends(get_character_repo),
-    scene_repo: SceneRepository = Depends(get_scene_repo)
+    scene_repo: SceneRepository = Depends(get_scene_repo),
+    prop_repo: PropRepository = Depends(get_prop_repo)
 ):
     """使用小说配置的拆分提示词将章节拆分为分镜"""
     from app.services.novel_service import NovelService
@@ -260,14 +278,16 @@ async def split_chapter(
     if not novel:
         raise HTTPException(status_code=404, detail="小说不存在")
     
-    # 获取当前小说的所有角色和场景列表
+    # 获取当前小说的所有角色、场景和道具列表
     character_names = character_repo.get_names_by_novel(novel_id)
     scene_names = scene_repo.get_names_by_novel(novel_id)
+    prop_names = prop_repo.get_names_by_novel(novel_id)
     
     service = NovelService(db)
     return await service.split_chapter(
         novel=novel,
         chapter=chapter,
         character_names=character_names,
-        scene_names=scene_names
+        scene_names=scene_names,
+        prop_names=prop_names
     )

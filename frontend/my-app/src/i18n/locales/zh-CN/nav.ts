@@ -6,6 +6,7 @@ export default {
     novels: '小说管理',
     characters: '角色库',
     scenes: '场景库',
+    props: '道具库',
     tasks: '任务队列',
     testCases: '测试用例',
     systemSettings: '系统配置',

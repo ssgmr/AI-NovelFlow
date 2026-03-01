@@ -44,6 +44,9 @@ export default {
     other: '其他',
     failed: '失敗',
     optional: '可選',
+    add: '新增',
+    remove: '移除',
+    select: '請選擇',
   },
 
   status: {

@@ -26,6 +26,18 @@ export interface Scene {
   sceneTaskId?: string;
 }
 
+// 道具数据类型
+export interface Prop {
+  id: string;
+  novelId: string;
+  name: string;
+  description: string;
+  appearance: string;
+  imageUrl?: string;
+  generatingStatus?: string;
+  propTaskId?: string;
+}
+
 // 转场视频项组件接口
 export interface TransitionVideoItemProps {
   fromIndex: number;
@@ -48,6 +60,7 @@ export interface JsonTableEditorProps {
   onChange: (value: string) => void;
   availableScenes?: string[]; // 场景库中的场景名列表
   availableCharacters?: string[]; // 角色库中的角色名列表
+  availableProps?: string[]; // 道具库中的道具名列表
   activeShotWorkflow?: any; // 当前激活的分镜工作流
 }
 
@@ -75,6 +88,7 @@ export interface ShotData {
   video_description?: string;
   characters: string[];
   scene: string;
+  props: string[];
   duration: number;
   image_url?: string;
   image_path?: string;
@@ -85,6 +99,7 @@ export interface ShotData {
 export interface ParsedData {
   characters?: string[];
   scenes?: string[];
+  props?: string[];
   shots?: ShotData[];
 }
 
@@ -96,6 +111,7 @@ export interface ChapterDataState {
   editableJson: string;
   characters: Character[];
   scenes: Scene[];
+  props: Prop[];
   loading: boolean;
 }
 

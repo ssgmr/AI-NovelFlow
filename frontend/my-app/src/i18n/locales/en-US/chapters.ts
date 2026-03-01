@@ -51,6 +51,13 @@ export default {
     parseScenesFailed: 'Scene parsing failed',
     noNewScenes: 'No new scenes found',
     viewScenes: 'View Scenes',
+    // Prop parsing related
+    parseProps: 'Parse Props',
+    parsePropsComplete: 'Prop parsing completed',
+    parsePropsResult: 'Added {created} props, updated {updated} props',
+    parsePropsFailed: 'Prop parsing failed',
+    noNewProps: 'No new props found',
+    viewProps: 'View Props',
     characterImageAlt: 'Character Image {index}',
     shotImages: 'Shot Images',
     shotImageAlt: 'Shot Image {index}',
@@ -160,6 +167,14 @@ export default {
     removeScene: 'Remove Scene',
     orAddCustom: 'Or enter manually',
     
+    // Props
+    props: 'Props',
+    selectPropFromChapter: 'Select from chapter prop list...',
+    selectPropFromLibrary: 'Select from prop library...',
+    removeProp: 'Remove Prop',
+    noPropsInLibrary: 'No props in library, please parse or add props first',
+    allPropsAdded: 'All props from library have been added',
+
     // Merge Video
     mergeVideo: 'Merge Video',
     noShotVideos: 'No shot videos',
@@ -189,7 +204,12 @@ export default {
     sceneImages: 'Scene Images',
     aiGenerateScene: 'AI Generate Scene Image',
     noSceneImages: 'No scene images',
-    
+
+    // Prop Images
+    propImages: 'Prop Images',
+    aiGenerateProp: 'AI Generate Prop Image',
+    noPropImages: 'No prop images',
+
     // Shot Images
     noShotsToGenerate: 'No shots to generate images',
     pendingShotsInQueue: '{count} shots already in queue, please wait for completion',
