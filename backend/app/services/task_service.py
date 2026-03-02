@@ -67,7 +67,8 @@ class TaskService:
             "scene": ["prompt_node_id", "save_image_node_id"],
             "shot": ["prompt_node_id", "save_image_node_id", "width_node_id", "height_node_id"],
             "video": ["prompt_node_id", "video_save_node_id", "reference_image_node_id"],
-            "transition": ["first_image_node_id", "last_image_node_id", "video_save_node_id"]
+            "transition": ["first_image_node_id", "last_image_node_id", "video_save_node_id"],
+            "character_audio": ["reference_audio_node_id", "text_node_id"]
         }
 
         fields = required_fields.get(task_type)
@@ -83,7 +84,9 @@ class TaskService:
             "height_node_id": "高度节点",
             "reference_image_node_id": "参考图片节点",
             "first_image_node_id": "第一张图片节点",
-            "last_image_node_id": "最后一张图片节点"
+            "last_image_node_id": "最后一张图片节点",
+            "reference_audio_node_id": "参考音频节点",
+            "text_node_id": "文本节点"
         }
 
         for field in fields:

@@ -91,8 +91,9 @@ class CharacterRepository:
             appearance=appearance
         )
     
-    def update_from_schema(self, character: Character, name: str = None, 
-                          description: str = None, appearance: str = None) -> Character:
+    def update_from_schema(self, character: Character, name: str = None,
+                          description: str = None, appearance: str = None,
+                          voice_prompt: str = None) -> Character:
         """从 Schema 数据更新角色"""
         update_data = {}
         if name is not None:
@@ -101,6 +102,8 @@ class CharacterRepository:
             update_data["description"] = description
         if appearance is not None:
             update_data["appearance"] = appearance
+        if voice_prompt is not None:
+            update_data["voice_prompt"] = voice_prompt
         return self.update(character, **update_data)
     
     def update_appearance(self, character: Character, appearance: str) -> Character:
@@ -110,3 +113,15 @@ class CharacterRepository:
     def update_image(self, character: Character, image_url: str, generating_status: str = "completed") -> Character:
         """更新角色图片"""
         return self.update(character, image_url=image_url, generating_status=generating_status)
+
+    def update_voice(self, character: Character, voice_prompt: str = None) -> Character:
+        """更新角色音色提示词"""
+        if voice_prompt is not None:
+            return self.update(character, voice_prompt=voice_prompt)
+        return character
+
+    def update_reference_audio(self, character: Character, reference_audio_url: str = None) -> Character:
+        """更新角色参考音频URL"""
+        if reference_audio_url is not None:
+            return self.update(character, reference_audio_url=reference_audio_url)
+        return character

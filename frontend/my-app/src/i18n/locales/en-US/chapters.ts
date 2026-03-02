@@ -115,8 +115,10 @@ export default {
     downloadMaterialsDesc: 'Download all materials for this chapter:',
     characterImages: 'Character Images',
     characterImagesLabel: 'Character Images',
+    sceneImages: 'Scene Images',
     mergedCharacterImage: 'Merged Character Image',
     shotImages: 'Shot Images',
+    dialogueAudios: 'Dialogue Audios',
     shotVideos: 'Shot Videos',
     transitionVideos: 'Transition Videos',
     packing: 'Packing...',
@@ -175,6 +177,52 @@ export default {
     noPropsInLibrary: 'No props in library, please parse or add props first',
     allPropsAdded: 'All props from library have been added',
 
+    // Placeholder hints
+    placeholderHint: '💡 Available placeholders:',
+    placeholderStyle: '##STYLE## - Style prompt',
+    placeholderScene: '##SCENE## - Scene environment setting',
+    placeholderCharacters: '##CHARACTERS## - Character appearance description',
+    placeholderProps: '##PROPS## - Prop appearance description',
+
+    // Dialogues
+    dialogues: 'Dialogues',
+    addDialogue: 'Add Dialogue',
+    addDialogueDisabledHint: 'Please add characters first',
+    selectCharacter: 'Select Character',
+    deleteDialogue: 'Delete Dialogue',
+    dialogueTextPlaceholder: 'Enter dialogue text...',
+    emotionPrompt: 'Emotion',
+    emotionPromptPlaceholder: 'Natural',
+    noDialogues: 'No dialogues, click button above to add',
+
+    // Audio Generation
+    generateAudio: 'Generate Audio',
+    generateAllAudio: 'Batch Generate Audio',
+    generatingAudio: 'Generating audio...',
+    audioTaskCreated: 'Audio generation task created',
+    audioTasksCreated: 'Created {count} audio generation tasks',
+    audioGenerateFailed: 'Audio generation failed',
+    audioGenerateSuccess: 'Audio generated successfully',
+    noReferenceAudio: 'Character "{name}" has no voice reference',
+    characterNotFound: 'Character "{name}" not found',
+    noDialoguesToGenerate: 'No dialogues to generate',
+    audioWarnings: 'Skipped {count} dialogues',
+    playAudio: 'Play',
+    regenerateAudio: 'Regenerate',
+    // Audio Upload
+    uploadAudio: 'Upload Audio',
+    uploadReplaceAudio: 'Upload & Replace',
+    deleteAudio: 'Delete Audio',
+    uploadingAudio: 'Uploading...',
+    audioUploadSuccess: 'Audio uploaded successfully',
+    audioUploadFailed: 'Audio upload failed',
+    audioDeleteSuccess: 'Audio deleted successfully',
+    audioDeleteFailed: 'Audio deletion failed',
+    audioFileTooLarge: 'Audio file size cannot exceed 10MB',
+    confirmDeleteAudio: 'Are you sure you want to delete this audio?',
+    audioSourceAi: 'AI Generated',
+    audioSourceUploaded: 'Uploaded',
+
     // Merge Video
     mergeVideo: 'Merge Video',
     noShotVideos: 'No shot videos',
@@ -201,7 +249,6 @@ export default {
     characterImage: 'Character Image',
     
     // Scene Images
-    sceneImages: 'Scene Images',
     aiGenerateScene: 'AI Generate Scene Image',
     noSceneImages: 'No scene images',
 
@@ -247,6 +294,7 @@ export default {
     createVideoTaskFailedCheckNetwork: 'Failed to create video generation task, please check network connection',
     generateAllShotVideos: 'Generate All Shot Videos',
     generateVideoForShotsWithImages: 'Generate videos for all shots with images',
+    generateAllAudioHint: 'Generate audio for all shot dialogues',
     generating: 'Generating...',
     videoGenerating: 'Video generating...',
     generateVideoBasedOnImage: 'Generate video based on current shot image',

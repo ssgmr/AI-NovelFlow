@@ -1,0 +1,24 @@
+schema: spec-driven
+context: |
+  语言：中文（简体）
+  所有产出物必须用简体中文撰写。
+  项目执行目录：前端：frontend/my-app（package.json所在目录） 后端：backend（run_server.py所在目录）,venv（虚拟环境目录）
+  项目贡献指南文档：docs/CONTRIBUTE_GUIDE.md，英文版本：docs/CONTRIBUTE_GUIDE_EN.md，包含项目开发规范说明文档
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

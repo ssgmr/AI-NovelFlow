@@ -57,9 +57,9 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
     textNodeId: '',
     emotionPromptNodeId: ''
   });
-  const [availableNodes, setAvailableNodes] = useState<AvailableNodes>({ 
-    clipTextEncode: [], 
-    saveImage: [], 
+  const [availableNodes, setAvailableNodes] = useState<AvailableNodes>({
+    clipTextEncode: [],
+    saveImage: [],
     easyInt: [],
     crPromptText: [],
     vhsVideoCombine: [],
@@ -67,7 +67,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
     qwen3TtsVoiceDesign: [],
     saveAudio: [],
     loadAudio: [],
-    qwen3TtsVoiceClone: []
+    qwen3TtsVoiceClone: [],
+    previewAudio: []
   });
   const [workflowJsonData, setWorkflowJsonData] = useState<Record<string, any>>({});
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
@@ -103,12 +104,13 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
             const saveAudio: string[] = [];
             const loadAudio: string[] = [];
             const qwen3TtsVoiceClone: string[] = [];
-            
+            const previewAudio: string[] = [];
+
             for (const [nodeId, node] of Object.entries(workflowObj)) {
               if (typeof node === 'object' && node !== null) {
                 const classType = (node as any).class_type || '';
                 const metaTitle = (node as any)._meta?.title || '';
-                
+
                 if (classType === 'CLIPTextEncode' || classType === 'CR Text') {
                   clipTextEncode.push(`${nodeId} (${metaTitle || classType})`);
                 } else if (classType === 'SaveImage') {
@@ -125,16 +127,17 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                   qwen3TtsVoiceDesign.push(`${nodeId} (${metaTitle || classType})`);
                 } else if (classType === 'SaveAudio') {
                   saveAudio.push(`${nodeId} (${metaTitle || classType})`);
+                } else if (classType === 'PreviewAudio') {
+                  previewAudio.push(`${nodeId} (${metaTitle || classType})`);
                 } else if (classType === 'LoadAudio') {
                   loadAudio.push(`${nodeId} (${metaTitle || classType})`);
                 } else if (classType === 'TDQwen3TTSVoiceClone') {
                   qwen3TtsVoiceClone.push(`${nodeId} (${metaTitle || classType})`);
-                  qwen3TtsVoiceClone.push(`${nodeId} (${metaTitle || classType})`);
                 }
               }
             }
-            
-            setAvailableNodes({ clipTextEncode, saveImage, easyInt, crPromptText, vhsVideoCombine, loadImage, qwen3TtsVoiceDesign, saveAudio, loadAudio, qwen3TtsVoiceClone });
+
+            setAvailableNodes({ clipTextEncode, saveImage, easyInt, crPromptText, vhsVideoCombine, loadImage, qwen3TtsVoiceDesign, saveAudio, previewAudio, loadAudio, qwen3TtsVoiceClone });
             
             // 提取自定义参考图节点
             const customReferenceImageNodes: string[] = [];
@@ -646,27 +649,27 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 <>
                   <NodeSelectField
                     label={t('systemSettings.workflow.voicePromptNode')}
-                    nodeTypeHint="TDQwen3TTSVoiceDesign"
+                    nodeTypeHint="CLIPTextEncode, CR Text, CR Prompt Text"
                     value={mappingForm.voicePromptNodeId}
-                    options={availableNodes.qwen3TtsVoiceDesign}
+                    options={[...availableNodes.clipTextEncode, ...availableNodes.crPromptText]}
                     onChange={(v) => handleNodeSelect(v, 'voicePromptNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}
                   />
                   <NodeSelectField
                     label={t('systemSettings.workflow.refTextNode')}
-                    nodeTypeHint="TDQwen3TTSVoiceDesign"
+                    nodeTypeHint="CLIPTextEncode, CR Text, CR Prompt Text"
                     value={mappingForm.refTextNodeId}
-                    options={availableNodes.qwen3TtsVoiceDesign}
+                    options={[...availableNodes.clipTextEncode, ...availableNodes.crPromptText]}
                     onChange={(v) => handleNodeSelect(v, 'refTextNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}
                   />
                   <NodeSelectField
                     label={t('systemSettings.workflow.saveAudioNode')}
-                    nodeTypeHint="SaveAudio"
+                    nodeTypeHint="SaveAudio, PreviewAudio"
                     value={mappingForm.saveAudioNodeId}
-                    options={availableNodes.saveAudio}
+                    options={[...availableNodes.saveAudio, ...availableNodes.previewAudio]}
                     onChange={(v) => handleNodeSelect(v, 'saveAudioNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}
@@ -687,27 +690,27 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                   />
                   <NodeSelectField
                     label={t('systemSettings.workflow.textNode')}
-                    nodeTypeHint="TDQwen3TTSVoiceClone"
+                    nodeTypeHint="CLIPTextEncode, CR Text, CR Prompt Text"
                     value={mappingForm.textNodeId}
-                    options={availableNodes.qwen3TtsVoiceClone}
+                    options={[...availableNodes.clipTextEncode, ...availableNodes.crPromptText]}
                     onChange={(v) => handleNodeSelect(v, 'textNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}
                   />
                   <NodeSelectField
                     label={t('systemSettings.workflow.emotionPromptNode')}
-                    nodeTypeHint="TDQwen3TTSVoiceClone"
+                    nodeTypeHint="CLIPTextEncode, CR Text, CR Prompt Text"
                     value={mappingForm.emotionPromptNodeId}
-                    options={availableNodes.qwen3TtsVoiceClone}
+                    options={[...availableNodes.clipTextEncode, ...availableNodes.crPromptText]}
                     onChange={(v) => handleNodeSelect(v, 'emotionPromptNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}
                   />
                   <NodeSelectField
                     label={t('systemSettings.workflow.saveAudioNode')}
-                    nodeTypeHint="SaveAudio"
+                    nodeTypeHint="SaveAudio, PreviewAudio"
                     value={mappingForm.saveAudioNodeId}
-                    options={availableNodes.saveAudio}
+                    options={[...availableNodes.saveAudio, ...availableNodes.previewAudio]}
                     onChange={(v) => handleNodeSelect(v, 'saveAudioNodeId')}
                     onFocus={handleNodeFocus}
                     t={t}

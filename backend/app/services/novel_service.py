@@ -99,6 +99,8 @@ class NovelService:
                             existing.description = char_data.get("description")
                         if not existing.appearance and char_data.get("appearance"):
                             existing.appearance = char_data.get("appearance")
+                        if not existing.voice_prompt and char_data.get("voice_prompt"):
+                            existing.voice_prompt = char_data.get("voice_prompt")
                         if source_range:
                             if existing.source_range:
                                 existing.source_range += f", {source_range}"
@@ -108,6 +110,8 @@ class NovelService:
                         # 全量更新模式：直接覆盖
                         existing.description = char_data.get("description", existing.description)
                         existing.appearance = char_data.get("appearance", existing.appearance)
+                        if char_data.get("voice_prompt"):
+                            existing.voice_prompt = char_data.get("voice_prompt")
                         existing.source_range = source_range
                     
                     existing.last_parsed_at = datetime.utcnow()
@@ -119,6 +123,7 @@ class NovelService:
                         name=name,
                         description=char_data.get("description", ""),
                         appearance=char_data.get("appearance", ""),
+                        voice_prompt=char_data.get("voice_prompt", ""),
                         start_chapter=start_chapter,
                         end_chapter=end_chapter,
                         is_incremental=is_incremental,
@@ -149,6 +154,7 @@ class NovelService:
                         "name": c.name,
                         "description": c.description,
                         "appearance": c.appearance,
+                        "voicePrompt": c.voice_prompt,
                         "startChapter": c.start_chapter,
                         "endChapter": c.end_chapter,
                         "isIncremental": c.is_incremental,
@@ -678,7 +684,7 @@ class NovelService:
             chapter_title=chapter.title,
             chapter_content=chapter.content or "",
             prompt_template=prompt_template.template,
-            word_count=50,
+            word_count=100,
             character_names=character_names,
             scene_names=scene_names,
             prop_names=prop_names,

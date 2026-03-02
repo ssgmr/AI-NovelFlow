@@ -184,6 +184,22 @@ video_description 动作约束规则
    - 若正文道具无法匹配 allowed_props 中的任何道具，不要添加到 props 列表
 
 ━━━━━━━━━━━━━━━━━━
+dialogues 字段规则（自动提取台词）
+━━━━━━━━━━━━━━━━━━
+
+每个分镜必须包含 dialogues 字段，用于存储该镜头中角色台词的结构化数据。
+
+规则：
+1) dialogues 必须是数组格式
+2) 每条台词必须包含：
+   - character_name: 说话角色名（必须来自 allowed_characters）
+   - text: 台词文本（逐字复制原文，保持原标点）
+   - emotion_prompt: 情感提示词（根据上下文推断，如：愤怒、悲伤、平静、惊讶、喜悦等）
+3) 若该镜头无台词，dialogues 必须为空数组 []
+4) 台词必须与 video_description 的 Dialogue 段保持一致
+5) emotion_prompt 根据原文描述和上下文推断角色说话时的情感状态
+
+━━━━━━━━━━━━━━━━━━
 禁止
 ━━━━━━━━━━━━━━━━━━
 
@@ -211,7 +227,14 @@ video_description 动作约束规则
       "characters": ["..."],
       "scene": "...",
       "props": [],
-      "duration": 5
+      "duration": 5,
+      "dialogues": [
+        {
+          "character_name": "角色名",
+          "text": "台词文本",
+          "emotion_prompt": "情感"
+        }
+      ]
     }
   ]
 }

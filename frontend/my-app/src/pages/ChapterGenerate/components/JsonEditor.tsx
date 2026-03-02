@@ -1,6 +1,7 @@
 import { Code, Grid3x3, Save, Loader2 } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 import JsonTableEditor from './JsonTableEditor';
+import type { DialogueData } from '../types';
 
 interface JsonEditorProps {
   value: string;
@@ -14,6 +15,17 @@ interface JsonEditorProps {
   availableCharacters: string[];
   availableProps: string[];
   activeShotWorkflow: any;
+  // 音频相关
+  audioUrls?: Record<string, string>;
+  audioSources?: Record<string, string>;
+  isShotAudioGenerating?: (shotIndex: number) => boolean;
+  getShotAudioTasks?: (shotIndex: number) => Array<{ characterName: string; status: string; taskId: string }>;
+  onRegenerateAudio?: (shotIndex: number, characterName: string, dialogue: DialogueData) => void;
+  onGenerateDialogueAudio?: (shotIndex: number, dialogue: DialogueData) => void;
+  // 音频上传相关
+  onUploadDialogueAudio?: (shotIndex: number, characterName: string, file: File) => void;
+  onDeleteDialogueAudio?: (shotIndex: number, characterName: string) => void;
+  isAudioUploading?: (shotIndex: number, characterName: string) => boolean;
 }
 
 /**
@@ -31,7 +43,16 @@ export function JsonEditor({
   availableCharacters,
   availableProps,
   activeShotWorkflow,
-                           }: JsonEditorProps) {
+  audioUrls,
+  audioSources,
+  isShotAudioGenerating,
+  getShotAudioTasks,
+  onRegenerateAudio,
+  onGenerateDialogueAudio,
+  onUploadDialogueAudio,
+  onDeleteDialogueAudio,
+  isAudioUploading,
+}: JsonEditorProps) {
   const { t } = useTranslation();
 
   return (
@@ -83,7 +104,7 @@ export function JsonEditor({
           spellCheck={false}
         />
       ) : (
-        <JsonTableEditor 
+        <JsonTableEditor
           key={editorKey}
           value={value}
           onChange={onChange}
@@ -91,6 +112,15 @@ export function JsonEditor({
           availableCharacters={availableCharacters}
           availableProps={availableProps}
           activeShotWorkflow={activeShotWorkflow}
+          audioUrls={audioUrls}
+          audioSources={audioSources}
+          isShotAudioGenerating={isShotAudioGenerating}
+          getShotAudioTasks={getShotAudioTasks}
+          onRegenerateAudio={onRegenerateAudio}
+          onGenerateDialogueAudio={onGenerateDialogueAudio}
+          onUploadDialogueAudio={onUploadDialogueAudio}
+          onDeleteDialogueAudio={onDeleteDialogueAudio}
+          isAudioUploading={isAudioUploading}
         />
       )}
     </div>

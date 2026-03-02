@@ -42,24 +42,24 @@ class FileStorageService:
             name = name.replace(char, '_')
         return name.strip()
     
-    async def download_image(self, url: str, novel_id: str, character_name: str, 
+    async def download_image(self, url: str, novel_id: str, character_name: str,
                             image_type: str = "character", chapter_id: str = None) -> Optional[str]:
         """
         下载图片并保存到指定目录
-        
+
         Args:
             url: 图片URL (ComfyUI 返回的 view URL)
             novel_id: 小说ID
             character_name: 角色名或文件描述
             image_type: 图片类型 (character, shot, video_frame)
             chapter_id: 章节ID (用于 shot 类型)
-            
+
         Returns:
             本地文件路径，失败返回 None
         """
         try:
             story_dir = self._get_story_dir(novel_id)
-            
+
             # 创建子目录
             if image_type == "character":
                 save_dir = story_dir / "characters"
@@ -71,30 +71,81 @@ class FileStorageService:
                 save_dir = story_dir / f"chapter_{chapter_short}" / "shots"
             else:
                 save_dir = story_dir / "images"
-            
+
             save_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # 生成文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_name = self._sanitize_filename(character_name)
             filename = f"{safe_name}_{timestamp}.png"
             file_path = save_dir / filename
-            
+
             # 下载图片
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=60.0)
                 response.raise_for_status()
-                
+
                 # 保存文件
                 with open(file_path, 'wb') as f:
                     f.write(response.content)
-            
+
             print(f"[FileStorage] Image saved: {file_path}")
             return str(file_path)
-            
+
         except Exception as e:
             import traceback
             print(f"[FileStorage] Failed to download image from {url}: {e}")
+            traceback.print_exc()
+            return None
+
+    async def download_audio(self, url: str, novel_id: str, character_name: str,
+                            audio_type: str = "voice") -> Optional[str]:
+        """
+        下载音频并保存到指定目录
+
+        Args:
+            url: 音频URL (ComfyUI 返回的 view URL)
+            novel_id: 小说ID
+            character_name: 角色名或文件描述
+            audio_type: 音频类型 (voice, etc.)
+
+        Returns:
+            本地文件路径，失败返回 None
+        """
+        try:
+            story_dir = self._get_story_dir(novel_id)
+
+            # 创建音频目录
+            save_dir = story_dir / "voices"
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+            # 生成文件名
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = self._sanitize_filename(character_name)
+            # 从URL中获取扩展名，默认为 .flac
+            ext = ".flac"
+            if ".mp3" in url.lower():
+                ext = ".mp3"
+            elif ".wav" in url.lower():
+                ext = ".wav"
+            filename = f"{safe_name}_{timestamp}{ext}"
+            file_path = save_dir / filename
+
+            # 下载音频
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=120.0)
+                response.raise_for_status()
+
+                # 保存文件
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+
+            print(f"[FileStorage] Audio saved: {file_path}")
+            return str(file_path)
+
+        except Exception as e:
+            import traceback
+            print(f"[FileStorage] Failed to download audio from {url}: {e}")
             traceback.print_exc()
             return None
     
@@ -388,51 +439,92 @@ class FileStorageService:
     def zip_chapter_materials(self, novel_id: str, chapter_id: str) -> Optional[str]:
         """
         打包章节素材为 ZIP 文件
-        
+
         Args:
             novel_id: 小说ID
             chapter_id: 章节ID
-            
+
         Returns:
             ZIP 文件路径，失败返回 None
         """
         try:
             import zipfile
-            
+
             story_dir = self._get_story_dir(novel_id)
             chapter_short = chapter_id[:8] if chapter_id else "unknown"
             chapter_dir = story_dir / f"chapter_{chapter_short}"
-            
-            if not chapter_dir.exists():
-                print(f"[FileStorage] Chapter directory not found: {chapter_dir}")
+
+            # 检查各素材目录是否存在
+            characters_dir = story_dir / "characters"
+            scenes_dir = story_dir / "scenes"
+            voices_dir = story_dir / "voices"
+
+            # 至少有一个素材目录存在才能打包
+            has_materials = (
+                chapter_dir.exists() or
+                characters_dir.exists() or
+                scenes_dir.exists() or
+                voices_dir.exists()
+            )
+
+            if not has_materials:
+                print(f"[FileStorage] No materials found for chapter {chapter_id}")
                 return None
-            
+
             # 创建临时 ZIP 文件
             zip_filename = f"chapter_{chapter_short}_materials.zip"
             zip_path = story_dir / zip_filename
-            
+
+            file_count = 0
+
             # 打包目录
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1. 遍历章节目录下的所有文件
-                for item in chapter_dir.rglob('*'):
-                    if item.is_file():
-                        # 计算相对路径（相对于 story_dir）
-                        arcname = item.relative_to(story_dir)
-                        zipf.write(item, arcname)
-                        print(f"[FileStorage] Added to zip: {arcname}")
-                
+                if chapter_dir.exists():
+                    for item in chapter_dir.rglob('*'):
+                        if item.is_file():
+                            arcname = item.relative_to(story_dir)
+                            zipf.write(item, arcname)
+                            file_count += 1
+                            print(f"[FileStorage] Added to zip: {arcname}")
+
                 # 2. 添加小说角色图目录
-                characters_dir = story_dir / "characters"
                 if characters_dir.exists():
                     for item in characters_dir.rglob('*'):
                         if item.is_file():
                             arcname = item.relative_to(story_dir)
                             zipf.write(item, arcname)
+                            file_count += 1
                             print(f"[FileStorage] Added character to zip: {arcname}")
-            
-            print(f"[FileStorage] ZIP created: {zip_path}")
+
+                # 3. 添加场景图目录
+                if scenes_dir.exists():
+                    for item in scenes_dir.rglob('*'):
+                        if item.is_file():
+                            arcname = item.relative_to(story_dir)
+                            zipf.write(item, arcname)
+                            file_count += 1
+                            print(f"[FileStorage] Added scene to zip: {arcname}")
+
+                # 4. 添加台词音频目录（voices）
+                if voices_dir.exists():
+                    for item in voices_dir.rglob('*'):
+                        if item.is_file():
+                            arcname = item.relative_to(story_dir)
+                            zipf.write(item, arcname)
+                            file_count += 1
+                            print(f"[FileStorage] Added voice audio to zip: {arcname}")
+
+            if file_count == 0:
+                print(f"[FileStorage] No files to zip for chapter {chapter_id}")
+                # 删除空的 zip 文件
+                import os
+                os.remove(zip_path)
+                return None
+
+            print(f"[FileStorage] ZIP created: {zip_path} with {file_count} files")
             return str(zip_path)
-            
+
         except Exception as e:
             import traceback
             print(f"[FileStorage] Failed to zip chapter materials: {e}")
@@ -662,6 +754,165 @@ class FileStorageService:
         except Exception as e:
             print(f"[FileStorage] Failed to delete props directory: {e}")
             return False
+
+    def save_shot_audio(
+        self,
+        novel_id: str,
+        shot_index: int,
+        character_name: str,
+        content: bytes,
+        ext: str = ".flac"
+    ) -> Path:
+        """
+        保存分镜台词音频文件
+
+        Args:
+            novel_id: 小说ID
+            shot_index: 分镜索引（1-based）
+            character_name: 角色名称
+            content: 音频文件内容
+            ext: 文件扩展名（默认 .flac）
+
+        Returns:
+            保存的文件路径
+        """
+        story_dir = self._get_story_dir(novel_id)
+        save_dir = story_dir / "shot_audio"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # 清理角色名中的特殊字符
+        safe_name = self._sanitize_filename(character_name)
+        filename = f"shot_{shot_index:03d}_{safe_name}{ext}"
+        file_path = save_dir / filename
+
+        # 如果已存在同名文件，先删除
+        if file_path.exists():
+            file_path.unlink()
+
+        # 保存文件
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        print(f"[FileStorage] Shot audio saved: {file_path}")
+        return file_path
+
+    def delete_shot_audio(
+        self,
+        novel_id: str,
+        shot_index: int,
+        character_name: str
+    ) -> bool:
+        """
+        删除分镜台词音频文件
+
+        Args:
+            novel_id: 小说ID
+            shot_index: 分镜索引（1-based）
+            character_name: 角色名称
+
+        Returns:
+            是否成功删除
+        """
+        try:
+            story_dir = self._get_story_dir(novel_id)
+            save_dir = story_dir / "shot_audio"
+
+            if not save_dir.exists():
+                return True
+
+            # 清理角色名中的特殊字符
+            safe_name = self._sanitize_filename(character_name)
+
+            # 查找匹配的音频文件（支持多种格式）
+            deleted = False
+            for ext in [".flac", ".mp3", ".wav"]:
+                pattern = f"shot_{shot_index:03d}_{safe_name}{ext}"
+                file_path = save_dir / pattern
+                if file_path.exists():
+                    file_path.unlink()
+                    print(f"[FileStorage] Deleted shot audio: {file_path}")
+                    deleted = True
+
+            return True
+
+        except Exception as e:
+            print(f"[FileStorage] Failed to delete shot audio: {e}")
+            return False
+
+    def get_shot_audio_path(
+        self,
+        novel_id: str,
+        shot_index: int,
+        character_name: str,
+        ext: str = ".flac"
+    ) -> Path:
+        """
+        获取分镜台词音频保存路径
+
+        Args:
+            novel_id: 小说ID
+            shot_index: 分镜索引（1-based）
+            character_name: 角色名称
+            ext: 文件扩展名
+
+        Returns:
+            音频文件路径
+        """
+        story_dir = self._get_story_dir(novel_id)
+        save_dir = story_dir / "shot_audio"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_name = self._sanitize_filename(character_name)
+        return save_dir / f"shot_{shot_index:03d}_{safe_name}{ext}"
+
+    def save_uploaded_audio_file(
+        self,
+        novel_id: str,
+        character_name: str,
+        content: bytes,
+        ext: str = ".mp3"
+    ) -> Path:
+        """
+        保存用户上传的音频文件
+
+        Args:
+            novel_id: 小说ID
+            character_name: 角色名称
+            content: 音频文件内容
+            ext: 文件扩展名（默认 .mp3）
+
+        Returns:
+            保存的文件路径
+        """
+        story_dir = self._get_story_dir(novel_id)
+        save_dir = story_dir / "voices"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # 清理角色名中的特殊字符
+        safe_name = self._sanitize_filename(character_name)
+
+        # 生成时间戳
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # 如果已存在该角色的参考音频，先删除旧的
+        for old_ext in [".mp3", ".wav", ".flac", ".ogg", ".m4a"]:
+            old_pattern = f"{safe_name}_voice_*{old_ext}"
+            for old_file in save_dir.glob(old_pattern):
+                try:
+                    old_file.unlink()
+                    print(f"[FileStorage] Deleted old voice file: {old_file}")
+                except Exception as e:
+                    print(f"[FileStorage] Failed to delete {old_file}: {e}")
+
+        # 保存新文件
+        filename = f"{safe_name}_voice_{timestamp}{ext}"
+        file_path = save_dir / filename
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        print(f"[FileStorage] Uploaded audio saved: {file_path}")
+        return file_path
 
 
 # 全局实例

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Users,
   MapPin,
@@ -6,18 +6,36 @@ import {
   Plus,
   Trash2,
   X,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Mic,
+  Loader2,
+  Volume2,
+  Play,
+  Square,
+  RefreshCw,
+  Upload,
+  Music
 } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
-import type { JsonTableEditorProps } from '../types';
+import type { JsonTableEditorProps, DialogueData } from '../types';
 
-export default function JsonTableEditor({ 
-  value, 
-  onChange, 
-  availableScenes = [], 
-  availableCharacters = [], 
-  availableProps = [], 
-  activeShotWorkflow 
+export default function JsonTableEditor({
+  value,
+  onChange,
+  availableScenes = [],
+  availableCharacters = [],
+  availableProps = [],
+  activeShotWorkflow,
+  audioUrls = {},
+  audioSources = {},
+  isShotAudioGenerating,
+  getShotAudioTasks,
+  onRegenerateAudio,
+  onGenerateDialogueAudio,
+  onUploadDialogueAudio,
+  onDeleteDialogueAudio,
+  isAudioUploading,
 }: JsonTableEditorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
@@ -29,6 +47,18 @@ export default function JsonTableEditor({
   const [propInputs, setPropInputs] = useState<Record<number, string>>({});
   // 当前选中的分镜索引
   const [activeShotIndex, setActiveShotIndex] = useState<number>(0);
+  // 当前播放的音频
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null); // key: "shotIndex_characterName"
+  const audioRef = useState<HTMLAudioElement | null>(null)[0];
+  const [, setAudioElement] = useState<HTMLAudioElement | null>(null);
+
+  // 台词本地编辑缓存（key: "shotIndex_dialogueIndex", value: { text, emotion_prompt }）
+  // 用于在用户输入时保持输入框状态稳定，避免因 JSON 更新导致的重渲染问题
+  const [dialogueEditCache, setDialogueEditCache] = useState<Record<string, { text: string; emotion_prompt: string }>>({});
+
+  // 台词角色历史缓存（key: "shotIndex_dialogueIndex_characterName", value: { text, emotion_prompt }）
+  // 用于在切换角色时恢复之前该角色在该台词位置的内容
+  const [dialogueCharacterHistory, setDialogueCharacterHistory] = useState<Record<string, { text: string; emotion_prompt: string }>>({});
   
   // 验证分镜场景是否在场景库中
   const getInvalidShotIndices = () => {
@@ -139,6 +169,183 @@ export default function JsonTableEditor({
     // 重新编号
     newShots.forEach((shot: any, i: number) => { shot.id = i + 1; });
     updateJson({ ...data, shots: newShots });
+  };
+
+  // ==================== 台词管理 ====================
+
+  // 添加台词
+  const addDialogue = (shotIndex: number) => {
+    if (!data) return;
+    const newShots = [...(data.shots || [])];
+    const shot = newShots[shotIndex];
+    if (!shot.dialogues) {
+      shot.dialogues = [];
+    }
+    // 添加空白台词
+    shot.dialogues.push({
+      character_name: '',
+      text: '',
+      emotion_prompt: '自然'
+    });
+    updateJson({ ...data, shots: newShots });
+  };
+
+  // 更新台词
+  const updateDialogue = (shotIndex: number, dialogueIndex: number, field: string, value: string) => {
+    if (!data) return;
+
+    // 更新本地编辑缓存
+    const cacheKey = `${shotIndex}_${dialogueIndex}`;
+    setDialogueEditCache(prev => ({
+      ...prev,
+      [cacheKey]: {
+        text: field === 'text' ? value : (prev[cacheKey]?.text ?? data.shots[shotIndex]?.dialogues?.[dialogueIndex]?.text ?? ''),
+        emotion_prompt: field === 'emotion_prompt' ? value : (prev[cacheKey]?.emotion_prompt ?? data.shots[shotIndex]?.dialogues?.[dialogueIndex]?.emotion_prompt ?? '自然')
+      }
+    }));
+
+    const newShots = [...(data.shots || [])];
+    const shot = newShots[shotIndex];
+    if (shot.dialogues && shot.dialogues[dialogueIndex]) {
+      shot.dialogues[dialogueIndex] = {
+        ...shot.dialogues[dialogueIndex],
+        [field]: value
+      };
+      updateJson({ ...data, shots: newShots });
+    }
+  };
+
+  // 获取台词的本地缓存值（用于输入框显示）
+  const getDialogueLocalValue = (shotIndex: number, dialogueIndex: number, field: 'text' | 'emotion_prompt', dialogue: DialogueData) => {
+    const cacheKey = `${shotIndex}_${dialogueIndex}`;
+    const cached = dialogueEditCache[cacheKey];
+    if (cached && cached[field] !== undefined) {
+      return cached[field];
+    }
+    return dialogue[field] || '';
+  };
+
+  // 清除台词本地缓存（当角色切换时）
+  const clearDialogueCache = (shotIndex: number, dialogueIndex: number) => {
+    const cacheKey = `${shotIndex}_${dialogueIndex}`;
+    setDialogueEditCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[cacheKey];
+      return newCache;
+    });
+  };
+
+  // 切换台词角色时的处理
+  const handleDialogueCharacterChange = (shotIndex: number, dialogueIndex: number, newCharacterName: string) => {
+    if (!data) return;
+
+    const shot = data.shots[shotIndex];
+    const oldCharacterName = shot.dialogues?.[dialogueIndex]?.character_name;
+    const oldDialogue = shot.dialogues?.[dialogueIndex];
+
+    // 如果角色没有变化，不需要处理
+    if (oldCharacterName === newCharacterName) return;
+
+    // 清除该台词条目的本地编辑缓存
+    const cacheKey = `${shotIndex}_${dialogueIndex}`;
+    setDialogueEditCache(prev => {
+      const newCache = { ...prev };
+      delete newCache[cacheKey];
+      return newCache;
+    });
+
+    // 计算历史缓存的 key
+    const newHistoryKey = `${shotIndex}_${dialogueIndex}_${newCharacterName}`;
+
+    // 使用函数式更新来获取最新的缓存状态
+    setDialogueCharacterHistory(prev => {
+      // 保存旧角色的台词到历史缓存（如果有内容）
+      const updatedHistory = { ...prev };
+      if (oldCharacterName && (oldDialogue?.text || oldDialogue?.emotion_prompt)) {
+        const oldHistoryKey = `${shotIndex}_${dialogueIndex}_${oldCharacterName}`;
+        updatedHistory[oldHistoryKey] = {
+          text: oldDialogue.text || '',
+          emotion_prompt: oldDialogue.emotion_prompt || '自然'
+        };
+      }
+
+      // 从历史缓存中恢复新角色的台词
+      const cachedDialogue = updatedHistory[newHistoryKey];
+
+      const newShots = [...(data.shots || [])];
+      const targetShot = newShots[shotIndex];
+      if (targetShot.dialogues && targetShot.dialogues[dialogueIndex]) {
+        if (cachedDialogue) {
+          // 恢复缓存的台词和情感
+          targetShot.dialogues[dialogueIndex] = {
+            ...targetShot.dialogues[dialogueIndex],
+            character_name: newCharacterName,
+            text: cachedDialogue.text,
+            emotion_prompt: cachedDialogue.emotion_prompt
+          };
+        } else {
+          // 没有缓存，使用默认值
+          targetShot.dialogues[dialogueIndex] = {
+            ...targetShot.dialogues[dialogueIndex],
+            character_name: newCharacterName,
+            text: '',
+            emotion_prompt: '自然'
+          };
+        }
+        updateJson({ ...data, shots: newShots });
+      }
+
+      return updatedHistory;
+    });
+  };
+
+  // 删除台词
+  const removeDialogue = (shotIndex: number, dialogueIndex: number) => {
+    if (!data) return;
+    const newShots = [...(data.shots || [])];
+    const shot = newShots[shotIndex];
+    if (shot.dialogues) {
+      shot.dialogues = shot.dialogues.filter((_: any, i: number) => i !== dialogueIndex);
+      updateJson({ ...data, shots: newShots });
+    }
+  };
+
+  // ==================== 音频播放管理 ====================
+
+  // 播放/暂停音频
+  const toggleAudioPlay = (shotIndex: number, characterName: string, audioUrl: string) => {
+    const key = `${shotIndex}_${characterName}`;
+
+    if (playingAudio === key) {
+      // 暂停当前播放
+      setPlayingAudio(null);
+    } else {
+      // 播放新音频
+      setPlayingAudio(key);
+    }
+  };
+
+  // 获取台词的音频 URL
+  const getDialogueAudioUrl = (shotIndex: number, characterName: string, dialogue?: DialogueData) => {
+    // 优先从外部传入的 audioUrls 获取（实时任务生成的）
+    const key = `${shotIndex + 1}_${characterName}`;
+    if (audioUrls[key]) {
+      return audioUrls[key];
+    }
+    // 否则从台词数据中获取
+    return dialogue?.audio_url;
+  };
+
+  // 获取台词的音频任务状态
+  const getDialogueAudioStatus = (shotIndex: number, characterName: string) => {
+    if (isShotAudioGenerating && isShotAudioGenerating(shotIndex + 1)) {
+      const tasks = getShotAudioTasks ? getShotAudioTasks(shotIndex + 1) : [];
+      const task = tasks.find(t => t.characterName === characterName);
+      if (task) {
+        return task.status;
+      }
+    }
+    return null;
   };
 
   if (error) {
@@ -485,6 +692,16 @@ export default function JsonTableEditor({
                             className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
                             rows={8}
                           />
+                          {/* 占位符提示 */}
+                          <div className="mt-1.5 p-2 bg-blue-50 rounded-md">
+                            <p className="text-xs text-blue-600 font-medium mb-1">{t('chapterGenerate.placeholderHint')}</p>
+                            <div className="flex flex-wrap gap-1.5 text-xs text-blue-500">
+                              <span className="px-1.5 py-0.5 bg-blue-100 rounded">{t('chapterGenerate.placeholderStyle')}</span>
+                              <span className="px-1.5 py-0.5 bg-blue-100 rounded">{t('chapterGenerate.placeholderScene')}</span>
+                              <span className="px-1.5 py-0.5 bg-blue-100 rounded">{t('chapterGenerate.placeholderCharacters')}</span>
+                              <span className="px-1.5 py-0.5 bg-blue-100 rounded">{t('chapterGenerate.placeholderProps')}</span>
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">{t('chapterGenerate.videoDescForVideo')}</label>
@@ -564,7 +781,248 @@ export default function JsonTableEditor({
                               ))}
                           </select>
                         </div>
-                        
+
+                        {/* 台词编辑区 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs text-gray-500">{t('chapterGenerate.dialogues')}</label>
+                            <button
+                              onClick={() => addDialogue(idx)}
+                              disabled={(shot.characters || []).length === 0}
+                              className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                                (shot.characters || []).length === 0
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                              }`}
+                              title={(shot.characters || []).length === 0 ? t('chapterGenerate.addDialogueDisabledHint') : t('chapterGenerate.addDialogue')}
+                            >
+                              <Plus className="h-3 w-3" />
+                              {t('chapterGenerate.addDialogue')}
+                            </button>
+                          </div>
+
+                          {/* 台词列表 */}
+                          {(shot.dialogues || []).length > 0 && (
+                            <div className="space-y-2 border border-gray-200 rounded-md p-2 bg-gray-50">
+                              {(shot.dialogues || []).map((dialogue: DialogueData, dialogueIdx: number) => {
+                                const audioUrl = getDialogueAudioUrl(idx, dialogue.character_name, dialogue);
+                                const audioStatus = getDialogueAudioStatus(idx, dialogue.character_name);
+                                const isAudioLoading = audioStatus === 'pending' || audioStatus === 'running';
+                                const isAudioFailed = audioStatus === 'failed';
+                                const audioKey = `${idx}_${dialogue.character_name}`;
+                                const isThisPlaying = playingAudio === audioKey;
+
+                                return (
+                                  <div key={dialogueIdx} className="bg-white rounded p-2 border border-gray-100 space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                      {/* 角色选择 */}
+                                      <select
+                                        value={dialogue.character_name || ''}
+                                        onChange={(e) => handleDialogueCharacterChange(idx, dialogueIdx, e.target.value)}
+                                        className="flex-shrink-0 px-2 py-1 border border-gray-200 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                      >
+                                        <option value="">{t('chapterGenerate.selectCharacter')}</option>
+                                        {(shot.characters || []).map((char: string) => (
+                                          <option key={char} value={char}>{char}</option>
+                                        ))}
+                                      </select>
+                                      {/* 删除按钮 */}
+                                      <button
+                                        onClick={() => removeDialogue(idx, dialogueIdx)}
+                                        className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                        title={t('chapterGenerate.deleteDialogue')}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    {/* 台词文本 */}
+                                    <textarea
+                                      value={getDialogueLocalValue(idx, dialogueIdx, 'text', dialogue)}
+                                      onChange={(e) => updateDialogue(idx, dialogueIdx, 'text', e.target.value)}
+                                      placeholder={t('chapterGenerate.dialogueTextPlaceholder')}
+                                      className="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+                                      rows={2}
+                                    />
+                                    {/* 情感提示词 */}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-gray-400">{t('chapterGenerate.emotionPrompt')}</span>
+                                      <input
+                                        type="text"
+                                        value={getDialogueLocalValue(idx, dialogueIdx, 'emotion_prompt', dialogue)}
+                                        onChange={(e) => updateDialogue(idx, dialogueIdx, 'emotion_prompt', e.target.value)}
+                                        placeholder={t('chapterGenerate.emotionPromptPlaceholder')}
+                                        className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                      />
+                                    </div>
+                                    {/* 音频状态和播放器 */}
+                                    {dialogue.character_name && (
+                                      <div className="flex flex-col gap-1.5 pt-1 border-t border-gray-100">
+                                        {/* 音频状态 */}
+                                        {isAudioLoading && (
+                                          <div className="flex items-center gap-1 text-xs text-blue-500">
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>{t('chapterGenerate.generatingAudio')}</span>
+                                          </div>
+                                        )}
+                                        {isAudioFailed && (
+                                          <div className="flex items-center gap-1 text-xs text-red-500">
+                                            <AlertCircle className="h-3 w-3" />
+                                            <span>{t('chapterGenerate.audioGenerateFailed')}</span>
+                                            {onRegenerateAudio && (
+                                              <button
+                                                onClick={() => onRegenerateAudio(idx, dialogue.character_name, dialogue)}
+                                                className="ml-1 text-blue-500 hover:underline"
+                                              >
+                                                {t('chapterGenerate.regenerateAudio')}
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* 无音频时显示生成和上传按钮 */}
+                                        {!audioUrl && !isAudioLoading && !isAudioFailed && (
+                                          <div className="flex items-center gap-2">
+                                            {onGenerateDialogueAudio && (
+                                              <button
+                                                onClick={() => onGenerateDialogueAudio(idx, dialogue)}
+                                                className="flex items-center gap-1 px-2 py-0.5 bg-green-50 hover:bg-green-100 text-green-600 rounded text-xs transition-colors"
+                                                title={t('chapterGenerate.generateAudio')}
+                                              >
+                                                <Volume2 className="h-3 w-3" />
+                                                {t('chapterGenerate.generateAudio')}
+                                              </button>
+                                            )}
+                                            {onUploadDialogueAudio && (
+                                              <label className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs transition-colors cursor-pointer">
+                                                <Upload className="h-3 w-3" />
+                                                {t('chapterGenerate.uploadAudio')}
+                                                <input
+                                                  type="file"
+                                                  accept=".mp3,.wav,.flac"
+                                                  className="hidden"
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      // 检查文件大小（10MB限制）
+                                                      if (file.size > 10 * 1024 * 1024) {
+                                                        alert(t('chapterGenerate.audioFileTooLarge'));
+                                                        return;
+                                                      }
+                                                      onUploadDialogueAudio(idx, dialogue.character_name, file);
+                                                    }
+                                                    e.target.value = '';
+                                                  }}
+                                                />
+                                              </label>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* 音频播放器和操作按钮 */}
+                                        {audioUrl && !isAudioLoading && !isAudioFailed && (
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            {/* 音频来源标签 */}
+                                            <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                              audioSources[audioKey] === 'uploaded'
+                                                ? 'bg-blue-100 text-blue-600'
+                                                : 'bg-purple-100 text-purple-600'
+                                            }`}>
+                                              {audioSources[audioKey] === 'uploaded'
+                                                ? t('chapterGenerate.audioSourceUploaded')
+                                                : t('chapterGenerate.audioSourceAi')}
+                                            </span>
+                                            {/* 播放按钮 */}
+                                            <button
+                                              onClick={() => toggleAudioPlay(idx, dialogue.character_name, audioUrl)}
+                                              className="flex items-center gap-1 px-2 py-0.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-xs transition-colors"
+                                            >
+                                              {isThisPlaying ? (
+                                                <>
+                                                  <Square className="h-3 w-3" />
+                                                  <span>{t('characters.stopAudio')}</span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Play className="h-3 w-3" />
+                                                  <span>{t('chapterGenerate.playAudio')}</span>
+                                                </>
+                                              )}
+                                            </button>
+                                            {isThisPlaying && (
+                                              <audio
+                                                src={audioUrl}
+                                                autoPlay
+                                                onEnded={() => setPlayingAudio(null)}
+                                                onError={() => setPlayingAudio(null)}
+                                              />
+                                            )}
+                                            {/* 上传替换按钮 */}
+                                            {onUploadDialogueAudio && (
+                                              <label className="flex items-center gap-1 px-2 py-0.5 text-gray-500 hover:text-blue-600 cursor-pointer text-xs" title={t('chapterGenerate.uploadReplaceAudio')}>
+                                                <Upload className="h-3 w-3" />
+                                                <input
+                                                  type="file"
+                                                  accept=".mp3,.wav,.flac"
+                                                  className="hidden"
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      if (file.size > 10 * 1024 * 1024) {
+                                                        alert(t('chapterGenerate.audioFileTooLarge'));
+                                                        return;
+                                                      }
+                                                      onUploadDialogueAudio(idx, dialogue.character_name, file);
+                                                    }
+                                                    e.target.value = '';
+                                                  }}
+                                                />
+                                              </label>
+                                            )}
+                                            {/* 重新生成按钮（AI生成） */}
+                                            {onRegenerateAudio && (
+                                              <button
+                                                onClick={() => onRegenerateAudio(idx, dialogue.character_name, dialogue)}
+                                                className="flex items-center gap-1 px-2 py-0.5 text-gray-500 hover:text-gray-700 text-xs"
+                                                title={t('chapterGenerate.regenerateAudio')}
+                                              >
+                                                <RefreshCw className="h-3 w-3" />
+                                              </button>
+                                            )}
+                                            {/* 删除按钮 */}
+                                            {onDeleteDialogueAudio && (
+                                              <button
+                                                onClick={() => {
+                                                  if (confirm(t('chapterGenerate.confirmDeleteAudio'))) {
+                                                    onDeleteDialogueAudio(idx, dialogue.character_name);
+                                                  }
+                                                }}
+                                                className="flex items-center gap-1 px-2 py-0.5 text-gray-500 hover:text-red-600 text-xs"
+                                                title={t('chapterGenerate.deleteAudio')}
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* 上传中状态 */}
+                                        {isAudioUploading && isAudioUploading(idx, dialogue.character_name) && (
+                                          <div className="flex items-center gap-1 text-xs text-blue-500">
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>{t('chapterGenerate.uploadingAudio')}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* 无台词提示 */}
+                          {(shot.dialogues || []).length === 0 && (
+                            <p className="text-xs text-gray-400 italic">{t('chapterGenerate.noDialogues')}</p>
+                          )}
+                        </div>
+
                         {/* 道具选择器 - 从当前章节道具列表选择 */}
                         <div className="space-y-2">
                           <label className="block text-xs text-gray-500 mb-1">{t('chapterGenerate.props')}</label>

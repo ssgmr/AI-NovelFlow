@@ -21,10 +21,231 @@ from app.services.prompt_builder import build_character_prompt, get_style
 
 class CharacterService:
     """角色服务"""
-    
+
     def __init__(self, db: Session = None):
         self.db = db
         self.comfyui_service = ComfyUIService()
+
+    # ==================== 音色生成 ====================
+
+    def create_character_voice_task(
+        self,
+        character_id: str,
+        db: Session = None
+    ) -> Dict[str, Any]:
+        """
+        创建角色音色生成任务
+
+        Args:
+            character_id: 角色ID
+            db: 数据库会话
+
+        Returns:
+            创建结果
+        """
+        db = db or self.db
+        character_repo = CharacterRepository(db)
+        task_repo = TaskRepository(db)
+        workflow_repo = WorkflowRepository(db)
+
+        # 获取角色
+        character = character_repo.get_by_id(character_id)
+        if not character:
+            return {"success": False, "message": "角色不存在"}
+
+        # 检查角色是否有音色提示词
+        if not character.voice_prompt:
+            return {"success": False, "message": "角色缺少音色提示词，请先设置音色描述"}
+
+        # 检查是否已有进行中的音色生成任务
+        existing_task = task_repo.get_active_by_character_and_type(character_id, "character_voice")
+        if existing_task:
+            return {
+                "success": True,
+                "message": "已有进行中的音色生成任务",
+                "data": {
+                    "taskId": existing_task.id,
+                    "status": existing_task.status
+                }
+            }
+
+        # 获取并验证工作流
+        workflow = workflow_repo.get_active_by_type("voice_design")
+        if not workflow:
+            return {"success": False, "message": "未找到激活的音色设计工作流"}
+
+        # 创建任务
+        task = Task(
+            type="character_voice",
+            name=f"生成角色音色: {character.name}",
+            description=f"为角色 '{character.name}' 生成参考音频",
+            novel_id=character.novel_id,
+            character_id=character_id,
+            status="pending"
+        )
+        task_repo.create(task)
+
+        db.commit()
+
+        # 启动后台任务
+        asyncio.create_task(
+            self._generate_voice_task(
+                task.id,
+                character_id,
+                character.name,
+                character.voice_prompt
+            )
+        )
+
+        return {
+            "success": True,
+            "message": "音色生成任务已创建",
+            "data": {
+                "taskId": task.id,
+                "status": "pending"
+            }
+        }
+
+    async def _generate_voice_task(
+        self,
+        task_id: str,
+        character_id: str,
+        character_name: str,
+        voice_prompt: str
+    ):
+        """
+        后台任务：生成角色音色
+
+        Args:
+            task_id: 任务ID
+            character_id: 角色ID
+            character_name: 角色名称
+            voice_prompt: 音色提示词
+        """
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        task_repo = TaskRepository(db)
+        workflow_repo = WorkflowRepository(db)
+        character_repo = CharacterRepository(db)
+
+        try:
+            # 获取任务
+            task = task_repo.get_by_id(task_id)
+            if not task:
+                return
+
+            # 获取当前激活的 voice_design 工作流
+            workflow = workflow_repo.get_active_by_type("voice_design")
+
+            # 记录工作流信息
+            if workflow:
+                task.workflow_id = workflow.id
+                task.workflow_name = workflow.name
+                task.current_step = f"使用工作流: {workflow.name}"
+            else:
+                task.current_step = "使用默认工作流"
+
+            # 更新任务状态为运行中
+            task.status = "running"
+            task.started_at = datetime.utcnow()
+            db.commit()
+
+            # 获取工作流JSON字符串
+            workflow_json_str = workflow.workflow_json if workflow else None
+            print(f"[VoiceTask] Workflow JSON available: {workflow_json_str is not None}")
+
+            # 获取工作流的节点映射配置
+            node_mapping = None
+            if workflow and workflow.node_mapping:
+                try:
+                    node_mapping = json.loads(workflow.node_mapping)
+                    print(f"[VoiceTask] Using node mapping: {node_mapping}")
+                except Exception as e:
+                    print(f"[VoiceTask] Failed to parse node_mapping: {e}")
+
+            # 构建音色设计工作流
+            # 使用标准测试文本生成参考音频
+            test_text = f"大家好，我是{character_name}，很高兴认识你们。"
+
+            submitted_workflow = self.comfyui_service.builder.build_voice_design_workflow(
+                voice_prompt=voice_prompt,
+                text=test_text,
+                workflow_json=workflow_json_str,
+                novel_id=task.novel_id,
+                character_name=character_name,
+                node_mapping=node_mapping
+            )
+
+            # 保存构建后的完整工作流到任务
+            task.workflow_json = json.dumps(submitted_workflow, ensure_ascii=False, indent=2)
+            task.prompt_text = f"音色: {voice_prompt}\n文本: {test_text}"
+            db.commit()
+
+            # 调用 ComfyUI 生成音频
+            result = await self.comfyui_service.generate_voice(
+                voice_prompt=voice_prompt,
+                text=test_text,
+                workflow_json=workflow_json_str,
+                novel_id=task.novel_id,
+                character_name=character_name,
+                node_mapping=node_mapping,
+                workflow=submitted_workflow
+            )
+
+            print(f"[VoiceTask] Generation result: {result}")
+
+            if result.get("success"):
+                audio_url = result.get("audio_url")
+
+                # 下载音频到本地存储
+                task.current_step = "下载音频到服务器..."
+                db.commit()
+
+                try:
+                    local_path = await file_storage.download_audio(
+                        url=audio_url,
+                        novel_id=task.novel_id or "default",
+                        character_name=character_name,
+                        audio_type="voice"
+                    )
+
+                    if local_path:
+                        # 构建本地可访问的URL
+                        relative_path = local_path.replace(str(file_storage.base_dir), "").replace("\\", "/")
+                        local_url = f"/api/files/{relative_path.lstrip('/')}"
+                        task.result_url = local_url
+                        task.current_step = "生成完成，音频已保存"
+                    else:
+                        # 下载失败，使用原始URL
+                        task.result_url = audio_url
+                        task.current_step = "生成完成，使用远程音频"
+                except Exception as e:
+                    print(f"[VoiceTask] Failed to download audio: {e}")
+                    task.result_url = audio_url
+                    task.current_step = "生成完成，使用远程音频"
+
+                task.status = "completed"
+                task.progress = 100
+                task.completed_at = datetime.utcnow()
+
+                # 更新角色参考音频URL
+                character = character_repo.get_by_id(character_id)
+                if character:
+                    character.reference_audio_url = task.result_url
+            else:
+                task.status = "failed"
+                task.error_message = result.get("message", "生成失败")
+                task.current_step = "生成失败"
+
+            db.commit()
+
+        except Exception as e:
+            task.status = "failed"
+            task.error_message = str(e)
+            task.current_step = "任务异常"
+            db.commit()
+        finally:
+            db.close()
     
     def create_character_portrait_task(
         self, 

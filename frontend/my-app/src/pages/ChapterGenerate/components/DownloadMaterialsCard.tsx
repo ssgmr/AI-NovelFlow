@@ -82,12 +82,20 @@ export default function DownloadMaterialsCard({
             {t('chapterGenerate.characterImages')}
           </li>
           <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+            {t('chapterGenerate.sceneImages')}
+          </li>
+          <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
             {t('chapterGenerate.mergedCharacterImage')}
           </li>
           <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
             {t('chapterGenerate.shotImages')}
+          </li>
+          <li className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            {t('chapterGenerate.dialogueAudios')}
           </li>
           <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />

@@ -40,10 +40,10 @@ class ComfyUIClient:
     async def upload_image(self, image_path: str) -> Dict[str, Any]:
         """
         上传图片到 ComfyUI
-        
+
         Args:
             image_path: 本地图片路径
-            
+
         Returns:
             {
                 "success": bool,
@@ -54,27 +54,27 @@ class ComfyUIClient:
         try:
             import os
             from pathlib import Path
-            
+
             if not os.path.exists(image_path):
                 return {
                     "success": False,
                     "message": f"图片文件不存在: {image_path}"
                 }
-            
+
             filename = os.path.basename(image_path)
-            
+
             async with httpx.AsyncClient() as client:
                 with open(image_path, 'rb') as f:
                     files = {'image': (filename, f, 'image/png')}
                     data = {'type': 'input', 'overwrite': 'true'}
-                    
+
                     response = await client.post(
                         f"{self.base_url}/upload/image",
                         files=files,
                         data=data,
                         timeout=30.0
                     )
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     return {
@@ -87,11 +87,81 @@ class ComfyUIClient:
                         "success": False,
                         "message": f"上传失败: {response.text}"
                     }
-                    
+
         except Exception as e:
             return {
                 "success": False,
                 "message": f"上传图片失败: {str(e)}"
+            }
+
+    async def upload_audio(self, audio_path: str) -> Dict[str, Any]:
+        """
+        上传音频到 ComfyUI
+
+        Args:
+            audio_path: 本地音频文件路径
+
+        Returns:
+            {
+                "success": bool,
+                "filename": str,  # ComfyUI 中的文件名
+                "message": str
+            }
+        """
+        try:
+            import os
+            from pathlib import Path
+
+            if not os.path.exists(audio_path):
+                return {
+                    "success": False,
+                    "message": f"音频文件不存在: {audio_path}"
+                }
+
+            filename = os.path.basename(audio_path)
+
+            # 根据文件扩展名确定 MIME 类型
+            ext = os.path.splitext(filename)[1].lower()
+            mime_types = {
+                '.flac': 'audio/flac',
+                '.wav': 'audio/wav',
+                '.mp3': 'audio/mpeg',
+                '.ogg': 'audio/ogg',
+                '.m4a': 'audio/mp4',
+                '.aac': 'audio/aac'
+            }
+            mime_type = mime_types.get(ext, 'audio/flac')
+
+            async with httpx.AsyncClient() as client:
+                with open(audio_path, 'rb') as f:
+                    # ComfyUI 使用 /upload/image 端点上传所有文件类型
+                    files = {'image': (filename, f, mime_type)}
+                    data = {'type': 'input', 'overwrite': 'true'}
+
+                    response = await client.post(
+                        f"{self.base_url}/upload/image",
+                        files=files,
+                        data=data,
+                        timeout=60.0
+                    )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    return {
+                        "success": True,
+                        "filename": result.get('name', filename),
+                        "message": "上传成功"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": f"上传失败: {response.status_code}: {response.text}"
+                    }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"上传音频失败: {str(e)}"
             }
     
     # ==================== 任务提交 ====================
@@ -142,22 +212,22 @@ class ComfyUIClient:
     # ==================== 结果等待 ====================
     
     async def wait_for_result(
-        self, 
-        prompt_id: str, 
+        self,
+        prompt_id: str,
         workflow: Dict[str, Any] = None,
         save_image_node_id: str = None,
         timeout: int = 120,
         poll_interval: float = 2.0
     ) -> Dict[str, Any]:
         """等待任务完成并获取结果
-        
+
         Args:
             prompt_id: ComfyUI 任务 ID
             workflow: 提交的工作流，用于识别正确的 SaveImage 节点
             save_image_node_id: 配置的 SaveImage 节点 ID，优先使用
         """
         start_time = asyncio.get_event_loop().time()
-        
+
         while True:
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout:
@@ -165,28 +235,28 @@ class ComfyUIClient:
                     "success": False,
                     "message": f"任务超时 ({timeout}s)"
                 }
-            
+
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
                         f"{self.base_url}/history/{prompt_id}",
                         timeout=10.0
                     )
-                    
+
                     if response.status_code == 200:
                         history = response.json()
-                        
+
                         if prompt_id in history:
                             prompt_history = history[prompt_id]
                             outputs = prompt_history.get("outputs", {})
-                            
+
                             if outputs:
                                 result = self._parse_outputs(
                                     outputs, workflow, save_image_node_id
                                 )
                                 if result:
                                     return result
-                            
+
                             # 检查是否有错误
                             status = prompt_history.get("status", {})
                             if status.get("status_str") == "error":
@@ -194,11 +264,73 @@ class ComfyUIClient:
                                     "success": False,
                                     "message": status.get("messages", [["", "未知错误"]])[0][1]
                                 }
-                    
+
                     await asyncio.sleep(poll_interval)
-                    
+
             except Exception as e:
                 print(f"Wait for result error: {e}")
+                await asyncio.sleep(poll_interval)
+
+    async def wait_for_audio_result(
+        self,
+        prompt_id: str,
+        workflow: Dict[str, Any] = None,
+        save_audio_node_id: str = None,
+        timeout: int = 600,
+        poll_interval: float = 2.0
+    ) -> Dict[str, Any]:
+        """等待音频任务完成并获取结果
+
+        Args:
+            prompt_id: ComfyUI 任务 ID
+            workflow: 提交的工作流
+            save_audio_node_id: 配置的 SaveAudio 节点 ID
+            timeout: 超时时间（秒）
+            poll_interval: 轮询间隔（秒）
+        """
+        start_time = asyncio.get_event_loop().time()
+
+        while True:
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > timeout:
+                return {
+                    "success": False,
+                    "message": f"任务超时 ({timeout}s)"
+                }
+
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        f"{self.base_url}/history/{prompt_id}",
+                        timeout=10.0
+                    )
+
+                    if response.status_code == 200:
+                        history = response.json()
+
+                        if prompt_id in history:
+                            prompt_history = history[prompt_id]
+                            outputs = prompt_history.get("outputs", {})
+
+                            if outputs:
+                                result = self._parse_audio_outputs(
+                                    outputs, workflow, save_audio_node_id
+                                )
+                                if result:
+                                    return result
+
+                            # 检查是否有错误
+                            status = prompt_history.get("status", {})
+                            if status.get("status_str") == "error":
+                                return {
+                                    "success": False,
+                                    "message": status.get("messages", [["", "未知错误"]])[0][1]
+                                }
+
+                    await asyncio.sleep(poll_interval)
+
+            except Exception as e:
+                print(f"Wait for audio result error: {e}")
                 await asyncio.sleep(poll_interval)
     
     def _parse_outputs(
@@ -295,7 +427,73 @@ class ComfyUIClient:
             }
         
         return None
-    
+
+    def _parse_audio_outputs(
+        self,
+        outputs: Dict[str, Any],
+        workflow: Dict[str, Any] = None,
+        save_audio_node_id: str = None
+    ) -> Optional[Dict[str, Any]]:
+        """解析 ComfyUI 音频输出结果"""
+        # 查找工作流中的所有音频输出节点（SaveAudio 和 PreviewAudio）
+        audio_output_nodes = set()
+        if workflow:
+            for node_id, node in workflow.items():
+                if isinstance(node, dict) and node.get("class_type") in ("SaveAudio", "PreviewAudio"):
+                    audio_output_nodes.add(str(node_id))
+            print(f"[ComfyUI] Audio output nodes in workflow: {audio_output_nodes}")
+
+        # 查找音频输出
+        best_audio = None
+        best_node_id = None
+
+        for node_id, node_output in outputs.items():
+            if "audio" in node_output:
+                audio_info = node_output["audio"]
+                if audio_info:
+                    audio_data = audio_info[0] if isinstance(audio_info, list) else audio_info
+                    filename = audio_data.get("filename", "")
+
+                    node_id_str = str(node_id)
+
+                    # 如果配置了 save_audio_node_id，优先匹配该节点
+                    if save_audio_node_id:
+                        if node_id_str == str(save_audio_node_id):
+                            best_audio = audio_data
+                            best_node_id = node_id
+                            print(f"[ComfyUI] Found configured audio node {node_id} output: {filename}")
+                            break
+                    elif node_id_str in audio_output_nodes:
+                        best_audio = audio_data
+                        best_node_id = node_id
+                        print(f"[ComfyUI] Found audio output node {node_id} output: {filename}")
+                        break
+
+                    if best_audio is None:
+                        best_audio = audio_data
+                        best_node_id = node_id
+
+        if best_audio:
+            filename = best_audio.get("filename")
+            subfolder = best_audio.get("subfolder", "")
+            audio_type = best_audio.get("type", "output")
+
+            params = f"filename={filename}"
+            if subfolder:
+                params += f"&subfolder={subfolder}"
+            params += f"&type={audio_type}"
+
+            audio_url = f"{self.base_url}/view?{params}"
+            print(f"[ComfyUI] Selected audio from node {best_node_id}: {audio_url}")
+
+            return {
+                "success": True,
+                "audio_url": audio_url,
+                "message": "生成成功"
+            }
+
+        return None
+
     # ==================== 队列管理 ====================
     
     async def get_queue_info(self) -> Dict[str, Any]:

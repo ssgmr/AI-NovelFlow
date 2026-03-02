@@ -763,6 +763,99 @@ class LLMService:
         )
         return result.get("content", "")
 
+    async def split_chapter_with_prompt(
+        self,
+        chapter_title: str,
+        chapter_content: str,
+        prompt_template: str,
+        word_count: int = 100,
+        character_names: List[str] = None,
+        scene_names: List[str] = None,
+        prop_names: List[str] = None,
+        style: str = "anime style, high quality, detailed",
+        novel_id: str = None,
+        chapter_id: str = None
+    ) -> Dict[str, Any]:
+        """使用自定义提示词将章节拆分为分镜数据结构"""
+
+        # 替换提示词模板中的占位符
+        system_prompt = prompt_template.replace(
+            "{每个分镜对应拆分故事字数}", str(word_count)
+        ).replace(
+            "{图像风格}", style
+        ).replace(
+            "##STYLE##", style
+        )
+
+        # 构建 allowed_characters 行
+        allowed_characters_line = ""
+        if character_names:
+            allowed_characters_line = f"allowed_characters: {', '.join(character_names)}\n"
+
+        # 构建 allowed_scenes 行
+        allowed_scenes_line = ""
+        if scene_names:
+            allowed_scenes_line = f"allowed_scenes: {', '.join(scene_names)}\n"
+
+        # 构建 allowed_props 行
+        allowed_props_line = ""
+        if prop_names:
+            allowed_props_line = f"allowed_props: {', '.join(prop_names)}\n"
+
+        # 合并白名单行
+        whitelist_lines = ""
+        if allowed_characters_line or allowed_scenes_line or allowed_props_line:
+            whitelist_lines = allowed_characters_line + allowed_scenes_line + allowed_props_line + "\n"
+
+        user_content = f"""{whitelist_lines}章节标题：{chapter_title}
+
+章节内容：
+{chapter_content[:CHAPTER_CONTENT_MAX_LENGTH]}
+
+请将以上章节内容拆分为分镜数据结构。"""
+
+        result = await self.chat_completion(
+            system_prompt=system_prompt,
+            user_content=user_content,
+            temperature=DEFAULT_TEMPERATURE,
+            max_tokens=CHAPTER_CONTENT_MAX_LENGTH,
+            response_format="json_object",
+            task_type="split_chapter",
+            novel_id=novel_id,
+            chapter_id=chapter_id
+        )
+
+        if result["success"]:
+            content = result["content"]
+            data = safe_parse_llm_json(content)
+
+            if not data:
+                print(f"[split_chapter] JSON 解析失败")
+                print(f"[split_chapter] 原始内容: {result['content'][:500]}")
+                return {
+                    "error": "JSON 解析失败",
+                    "chapter": chapter_title,
+                    "characters": [],
+                    "scenes": [],
+                    "shots": []
+                }
+
+            # 确保返回格式正确
+            return {
+                "chapter": data.get("chapter", chapter_title),
+                "characters": data.get("characters", []),
+                "scenes": data.get("scenes", []),
+                "shots": data.get("shots", [])
+            }
+        else:
+            return {
+                "error": result.get("error", "未知错误"),
+                "chapter": chapter_title,
+                "characters": [],
+                "scenes": [],
+                "shots": []
+            }
+
 
 def get_llm_service() -> LLMService:
     """获取 LLM 服务实例"""

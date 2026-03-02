@@ -16,6 +16,14 @@ export const ASPECT_RATIO_CLASSES: Record<string, string> = {
 // 允许上传的图片类型
 export const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
+// 允许上传的音频类型
+export const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav',
+  'audio/flac', 'audio/x-flac', 'audio/ogg', 'audio/x-ogg',
+  'audio/mp4', 'audio/x-m4a', 'audio/m4a'];
+
+// 最大音频文件大小 (10MB)
+export const MAX_AUDIO_SIZE = 10 * 1024 * 1024;
+
 // 轮询配置
 export const POLL_CONFIG = {
   maxAttempts: 60,

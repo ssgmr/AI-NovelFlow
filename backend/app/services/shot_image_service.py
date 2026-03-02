@@ -126,17 +126,54 @@ async def generate_shot_image_task(
         prop_reference_paths = await _process_prop_references(
             db, task, novel_id, shot_props, task_id
         )
-        
+
+        # ========== 查询角色/场景/道具的描述信息（用于占位符替换） ==========
+        # 查询角色外貌描述
+        character_appearances = {}
+        for char_name in shot_characters:
+            character = db.query(Character).filter(
+                Character.novel_id == novel_id,
+                Character.name == char_name
+            ).first()
+            if character and character.appearance:
+                character_appearances[char_name] = character.appearance
+        print(f"[ShotTask {task_id}] Character appearances: {character_appearances}")
+
+        # 查询场景设定
+        scene_setting = None
+        if shot_scene:
+            scene = db.query(Scene).filter(
+                Scene.novel_id == novel_id,
+                Scene.name == shot_scene
+            ).first()
+            if scene and scene.setting:
+                scene_setting = scene.setting
+        print(f"[ShotTask {task_id}] Scene setting: {scene_setting}")
+
+        # 查询道具外观
+        prop_appearances = {}
+        for prop_name in shot_props:
+            prop = db.query(Prop).filter(
+                Prop.novel_id == novel_id,
+                Prop.name == prop_name
+            ).first()
+            if prop and prop.appearance:
+                prop_appearances[prop_name] = prop.appearance
+        print(f"[ShotTask {task_id}] Prop appearances: {prop_appearances}")
+
         # 构建工作流
         task.current_step = "构建工作流..."
         db.commit()
-        
+
         submitted_workflow = comfyui_service.builder.build_shot_workflow(
             prompt=shot_description,
             workflow_json=workflow.workflow_json,
             node_mapping=node_mapping,
             aspect_ratio=novel.aspect_ratio or "16:9",
-            style=style
+            style=style,
+            character_appearances=character_appearances,
+            scene_setting=scene_setting,
+            prop_appearances=prop_appearances
         )
         
         # 上传参考图并更新工作流

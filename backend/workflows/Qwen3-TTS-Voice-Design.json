@@ -1,10 +1,10 @@
 {
-  "15": {
+  "12": {
     "inputs": {
       "purge_cache": true,
       "purge_models": true,
       "anything": [
-        "31",
+        "23",
         0
       ]
     },
@@ -13,19 +13,9 @@
       "title": "图层工具：清除VRAM V2"
     }
   },
-  "19": {
+  "22": {
     "inputs": {
-      "audio": "ComfyUI_00004_.flac",
-      "audioUI": "/api/view?filename=ComfyUI_00004_.flac&type=input&subfolder=&rand=0.1526797381841387"
-    },
-    "class_type": "LoadAudio",
-    "_meta": {
-      "title": "加载音频"
-    }
-  },
-  "24": {
-    "inputs": {
-      "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
       "precision": "bf16",
       "device": "cuda",
       "attn_implementation": "sdpa",
@@ -37,38 +27,57 @@
       "title": "TD Qwen3 TTS Model Loader"
     }
   },
-  "31": {
+  "23": {
     "inputs": {
-      "text": "如果启用仅用声纹模式，就只会参考音频中的声纹进行生成中的内容。\n",
-      "language": "Chinese",
-      "ref_text": "充满激情，开心，兴奋",
-      "x_vector_only_mode": true,
-      "model": [
-        "24",
+      "text": [
+        "54",
         0
       ],
-      "ref_audio": [
-        "19",
+      "instruct": [
+        "53",
+        0
+      ],
+      "language": "Chinese",
+      "model": [
+        "22",
         0
       ]
     },
-    "class_type": "TDQwen3TTSVoiceClone",
+    "class_type": "TDQwen3TTSVoiceDesign",
     "_meta": {
-      "title": "TD Qwen3 TTS Voice Clone"
+      "title": "TD Qwen3 TTS Voice Design"
     }
   },
-  "56": {
+  "52": {
     "inputs": {
       "filename_prefix": "audio/ComfyUI",
-      "audioUI": "",
+      "audioUI": "/api/view?filename=ComfyUI_00007_.flac&type=output&subfolder=audio&rand=0.5756189814515191",
       "audio": [
-        "31",
+        "23",
         0
       ]
     },
     "class_type": "SaveAudio",
     "_meta": {
       "title": "保存音频"
+    }
+  },
+  "53": {
+    "inputs": {
+      "prompt": "萝莉音"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "⚙️ CR Prompt Text"
+    }
+  },
+  "54": {
+    "inputs": {
+      "prompt": "大家好，我是vae，这是我即将发表的首张独创专辑自定义里面的一首推荐曲目，词曲编曲都是我自己，希望这首歌能在这个寒冷的冬天带给大家一种温暖的感觉"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "⚙️ CR Prompt Text"
     }
   }
 }

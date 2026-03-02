@@ -77,11 +77,15 @@ class Character(Base):
     description = Column(Text, default="")
     appearance = Column(Text, default="")
     image_url = Column(String, nullable=True)
-    
+
+    # 音色相关
+    voice_prompt = Column(Text, default="")  # 音色提示词描述
+    reference_audio_url = Column(String, nullable=True)  # 参考音频URL
+
     # 章节范围信息
     start_chapter = Column(Integer, nullable=True)
     end_chapter = Column(Integer, nullable=True)
-    
+
     # 生成状态追踪
     generating_status = Column(String, nullable=True, index=True)  # 状态查询
     portrait_task_id = Column(String, nullable=True)

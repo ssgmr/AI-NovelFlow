@@ -107,6 +107,8 @@ export interface Character {
   name: string;
   description: string;
   appearance: string;
+  voicePrompt?: string;
+  referenceAudioUrl?: string;
   imageUrl?: string;
   generatingStatus?: 'pending' | 'running' | 'completed' | 'failed';
   portraitTaskId?: string;
@@ -163,7 +165,7 @@ export interface Shot {
 
 export interface Task {
   id: string;
-  type: 'character_portrait' | 'scene_image' | 'shot_image' | 'shot_video' | 'chapter_video' | 'transition_video';
+  type: 'character_portrait' | 'character_voice' | 'scene_image' | 'shot_image' | 'shot_video' | 'chapter_video' | 'transition_video';
   name: string;
   description?: string;
   status: 'pending' | 'running' | 'completed' | 'failed';

@@ -96,6 +96,7 @@ export interface AvailableNodes {
   // 音色设计相关节点
   qwen3TtsVoiceDesign: string[];
   saveAudio: string[];
+  previewAudio: string[];
   // 音频生成相关节点
   loadAudio: string[];
   qwen3TtsVoiceClone: string[];

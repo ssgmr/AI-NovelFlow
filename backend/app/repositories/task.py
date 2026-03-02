@@ -59,6 +59,14 @@ class TaskRepository:
             Task.type == "character_portrait",
             Task.status.in_(["pending", "running"])
         ).first()
+
+    def get_active_by_character_and_type(self, character_id: str, task_type: str) -> Optional[Task]:
+        """获取角色指定类型的进行中任务"""
+        return self.db.query(Task).filter(
+            Task.character_id == character_id,
+            Task.type == task_type,
+            Task.status.in_(["pending", "running"])
+        ).first()
     
     def get_active_by_scene(self, scene_id: str) -> Optional[Task]:
         """获取场景进行中的任务"""
@@ -293,3 +301,47 @@ class TaskRepository:
             workflow_name=workflow_name
         )
         return self.create(task)
+
+    def create_character_audio_task(
+        self,
+        novel_id: str,
+        chapter_id: str,
+        shot_index: int,
+        character_id: str,
+        character_name: str,
+        text: str,
+        chapter_title: str,
+        workflow_id: str = None,
+        workflow_name: str = None
+    ) -> Task:
+        """创建角色台词音频生成任务"""
+        task = Task(
+            type="character_audio",
+            name=f"生成台词音频: 镜{shot_index}-{character_name}",
+            description=f"为章节 '{chapter_title}' 的分镜 {shot_index} 角色 '{character_name}' 生成台词音频: {text[:50]}{'...' if len(text) > 50 else ''}",
+            novel_id=novel_id,
+            chapter_id=chapter_id,
+            character_id=character_id,
+            status="pending",
+            progress=0,
+            current_step="等待处理",
+            workflow_id=workflow_id,
+            workflow_name=workflow_name
+        )
+        return self.create(task)
+
+    def get_active_character_audio_task(
+        self,
+        novel_id: str,
+        chapter_id: str,
+        shot_index: int,
+        character_name: str
+    ) -> Optional[Task]:
+        """获取角色台词音频进行中的任务"""
+        return self.db.query(Task).filter(
+            Task.novel_id == novel_id,
+            Task.chapter_id == chapter_id,
+            Task.type == "character_audio",
+            Task.name.like(f"%镜{shot_index}-{character_name}%"),
+            Task.status.in_(["pending", "running"])
+        ).first()

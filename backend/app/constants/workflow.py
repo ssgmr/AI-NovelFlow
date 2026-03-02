@@ -40,24 +40,25 @@ DEFAULT_WORKFLOWS = {
 
 # 默认工作流的节点映射配置
 # 用于指定工作流中各功能节点的ID，便于动态替换参数
+# 注意：CR Prompt Text 节点使用 prompt 字段存储文本内容
 DEFAULT_WORKFLOW_NODE_MAPPINGS = {
     "voice_design": {
-        # 音色提示词节点 (TDQwen3TTSVoiceDesign 的 instruct 字段)
-        "voice_prompt_node_id": "23",
-        # 参考音频文本节点 (TDQwen3TTSVoiceDesign 的 text 字段)
-        "ref_text_node_id": "23",
+        # 音色提示词节点 (CR Prompt Text 节点，prompt 字段 -> instruct)
+        "voice_prompt_node_id": "53",
+        # 参考文本节点 (CR Prompt Text 节点，prompt 字段 -> text)
+        "ref_text_node_id": "54",
         # 保存音频节点 (SaveAudio)
         "save_audio_node_id": "52",
     },
     "audio": {
         # 参考音频节点 (LoadAudio)
         "reference_audio_node_id": "19",
-        # 生成文本节点 (TDQwen3TTSVoiceClone 的 text 字段)
-        "text_node_id": "31",
-        # 情感提示词节点 (TDQwen3TTSVoiceClone 的 ref_text 字段)
-        "emotion_prompt_node_id": "31",
-        # 保存音频节点 (SaveAudio)
-        "save_audio_node_id": "56",
+        # 生成文本节点 (CR Prompt Text 节点，prompt 字段 -> text)
+        "text_node_id": "32",
+        # 情感提示词节点 (CR Prompt Text 节点，prompt 字段 -> ref_text)
+        "emotion_prompt_node_id": "33",
+        # 保存音频节点 (PreviewAudio，此工作流无 SaveAudio)
+        "save_audio_node_id": "30",
     },
 }
 
@@ -155,7 +156,7 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "descriptionKey": f"{DESC_KEY_PREFIX}.Z-image-turbo 道具生成工作流",
         "node_mapping": {"prompt_node_id": "133", "save_image_node_id": "9"},
     },
-    # 音色设计工作流
+    # 音色设计工作流（基于文本提示词设计音色）
     {
         "filename": "Qwen3-TTS-Voice-Clone.json",
         "type": "voice_design",
@@ -164,8 +165,8 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "description": "基于文本提示词设计音色，生成语音",
         "descriptionKey": f"{DESC_KEY_PREFIX}.基于文本提示词设计音色，生成语音",
         "node_mapping": {
-            "voice_prompt_node_id": "23",
-            "ref_text_node_id": "23",
+            "voice_prompt_node_id": "53",
+            "ref_text_node_id": "54",
             "save_audio_node_id": "52"
         },
     },
@@ -179,9 +180,9 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "descriptionKey": f"{DESC_KEY_PREFIX}.基于参考音频生成语音，支持情感提示词控制",
         "node_mapping": {
             "reference_audio_node_id": "19",
-            "text_node_id": "31",
-            "emotion_prompt_node_id": "31",
-            "save_audio_node_id": "56"
+            "text_node_id": "32",
+            "emotion_prompt_node_id": "33",
+            "save_audio_node_id": "30"
         },
     },
 ]

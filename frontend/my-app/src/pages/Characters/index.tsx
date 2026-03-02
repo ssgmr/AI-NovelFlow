@@ -11,7 +11,7 @@ import { characterApi } from '../../api/characters';
 import { promptTemplateApi } from '../../api/promptTemplates';
 import { api } from '../../api';
 import { ImagePreviewModal, CharacterCard } from './components';
-import { ASPECT_RATIO_CLASSES, ALLOWED_IMAGE_TYPES, POLL_CONFIG } from './constants';
+import { ASPECT_RATIO_CLASSES, ALLOWED_IMAGE_TYPES, ALLOWED_AUDIO_TYPES, MAX_AUDIO_SIZE, POLL_CONFIG } from './constants';
 import type { CharacterPrompt, PreviewImageState, DeleteAllConfirmDialog } from './types';
 
 export default function Characters() {
@@ -36,8 +36,12 @@ export default function Characters() {
   const [previewImage, setPreviewImage] = useState<PreviewImageState>({ isOpen: false, url: null, name: '', characterId: null });
   const [generatingAll, setGeneratingAll] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [generatingVoiceId, setGeneratingVoiceId] = useState<string | null>(null);
+  const [uploadingAudioId, setUploadingAudioId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement | null>(null);
   const [currentUploadCharacterId, setCurrentUploadCharacterId] = useState<string | null>(null);
+  const [currentAudioUploadCharacterId, setCurrentAudioUploadCharacterId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -146,11 +150,16 @@ export default function Characters() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCharacter) return;
-    
+
     try {
-      const data = await characterApi.update(editingCharacter.id, editingCharacter);
+      const data = await characterApi.update(editingCharacter.id, {
+        name: editingCharacter.name,
+        description: editingCharacter.description,
+        appearance: editingCharacter.appearance,
+        voice_prompt: editingCharacter.voicePrompt,
+      } as Partial<Character>);
       if (data.success) {
-        setCharacters(characters.map(c => c.id === data.data!.id ? data.data! : c));
+        setCharacters(characters.map(c => c.id === data.data!.id ? { ...c, ...data.data } : c));
         setEditingCharacter(null);
       }
     } catch (error) {
@@ -281,21 +290,28 @@ export default function Characters() {
     }
   };
 
+  const triggerAudioUpload = (characterId: string) => {
+    setCurrentAudioUploadCharacterId(characterId);
+    if (audioFileInputRef.current) {
+      audioFileInputRef.current.click();
+    }
+  };
+
   const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !currentUploadCharacterId) return;
-    
+
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       toast.error(t('common.error') + ': 仅支持 PNG, JPG, WEBP 格式');
       return;
     }
-    
+
     setUploadingId(currentUploadCharacterId);
-    
+
     try {
       const data = await characterApi.uploadImage(currentUploadCharacterId, file);
       if (data.success) {
-        setCharacters(prev => prev.map(c => 
+        setCharacters(prev => prev.map(c =>
           c.id === currentUploadCharacterId ? { ...c, ...data.data! } : c
         ));
         toast.success(t('characters.uploadSuccess'));
@@ -310,6 +326,44 @@ export default function Characters() {
       setCurrentUploadCharacterId(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleUploadAudio = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentAudioUploadCharacterId) return;
+
+    if (!ALLOWED_AUDIO_TYPES.includes(file.type)) {
+      toast.error(t('characters.invalidAudioFormat'));
+      return;
+    }
+
+    if (file.size > MAX_AUDIO_SIZE) {
+      toast.error(t('characters.audioTooLarge'));
+      return;
+    }
+
+    setUploadingAudioId(currentAudioUploadCharacterId);
+
+    try {
+      const data = await characterApi.uploadAudio(currentAudioUploadCharacterId, file);
+      if (data.success) {
+        setCharacters(prev => prev.map(c =>
+          c.id === currentAudioUploadCharacterId ? { ...c, referenceAudioUrl: data.data!.referenceAudioUrl } : c
+        ));
+        toast.success(t('characters.uploadAudioSuccess'));
+      } else {
+        toast.error(data.message || t('characters.uploadAudioFailed'));
+      }
+    } catch (error) {
+      console.error('上传音频失败:', error);
+      toast.error(t('characters.uploadAudioFailed'));
+    } finally {
+      setUploadingAudioId(null);
+      setCurrentAudioUploadCharacterId(null);
+      if (audioFileInputRef.current) {
+        audioFileInputRef.current.value = '';
       }
     }
   };
@@ -435,6 +489,64 @@ export default function Characters() {
     });
   };
 
+  const generateVoice = async (character: Character) => {
+    if (!character.voicePrompt) {
+      toast.warning(t('characters.needVoicePrompt'));
+      return;
+    }
+
+    setGeneratingVoiceId(character.id);
+    try {
+      const data = await characterApi.generateVoice(character.id);
+      if (data.success) {
+        toast.success(t('characters.generatingVoice'));
+        pollVoiceStatus(character.id);
+      } else {
+        toast.error(data.message || t('common.error'));
+        setGeneratingVoiceId(null);
+      }
+    } catch (error) {
+      console.error('生成音色失败:', error);
+      toast.error(t('common.error'));
+      setGeneratingVoiceId(null);
+    }
+  };
+
+  const pollVoiceStatus = async (characterId: string, maxAttempts = 60) => {
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(interval);
+        setGeneratingVoiceId(null);
+        toast.warning(t('characters.voiceGenerateTimeout'));
+        return;
+      }
+
+      try {
+        const data = await characterApi.getVoiceStatus(characterId);
+        if (data.success && data.data) {
+          const { status, referenceAudioUrl } = data.data;
+
+          if (status === 'completed' && referenceAudioUrl) {
+            clearInterval(interval);
+            setGeneratingVoiceId(null);
+            setCharacters(prev => prev.map(c =>
+              c.id === characterId ? { ...c, referenceAudioUrl } : c
+            ));
+            toast.success(t('characters.generateVoice') + t('common.success'));
+          } else if (status === 'failed') {
+            clearInterval(interval);
+            setGeneratingVoiceId(null);
+            toast.error(t('characters.generateVoice') + t('common.error'));
+          }
+        }
+      } catch (error) {
+        console.error('轮询音色状态失败:', error);
+      }
+    }, 2000);
+  };
+
   const filteredCharacters = characters.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -538,6 +650,8 @@ export default function Characters() {
               generatingId={generatingId}
               generatingAppearanceId={generatingAppearanceId}
               uploadingId={uploadingId}
+              generatingVoiceId={generatingVoiceId}
+              uploadingAudioId={uploadingAudioId}
               characterPrompt={characterPrompts[character.id]}
               onDelete={handleDelete}
               onEdit={setEditingCharacter}
@@ -545,6 +659,8 @@ export default function Characters() {
               onGenerateAppearance={generateAppearance}
               onUploadImage={triggerFileUpload}
               onImageClick={openImagePreview}
+              onGenerateVoice={generateVoice}
+              onUploadAudio={triggerAudioUpload}
             />
           ))}
         </div>
@@ -557,6 +673,15 @@ export default function Characters() {
         accept="image/*"
         className="hidden"
         onChange={handleUploadImage}
+      />
+
+      {/* Hidden audio file input */}
+      <input
+        ref={audioFileInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={handleUploadAudio}
       />
 
       {/* Image Preview Modal */}
@@ -664,6 +789,16 @@ export default function Characters() {
                   onChange={(e) => setEditingCharacter({ ...editingCharacter, appearance: e.target.value })}
                   className="input-field mt-1"
                   placeholder={t('characters.appearancePlaceholder')}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('characters.voicePromptLabel')}</label>
+                <textarea
+                  rows={2}
+                  value={editingCharacter.voicePrompt || ''}
+                  onChange={(e) => setEditingCharacter({ ...editingCharacter, voicePrompt: e.target.value })}
+                  className="input-field mt-1"
+                  placeholder={t('characters.voicePromptPlaceholder')}
                 />
               </div>
               <div className="flex justify-end gap-3 mt-6">

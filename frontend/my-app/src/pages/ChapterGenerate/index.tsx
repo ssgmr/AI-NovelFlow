@@ -16,6 +16,7 @@ import {
   Upload,
   Clock,
   Grid3x3,
+  Volume2,
 } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import ComfyUIStatus from '../../components/ComfyUIStatus';
@@ -33,6 +34,7 @@ import useTransitionGeneration from './hooks/useTransitionGeneration';
 import useChapterGenerateState from './hooks/useChapterGenerateState';
 import useTaskPolling from './hooks/useTaskPolling';
 import useChapterActions from './hooks/useChapterActions';
+import useAudioGeneration from './hooks/useAudioGeneration';
 
 // 导入组件
 import { FullTextModal, MergedImageModal, ImagePreviewModal, SplitConfirmDialog } from './components/Modals';
@@ -194,6 +196,28 @@ export default function ChapterGenerate() {
     currentShot,
   });
 
+  // 音频生成 hook - 必须在 useTaskPolling 之前调用
+  const {
+    generatingAudios: generatingAudiosSet,
+    audioWarnings,
+    audioTasks,
+    audioUrls,
+    audioSources,
+    generateShotAudio,
+    generateAllAudio,
+    clearWarnings,
+    isGenerating: isGeneratingAudio,
+    checkAudioTaskStatus,
+    getAudioUrl,
+    getShotAudioTasks,
+    isShotAudioGenerating,
+    regenerateAudio,
+    uploadDialogueAudio,
+    deleteDialogueAudio,
+    isUploading,
+    initAudioFromShots,
+  } = useAudioGeneration();
+
   // 任务轮询
   useTaskPolling({
     cid,
@@ -201,9 +225,11 @@ export default function ChapterGenerate() {
     pendingShots,
     pendingVideos,
     generatingTransitions,
+    audioTasks,
     checkShotTaskStatus,
     checkVideoTaskStatus,
     checkTransitionTaskStatus,
+    checkAudioTaskStatus,
     fetchChapter,
   });
 
@@ -232,8 +258,8 @@ export default function ChapterGenerate() {
         }
         if (chapter.parsedData) {
           try {
-            const parsed = typeof chapter.parsedData === 'string' 
-              ? JSON.parse(chapter.parsedData) 
+            const parsed = typeof chapter.parsedData === 'string'
+              ? JSON.parse(chapter.parsedData)
               : chapter.parsedData;
             if (parsed?.shots && Array.isArray(parsed.shots)) {
               parsed.shots.forEach((shot: any, index: number) => {
@@ -242,6 +268,8 @@ export default function ChapterGenerate() {
                   images[shotNum] = shot.image_url;
                 }
               });
+              // 初始化音频数据
+              initAudioFromShots(parsed.shots);
             }
           } catch (e) {
             console.error('解析 parsedData 失败:', e);
@@ -249,7 +277,7 @@ export default function ChapterGenerate() {
         }
         return images;
       });
-      
+
       if (chapter.shotVideos && Array.isArray(chapter.shotVideos)) {
         setShotVideos(prev => {
           const videos = { ...prev };
@@ -259,7 +287,7 @@ export default function ChapterGenerate() {
           return videos;
         });
       }
-      
+
       if (chapter.transitionVideos && typeof chapter.transitionVideos === 'object') {
         setTransitionVideos(prev => ({ ...prev, ...chapter.transitionVideos}));
       }
@@ -293,10 +321,10 @@ export default function ChapterGenerate() {
           return;
         }
       }
-      
+
       if (!parsedData?.shots || parsedData.shots.length === 0) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       if (e.key === 'ArrowLeft') {
         setCurrentShot(prev => Math.max(1, prev - 1));
       } else if (e.key === 'ArrowRight') {
@@ -307,6 +335,21 @@ export default function ChapterGenerate() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [parsedData?.shots?.length, showImagePreview, previewImageUrl, previewImageIndex, setCurrentShot, setShowImagePreview]);
+
+  // 监听 JsonTableEditor 中的生成音频事件
+  useEffect(() => {
+    const handleGenerateShotAudio = (e: CustomEvent) => {
+      const { shotIndex, dialogues } = e.detail;
+      if (id && cid && dialogues && dialogues.length > 0) {
+        generateShotAudio(id, cid, shotIndex + 1, dialogues);
+      }
+    };
+
+    window.addEventListener('generateShotAudio', handleGenerateShotAudio as EventListener);
+    return () => {
+      window.removeEventListener('generateShotAudio', handleGenerateShotAudio as EventListener);
+    };
+  }, [id, cid, generateShotAudio]);
 
   // 图片预览导航
   const navigateImagePreview = (direction: 'prev' | 'next') => {
@@ -448,6 +491,31 @@ export default function ChapterGenerate() {
               availableCharacters={characters.map(c => c.name)}
               availableProps={props.map(p => p.name)}
               activeShotWorkflow={activeShotWorkflow}
+              audioUrls={audioUrls}
+              audioSources={audioSources}
+              isShotAudioGenerating={isShotAudioGenerating}
+              getShotAudioTasks={getShotAudioTasks}
+              onRegenerateAudio={(shotIndex, characterName, dialogue) => {
+                if (id && cid) {
+                  regenerateAudio(id, cid, shotIndex + 1, characterName, dialogue);
+                }
+              }}
+              onGenerateDialogueAudio={(shotIndex, dialogue) => {
+                if (id && cid) {
+                  generateShotAudio(id, cid, shotIndex + 1, [dialogue]);
+                }
+              }}
+              onUploadDialogueAudio={(shotIndex, characterName, file) => {
+                if (id && cid) {
+                  uploadDialogueAudio(id, cid, shotIndex + 1, characterName, file, () => fetchChapter(id, cid));
+                }
+              }}
+              onDeleteDialogueAudio={(shotIndex, characterName) => {
+                if (id && cid) {
+                  deleteDialogueAudio(id, cid, shotIndex + 1, characterName, () => fetchChapter(id, cid));
+                }
+              }}
+              isAudioUploading={isUploading}
             />
           </div>
 
@@ -498,7 +566,7 @@ export default function ChapterGenerate() {
               <div className="flex items-center gap-3">
                 {(parsedData?.shots?.length ?? 0) > 0 && (
                   <>
-                    <button 
+                    <button
                       onClick={() => handleGenerateAllShots(parsedData, id, cid)}
                       disabled={isGeneratingAll || pendingShots.size > 0}
                       className="btn-secondary text-sm py-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50"
@@ -509,7 +577,7 @@ export default function ChapterGenerate() {
                         <><RefreshCw className="h-3 w-3 mr-1" />{t('chapterGenerate.generateAllShots')}</>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleGenerateAllVideos(parsedData, shotImages, id, cid)}
                       disabled={generatingVideos.size > 0 || pendingVideos.size > 0}
                       className="btn-secondary text-sm py-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-50"
@@ -517,6 +585,22 @@ export default function ChapterGenerate() {
                     >
                       <Film className="h-3 w-3 mr-1" />
                       {t('chapterGenerate.generateAllShotVideos')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (id && cid) {
+                          generateAllAudio(id, cid);
+                        }
+                      }}
+                      disabled={isGeneratingAudio()}
+                      className="btn-secondary text-sm py-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                      title={t('chapterGenerate.generateAllAudioHint')}
+                    >
+                      {isGeneratingAudio('all') ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{t('chapterGenerate.generatingAudio')}</>
+                      ) : (
+                        <><Volume2 className="h-3 w-3 mr-1" />{t('chapterGenerate.generateAllAudio')}</>
+                      )}
                     </button>
                   </>
                 )}

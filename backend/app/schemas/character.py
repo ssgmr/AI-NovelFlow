@@ -10,6 +10,7 @@ class CharacterBase(BaseModel):
     name: str = Field(..., description="角色名称")
     description: Optional[str] = Field("", description="角色描述")
     appearance: Optional[str] = Field("", description="外貌描述")
+    voice_prompt: Optional[str] = Field("", description="音色提示词描述")
 
 
 class CharacterCreate(CharacterBase):
@@ -22,12 +23,14 @@ class CharacterUpdate(BaseModel):
     name: Optional[str] = Field(None, description="角色名称")
     description: Optional[str] = Field(None, description="角色描述")
     appearance: Optional[str] = Field(None, description="外貌描述")
+    voice_prompt: Optional[str] = Field(None, description="音色提示词描述")
 
 
 class CharacterResponse(CharacterBase):
     """角色响应"""
     id: str
     image_url: Optional[str] = None
+    reference_audio_url: Optional[str] = None
     generating_status: Optional[str] = None
     portrait_task_id: Optional[str] = None
     start_chapter: Optional[int] = None
