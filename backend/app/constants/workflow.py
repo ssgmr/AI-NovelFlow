@@ -17,16 +17,49 @@ WORKFLOW_TYPES = {
     "scene": "场景生成",
     "shot": "分镜生图",
     "video": "分镜生视频",
-    "transition": "分镜生转场视频"
+    "transition": "分镜生转场视频",
+    "prop": "道具生成",
+    "voice_design": "音色设计",
+    "audio": "音频生成"
 }
 
 
 # 默认工作流文件名映射 (每个类型的默认工作流)
+# 注意：Qwen3-TTS-Voice-Clone.json 文件实际包含音色设计功能（TDQwen3TTSVoiceDesign 节点）
+# 而 Qwen3-TTS-Voice-Design.json 实际包含音色克隆功能，命名与内容相反
 DEFAULT_WORKFLOWS = {
     "character": "character_default.json",
     "scene": "scene_default.json",
     "shot": "shot_default.json",
-    "video": "video_default.json"
+    "video": "video_default.json",
+    "prop": "prop_default.json",
+    "voice_design": "Qwen3-TTS-Voice-Clone.json",  # 实际是音色设计工作流
+    "audio": "Qwen3-TTS-Voice-Design.json"  # 音频生成工作流（带参考音频的语音克隆）
+}
+
+
+# 默认工作流的节点映射配置
+# 用于指定工作流中各功能节点的ID，便于动态替换参数
+# 注意：CR Prompt Text 节点使用 prompt 字段存储文本内容
+DEFAULT_WORKFLOW_NODE_MAPPINGS = {
+    "voice_design": {
+        # 音色提示词节点 (CR Prompt Text 节点，prompt 字段 -> instruct)
+        "voice_prompt_node_id": "53",
+        # 参考文本节点 (CR Prompt Text 节点，prompt 字段 -> text)
+        "ref_text_node_id": "54",
+        # 保存音频节点 (SaveAudio)
+        "save_audio_node_id": "52",
+    },
+    "audio": {
+        # 参考音频节点 (LoadAudio)
+        "reference_audio_node_id": "19",
+        # 生成文本节点 (CR Prompt Text 节点，prompt 字段 -> text)
+        "text_node_id": "32",
+        # 情感提示词节点 (CR Prompt Text 节点，prompt 字段 -> ref_text)
+        "emotion_prompt_node_id": "33",
+        # 保存音频节点 (PreviewAudio，此工作流无 SaveAudio)
+        "save_audio_node_id": "30",
+    },
 }
 
 
@@ -51,7 +84,6 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "description": "Flux2-Klein-9B 双图参考工作流，支持角色参考图+场景参考图，保持场景一致性",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Flux2-Klein-9B 双图参考工作流，支持角色参考图+场景参考图，保持场景一致性",
         "node_mapping": {"prompt_node_id": "110", "save_image_node_id": "9", "width_node_id": "123", "height_node_id": "125", "character_reference_image_node_id": "76", "scene_reference_image_node_id": "128"},
-        "extension": {"reference_image_count": "dual"},
     },
     {
         "filename": "shot_flux2_klein.json",
@@ -60,7 +92,6 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "nameKey": f"{NAME_KEY_PREFIX}.Flux2-Klein-9B 分镜生图",
         "description": "Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Flux2-Klein-9B 图像编辑工作流，仅支持角色参考图",
-        "extension": {"reference_image_count": "single"},
     },
     {
         "filename": "video_ltx2_direct.json",
@@ -115,6 +146,44 @@ EXTRA_SYSTEM_WORKFLOWS = [
         "description": "Z-image-turbo 场景生成工作流",
         "descriptionKey": f"{DESC_KEY_PREFIX}.Z-image-turbo 场景生成工作流",
         "node_mapping": {"prompt_node_id": "133", "save_image_node_id": "9"},
+    },
+    {
+        "filename": "prop_default.json",
+        "type": "prop",
+        "name": "Z-image-turbo 道具生成",
+        "nameKey": f"{NAME_KEY_PREFIX}.Z-image-turbo 道具生成",
+        "description": "Z-image-turbo 道具生成工作流",
+        "descriptionKey": f"{DESC_KEY_PREFIX}.Z-image-turbo 道具生成工作流",
+        "node_mapping": {"prompt_node_id": "133", "save_image_node_id": "9"},
+    },
+    # 音色设计工作流（基于文本提示词设计音色）
+    {
+        "filename": "Qwen3-TTS-Voice-Clone.json",
+        "type": "voice_design",
+        "name": "系统默认-音色设计",
+        "nameKey": f"{NAME_KEY_PREFIX}.系统默认-音色设计",
+        "description": "基于文本提示词设计音色，生成语音",
+        "descriptionKey": f"{DESC_KEY_PREFIX}.基于文本提示词设计音色，生成语音",
+        "node_mapping": {
+            "voice_prompt_node_id": "53",
+            "ref_text_node_id": "54",
+            "save_audio_node_id": "52"
+        },
+    },
+    # 音频生成工作流（带参考音频的语音克隆）
+    {
+        "filename": "Qwen3-TTS-Voice-Design.json",
+        "type": "audio",
+        "name": "系统默认-音频生成",
+        "nameKey": f"{NAME_KEY_PREFIX}.系统默认-音频生成",
+        "description": "基于参考音频生成语音，支持情感提示词控制",
+        "descriptionKey": f"{DESC_KEY_PREFIX}.基于参考音频生成语音，支持情感提示词控制",
+        "node_mapping": {
+            "reference_audio_node_id": "19",
+            "text_node_id": "32",
+            "emotion_prompt_node_id": "33",
+            "save_audio_node_id": "30"
+        },
     },
 ]
 

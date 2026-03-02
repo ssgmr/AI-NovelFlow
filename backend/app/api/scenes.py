@@ -1,3 +1,6 @@
+"""
+场景路由 - 场景 CRUD 和图像生成相关接口
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -6,46 +9,18 @@ from app.core.config import get_settings
 from app.models.novel import Scene, Chapter
 from app.models.prompt_template import PromptTemplate
 from app.services.comfyui import ComfyUIService
-from app.services.llm_service import LLMService
 from app.services.novel_service import NovelService
-from app.services.prompt_builder import (
-    build_scene_prompt,
-    get_style
-)
+from app.services.prompt_builder import build_scene_prompt, get_style
 from app.services.file_storage import file_storage
+from app.services.scene_service import SceneService
 from app.repositories import NovelRepository, SceneRepository, ChapterRepository, PromptTemplateRepository
 from app.schemas.scene import SceneCreate, SceneUpdate, ParseScenesRequest
+from app.api.deps import get_novel_repo, get_scene_repo, get_chapter_repo, get_prompt_template_repo, get_llm_service
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
 settings = get_settings()
 comfyui_service = ComfyUIService()
-
-
-
-def get_llm_service() -> LLMService:
-    """获取 LLMService 实例（每次调用创建新实例以获取最新配置）"""
-    return LLMService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_scene_repo(db: Session = Depends(get_db)) -> SceneRepository:
-    """获取 SceneRepository 实例"""
-    return SceneRepository(db)
-
-
-def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
-    """获取 ChapterRepository 实例"""
-    return ChapterRepository(db)
-
-
-def get_prompt_template_repo(db: Session = Depends(get_db)) -> PromptTemplateRepository:
-    """获取 PromptTemplateRepository 实例"""
-    return PromptTemplateRepository(db)
 
 
 @router.get("/", response_model=dict)
@@ -388,6 +363,16 @@ async def parse_scenes(
         scene_repo=scene_repo,
         prompt_template_repo=prompt_template_repo
     )
+
+
+@router.post("/{scene_id}/generate-image", response_model=dict)
+async def generate_scene_image(
+    scene_id: str,
+    db: Session = Depends(get_db)
+):
+    """生成场景图任务"""
+    scene_service = SceneService(db)
+    return scene_service.create_scene_image_task(scene_id)
 
 
 @router.post("/{scene_id}/upload-image", response_model=dict)

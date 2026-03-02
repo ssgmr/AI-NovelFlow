@@ -45,6 +45,9 @@ export default {
     other: 'その他',
     failed: '失敗',
     optional: '任意',
+    add: '追加',
+    remove: '削除',
+    select: '選択',
   },
 
   status: {

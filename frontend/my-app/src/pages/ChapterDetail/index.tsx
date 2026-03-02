@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Play, Trash2, Sparkles, MapPin, Film } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Play, Trash2, Sparkles, MapPin, Film, Package } from 'lucide-react';
 import { useTranslation } from '../../stores/i18nStore';
 import type { Chapter, Novel } from '../../types';
 import type { ParseResultData } from './types';
@@ -7,27 +7,54 @@ import { useChapterDetailState } from './hooks/useChapterDetailState';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { getStatusInfo } from './utils/getStatusInfo';
 
-function ParseResultCard({ result, type, onViewClick }: { result: ParseResultData; type: 'characters' | 'scenes'; onViewClick: () => void }) {
+function ParseResultCard({ result, type, onViewClick }: { result: ParseResultData; type: 'characters' | 'scenes' | 'props'; onViewClick: () => void }) {
   const { t } = useTranslation();
   const isCharacter = type === 'characters';
-  const bgClass = isCharacter ? 'bg-purple-50 border-purple-200' : 'bg-teal-50 border-teal-200';
-  const iconBgClass = isCharacter ? 'bg-purple-100' : 'bg-teal-100';
-  const iconClass = isCharacter ? 'text-purple-600' : 'text-teal-600';
-  const textClass = isCharacter ? 'text-purple-800' : 'text-teal-800';
-  const subTextClass = isCharacter ? 'text-purple-600' : 'text-teal-600';
-  const btnClass = isCharacter ? 'bg-purple-600 hover:bg-purple-700' : 'bg-teal-600 hover:bg-teal-700';
-  const Icon = isCharacter ? Sparkles : MapPin;
+  const isScene = type === 'scenes';
+  const isProp = type === 'props';
+
+  let bgClass = 'bg-purple-50 border-purple-200';
+  let iconBgClass = 'bg-purple-100';
+  let iconClass = 'text-purple-600';
+  let textClass = 'text-purple-800';
+  let subTextClass = 'text-purple-600';
+  let btnClass = 'bg-purple-600 hover:bg-purple-700';
+  let Icon = Sparkles;
+  let labelKey = 'chapterDetail.parseComplete';
+  let btnKey = 'chapterDetail.viewCharacters';
+
+  if (isScene) {
+    bgClass = 'bg-teal-50 border-teal-200';
+    iconBgClass = 'bg-teal-100';
+    iconClass = 'text-teal-600';
+    textClass = 'text-teal-800';
+    subTextClass = 'text-teal-600';
+    btnClass = 'bg-teal-600 hover:bg-teal-700';
+    Icon = MapPin;
+    labelKey = 'chapterDetail.parseScenesComplete';
+    btnKey = 'chapterDetail.viewScenes';
+  } else if (isProp) {
+    bgClass = 'bg-amber-50 border-amber-200';
+    iconBgClass = 'bg-amber-100';
+    iconClass = 'text-amber-600';
+    textClass = 'text-amber-800';
+    subTextClass = 'text-amber-600';
+    btnClass = 'bg-amber-600 hover:bg-amber-700';
+    Icon = Package;
+    labelKey = 'chapterDetail.parsePropsComplete';
+    btnKey = 'chapterDetail.viewProps';
+  }
 
   return (
     <div className={`card ${bgClass}`}>
       <div className="flex items-center gap-3">
         <div className={`p-2 ${iconBgClass} rounded-full`}><Icon className={`h-5 w-5 ${iconClass}`} /></div>
         <div>
-          <p className={`font-medium ${textClass}`}>{t(isCharacter ? 'chapterDetail.parseComplete' : 'chapterDetail.parseScenesComplete')}</p>
+          <p className={`font-medium ${textClass}`}>{t(labelKey)}</p>
           <p className={`text-sm ${subTextClass}`}>{t('chapterDetail.parseResult', { created: result.created, updated: result.updated })}</p>
         </div>
         <button onClick={onViewClick} className={`ml-auto btn-primary ${btnClass} text-sm`}>
-          {t(isCharacter ? 'chapterDetail.viewCharacters' : 'chapterDetail.viewScenes')}
+          {t(btnKey)}
         </button>
       </div>
     </div>
@@ -118,6 +145,9 @@ export default function ChapterDetail() {
           <button onClick={state.handleParseScenes} className="btn-secondary text-teal-600 border-teal-200 hover:bg-teal-50 disabled:opacity-50" disabled={state.parsingScenes}>
             {state.parsingScenes ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}{t('chapterDetail.parseScenes')}
           </button>
+          <button onClick={state.handleParseProps} className="btn-secondary text-amber-600 border-amber-200 hover:bg-amber-50 disabled:opacity-50" disabled={state.parsingProps}>
+            {state.parsingProps ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Package className="h-4 w-4 mr-2" />}{t('chapterDetail.parseProps')}
+          </button>
           <button onClick={state.handleGenerate} className="btn-primary bg-green-600 hover:bg-green-700" disabled={state.chapter.status !== 'pending' && state.chapter.status !== 'failed'}>
             <Play className="h-4 w-4 mr-2" />{t('chapterDetail.generateVideo')}
           </button>
@@ -145,6 +175,7 @@ export default function ChapterDetail() {
       {/* Parse Results */}
       {state.parseResult && <ParseResultCard result={state.parseResult} type="characters" onViewClick={() => window.location.href = `/characters?novel=${state.id}&highlight=new`} />}
       {state.parseScenesResult && <ParseResultCard result={state.parseScenesResult} type="scenes" onViewClick={() => window.location.href = `/scenes?novel=${state.id}&highlight=new`} />}
+      {state.parsePropsResult && <ParseResultCard result={state.parsePropsResult} type="props" onViewClick={() => window.location.href = `/props?novel=${state.id}&highlight=new`} />}
 
       {/* Content Editor */}
       <div className="card">

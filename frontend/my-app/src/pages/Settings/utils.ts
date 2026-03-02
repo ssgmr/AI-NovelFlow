@@ -88,7 +88,10 @@ export const getTypeNames = (t: any) => ({
   scene: t('systemSettings.workflow.scene'),
   shot: t('systemSettings.workflow.shot'),
   video: t('systemSettings.workflow.video'),
-  transition: t('systemSettings.workflow.transition')
+  transition: t('systemSettings.workflow.transition'),
+  prop: t('systemSettings.workflow.prop'),
+  voice_design: t('systemSettings.workflow.voiceDesign'),
+  audio: t('systemSettings.workflow.audio')
 });
 
 /**
@@ -116,12 +119,13 @@ export const getWorkflowDisplayDescription = (workflow: any, t: any): string => 
  */
 export const checkWorkflowMappingComplete = (workflow: any): boolean => {
   if (!workflow.nodeMapping) return false;
-  
+
   const mapping = workflow.nodeMapping;
-  
+
   switch (workflow.type) {
     case 'character':
     case 'scene':
+    case 'prop':
       return !!(
         mapping.prompt_node_id &&
         mapping.prompt_node_id !== 'auto' &&
@@ -140,14 +144,17 @@ export const checkWorkflowMappingComplete = (workflow: any): boolean => {
         mapping.height_node_id &&
         mapping.height_node_id !== 'auto'
       );
-      const hasSingleReference = shotMapping.reference_image_node_id && shotMapping.reference_image_node_id !== 'auto';
       const hasDualReference = (
         shotMapping.character_reference_image_node_id &&
         shotMapping.character_reference_image_node_id !== 'auto' &&
         shotMapping.scene_reference_image_node_id &&
         shotMapping.scene_reference_image_node_id !== 'auto'
       );
-      return hasBasicFields && (hasSingleReference || hasDualReference);
+      // 检查是否有自定义参考图节点
+      const hasCustomReference = Object.keys(shotMapping).some(
+        key => key.startsWith('custom_reference_image_node_') && shotMapping[key] && shotMapping[key] !== 'auto'
+      );
+      return hasBasicFields && (hasDualReference || hasCustomReference);
     case 'video':
       const videoMapping = mapping as any;
       return !!(
@@ -169,6 +176,28 @@ export const checkWorkflowMappingComplete = (workflow: any): boolean => {
         transitionMapping.video_save_node_id !== 'auto' &&
         transitionMapping.frame_count_node_id &&
         transitionMapping.frame_count_node_id !== 'auto'
+      );
+    case 'voice_design':
+      const voiceMapping = mapping as any;
+      return !!(
+        voiceMapping.voice_prompt_node_id &&
+        voiceMapping.voice_prompt_node_id !== 'auto' &&
+        voiceMapping.ref_text_node_id &&
+        voiceMapping.ref_text_node_id !== 'auto' &&
+        voiceMapping.save_audio_node_id &&
+        voiceMapping.save_audio_node_id !== 'auto'
+      );
+    case 'audio':
+      const audioMapping = mapping as any;
+      return !!(
+        audioMapping.reference_audio_node_id &&
+        audioMapping.reference_audio_node_id !== 'auto' &&
+        audioMapping.text_node_id &&
+        audioMapping.text_node_id !== 'auto' &&
+        audioMapping.emotion_prompt_node_id &&
+        audioMapping.emotion_prompt_node_id !== 'auto' &&
+        audioMapping.save_audio_node_id &&
+        audioMapping.save_audio_node_id !== 'auto'
       );
     default:
       return false;

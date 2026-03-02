@@ -1,4 +1,4 @@
-import enUS from '../en-US/chapters';
+﻿import enUS from '../en-US/chapters';
 
 // Chapter related translations - Japanese
 export default {
@@ -101,6 +101,12 @@ export default {
     parseScenesFailed: 'シーン解析失敗',
     noNewScenes: '新しいシーンが見つかりません',
     viewScenes: 'シーンを見る',
+    parseProps: 'プロップ解析',
+    parsePropsComplete: 'プロップ解析完了',
+    parsePropsResult: '{created} 個のプロップを追加、{updated} 個を更新',
+    parsePropsFailed: 'プロップ解析失敗',
+    noNewProps: '新しいプロップが見つかりません',
+    viewProps: 'プロップを見る',
   },
 
   chapterGenerate: {
@@ -138,8 +144,10 @@ export default {
     downloadMaterialsDesc: 'この章の全素材をダウンロード：',
     characterImages: 'キャラクター画像',
     characterImagesLabel: 'キャラクター画像',
+    sceneImages: 'シーン画像',
     mergedCharacterImage: '統合キャラクター画像',
     shotImages: 'ショット画像',
+    dialogueAudios: 'セリフ音声',
     shotVideos: 'ショット動画',
     transitionVideos: 'トランジション動画',
     packing: 'パッケージング中...',
@@ -179,7 +187,46 @@ export default {
     saveChanges: '変更を保存',
     jsonPlaceholder: 'AIショット分割をクリックしてデータを生成するか、直接JSONを入力...',
     noShotImages: 'ショット画像がありません。先にAIショット分割を使用してください',
-    
+
+    // 台词
+    dialogues: 'セリフ',
+    addDialogue: 'セリフを追加',
+    addDialogueDisabledHint: '先にキャラクターを追加してください',
+    selectCharacter: 'キャラクターを選択',
+    deleteDialogue: 'セリフを削除',
+    dialogueTextPlaceholder: 'セリフを入力...',
+    emotionPrompt: '感情',
+    emotionPromptPlaceholder: '自然',
+    noDialogues: 'セリフがありません。上のボタンをクリックして追加',
+
+    // 音声生成
+    generateAudio: '音声を生成',
+    generateAllAudio: '音声一括生成',
+    generatingAudio: '音声生成中...',
+    audioTaskCreated: '音声生成タスクを作成しました',
+    audioTasksCreated: '{count}個の音声生成タスクを作成しました',
+    audioGenerateFailed: '音声生成に失敗しました',
+    audioGenerateSuccess: '音声を生成しました',
+    noReferenceAudio: 'キャラクター「{name}」に音声参照がありません',
+    characterNotFound: 'キャラクター「{name}」が見つかりません',
+    noDialoguesToGenerate: '生成するセリフがありません',
+    audioWarnings: '{count}個のセリフをスキップしました',
+    playAudio: '再生',
+    regenerateAudio: '再生成',
+    // 音声アップロード
+    uploadAudio: '音声をアップロード',
+    uploadReplaceAudio: 'アップロードして置換',
+    deleteAudio: '音声を削除',
+    uploadingAudio: 'アップロード中...',
+    audioUploadSuccess: '音声をアップロードしました',
+    audioUploadFailed: '音声のアップロードに失敗しました',
+    audioDeleteSuccess: '音声を削除しました',
+    audioDeleteFailed: '音声の削除に失敗しました',
+    audioFileTooLarge: '音声ファイルサイズは10MBを超えることはできません',
+    confirmDeleteAudio: 'この音声を削除してもよろしいですか？',
+    audioSourceAi: 'AI生成',
+    audioSourceUploaded: 'アップロード済み',
+
     mergeVideo: '動画を統合',
     noShotVideos: 'まだショット動画がありません',
     generatedVideoCount: '{count}個のショット動画を生成',
@@ -202,10 +249,11 @@ export default {
     generateMergedImageFirst: '先に統合キャラクター画像を生成してください',
     mergedCharacterImageTitle: '統合キャラクター画像',
     characterImage: 'キャラクター',
-    
-    sceneImages: 'シーン画像',
-    aiGenerateScene: 'AIシーン生成',
-    noSceneImages: 'シーン画像がありません',
+
+    // Prop Images
+    propImages: 'プロップ画像',
+    aiGenerateProp: 'AI プロップ画像生成',
+    noPropImages: 'プロップ画像がありません',
     
     selectCharacterFromLibrary: 'キャラクターライブラリから選択...',
     selectSceneFromLibrary: 'シーンライブラリから選択...',
@@ -218,6 +266,22 @@ export default {
     removeCharacter: 'キャラクターを削除',
     removeScene: 'シーンを削除',
     orAddCustom: 'または手動入力',
+    
+    // プロップ関連
+    props: 'プロップ',
+    selectPropFromChapter: '章のプロップリストから選択...',
+    selectPropFromLibrary: 'プロップライブラリから選択...',
+    removeProp: 'プロップを削除',
+    noPropsInLibrary: 'プロップライブラリにプロップがありません。まずプロップを解析または追加してください',
+    allPropsAdded: 'ライブラリのすべてのプロップが追加されました',
+
+    // プレースホルダーヒント
+    placeholderHint: '💡 利用可能なプレースホルダー：',
+    placeholderStyle: '##STYLE## - スタイルプロンプト',
+    placeholderScene: '##SCENE## - シーン環境設定',
+    placeholderCharacters: '##CHARACTERS## - キャラクター外見説明',
+    placeholderProps: '##PROPS## - プロップ外見説明',
+
     charactersLabel: 'キャラクター',
     uploadImage: '画像をアップロード',
     uploadSuccess: '画像のアップロードに成功しました',
@@ -255,6 +319,7 @@ export default {
     createVideoTaskFailedCheckNetwork: '動画タスクの作成に失敗しました。ネットワークを確認してください',
     generateAllShotVideos: '全ショット動画を生成',
     generateVideoForShotsWithImages: '画像がある全ショットの動画を生成',
+    generateAllAudioHint: '全ショットのセリフ音声を生成',
     generating: '生成中...',
     videoGenerating: '動画生成中...',
     generateVideoBasedOnImage: '現在のショット画像に基づいて動画を生成',

@@ -54,6 +54,9 @@ export default {
     copyFailed: 'Copy failed',
     deleteFailed: 'Delete failed',
     optional: 'Optional',
+    add: 'Add',
+    remove: 'Remove',
+    select: 'Select',
   },
 
   // Status

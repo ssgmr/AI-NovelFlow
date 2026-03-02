@@ -88,13 +88,36 @@ class WorkflowBuilder:
         node_mapping: Dict[str, str],
         aspect_ratio: str = "16:9",
         seed: Optional[int] = None,
-        style: str = "anime style, high quality, detailed"
+        style: str = "anime style, high quality, detailed",
+        reference_images: Dict[str, str] = None,
+        character_appearances: Optional[Dict[str, str]] = None,
+        scene_setting: Optional[str] = None,
+        prop_appearances: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """构建分镜图片工作流"""
+        """构建分镜图片工作流
+
+        Args:
+            prompt: 分镜描述提示词
+            workflow_json: 工作流 JSON 字符串
+            node_mapping: 节点映射配置
+            aspect_ratio: 画面比例
+            seed: 随机种子
+            style: 风格提示词
+            reference_images: 参考图片映射
+            character_appearances: 角色外貌描述映射 {角色名: 外貌描述}
+            scene_setting: 场景环境设定
+            prop_appearances: 道具外观描述映射 {道具名: 外观描述}
+
+        注意：参考图节点的检测和断开逻辑已移至 shot_image_service 的 _upload_references_and_update_workflow 方法中，
+        因为只有在上传参考图之后才能正确判断哪些节点没有图片。
+        """
         workflow = json.loads(workflow_json)
-        
-        # 替换 ##STYLE## 占位符
+
+        # 替换占位符
         self._replace_style_placeholder(workflow, style)
+        self._replace_scene_placeholder(workflow, scene_setting)
+        self._replace_characters_placeholder(workflow, character_appearances)
+        self._replace_props_placeholder(workflow, prop_appearances)
         
         # 获取宽高
         width, height = self.get_aspect_ratio_dimensions(aspect_ratio)
@@ -116,6 +139,15 @@ class WorkflowBuilder:
         if height_node_id and height_node_id in workflow:
             workflow[height_node_id]["inputs"]["value"] = height
         
+        # 处理参考图节点 - 设置已上传的图片
+        # 注意：此处的 reference_images 参数用于预设置已知的图片文件名
+        # 实际上传和断开未上传节点的逻辑在 shot_image_service 中处理
+        if reference_images:
+            for ref_key, filename in reference_images.items():
+                node_id = node_mapping.get(f"{ref_key}_node_id")
+                if node_id and node_id in workflow:
+                    workflow[node_id]["inputs"]["image"] = filename
+        
         # 设置随机种子
         if seed is None:
             seed = random.randint(1, 2**32)
@@ -134,30 +166,289 @@ class WorkflowBuilder:
     ) -> Dict[str, Any]:
         """构建视频生成工作流"""
         workflow = json.loads(workflow_json)
-        
+
         # 获取节点映射
         prompt_node_id = node_mapping.get("prompt_node_id")
         max_side_node_id = node_mapping.get("max_side_node_id", "36")
         frame_count_node_id = node_mapping.get("frame_count_node_id", "35")
-        
+
         # 设置提示词
         if prompt_node_id and prompt_node_id in workflow:
             self._set_prompt(workflow, prompt_node_id, prompt)
-        
+
         # 根据画面比例设置最长边
         if max_side_node_id and max_side_node_id in workflow:
             max_side = self._get_max_side(aspect_ratio)
             workflow[max_side_node_id]["inputs"]["value"] = max_side
-        
+
         # 设置总帧数
         if frame_count and frame_count_node_id in workflow:
             workflow[frame_count_node_id]["inputs"]["value"] = frame_count
-        
+
         # 设置随机种子
         if seed is None:
             seed = random.randint(1, 2**32)
         self._set_random_seed(workflow, seed)
-        
+
+        return workflow
+
+    def build_voice_design_workflow(
+        self,
+        voice_prompt: str,
+        text: str,
+        workflow_json: str = None,
+        novel_id: str = None,
+        character_name: str = None,
+        node_mapping: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        """
+        构建音色设计工作流
+
+        Args:
+            voice_prompt: 音色提示词（如"温柔女声"、"萝莉音"等）
+            text: 要合成的文本
+            workflow_json: 自定义工作流JSON字符串
+            novel_id: 小说ID
+            character_name: 角色名称
+            node_mapping: 节点映射配置
+
+        Returns:
+            构建好的工作流字典
+        """
+        if workflow_json:
+            workflow = json.loads(workflow_json)
+        else:
+            return self._build_default_voice_design_workflow(voice_prompt, text, novel_id, character_name)
+
+        # 获取节点映射
+        voice_prompt_node_id = str(node_mapping.get("voice_prompt_node_id", "")) if node_mapping else ""
+        ref_text_node_id = str(node_mapping.get("ref_text_node_id", "")) if node_mapping else ""
+        save_audio_node_id = str(node_mapping.get("save_audio_node_id", "")) if node_mapping else ""
+
+        # 构建保存路径前缀
+        save_prefix = None
+        if novel_id and character_name:
+            safe_name = re.sub(r'[^\w\s-]', '', character_name).strip().replace(' ', '_')
+            if not safe_name:
+                safe_name = "voice"
+            save_prefix = f"story_{novel_id}/voices/{safe_name}"
+            print(f"[VoiceWorkflow] Save prefix: {save_prefix}")
+
+        # 设置音色提示词（CR Prompt Text 节点）
+        if voice_prompt_node_id and voice_prompt_node_id in workflow:
+            self._set_prompt(workflow, voice_prompt_node_id, voice_prompt)
+            print(f"[VoiceWorkflow] Set voice prompt to node {voice_prompt_node_id}")
+
+        # 设置参考文本（CR Prompt Text 节点）
+        if ref_text_node_id and ref_text_node_id in workflow and text:
+            self._set_prompt(workflow, ref_text_node_id, text)
+            print(f"[VoiceWorkflow] Set text to node {ref_text_node_id}")
+
+        # 设置 SaveAudio 节点的 filename_prefix
+        if save_prefix:
+            for node_id, node in workflow.items():
+                if not isinstance(node, dict):
+                    continue
+                class_type = node.get("class_type", "")
+                inputs = node.get("inputs", {})
+                node_id_str = str(node_id)
+
+                if class_type == "SaveAudio":
+                    if not save_audio_node_id or node_id_str == save_audio_node_id:
+                        inputs["filename_prefix"] = save_prefix
+                        print(f"[VoiceWorkflow] Set save prefix to node {node_id}")
+
+        return workflow
+
+    def build_audio_workflow(
+        self,
+        text: str,
+        workflow_json: str = None,
+        novel_id: str = None,
+        character_name: str = None,
+        node_mapping: Dict[str, str] = None,
+        reference_audio_filename: str = None,
+        emotion_prompt: str = None
+    ) -> Dict[str, Any]:
+        """
+        构建音频生成工作流（带参考音频的语音克隆）
+
+        Args:
+            text: 要合成的文本
+            workflow_json: 自定义工作流JSON字符串
+            novel_id: 小说ID
+            character_name: 角色名称
+            node_mapping: 节点映射配置
+            reference_audio_filename: 参考音频文件名（已上传到 ComfyUI input 目录）
+            emotion_prompt: 情感提示词
+
+        Returns:
+            构建好的工作流字典
+        """
+        if workflow_json:
+            workflow = json.loads(workflow_json)
+        else:
+            return self._build_default_audio_workflow(text, novel_id, character_name, reference_audio_filename, emotion_prompt)
+
+        # 获取节点映射
+        text_node_id = str(node_mapping.get("text_node_id", "")) if node_mapping else ""
+        emotion_prompt_node_id = str(node_mapping.get("emotion_prompt_node_id", "")) if node_mapping else ""
+        reference_audio_node_id = str(node_mapping.get("reference_audio_node_id", "")) if node_mapping else ""
+        save_audio_node_id = str(node_mapping.get("save_audio_node_id", "")) if node_mapping else ""
+
+        # 设置生成文本（CR Prompt Text 节点）
+        if text_node_id and text_node_id in workflow and text:
+            self._set_prompt(workflow, text_node_id, text)
+            print(f"[AudioWorkflow] Set text to node {text_node_id}")
+
+        # 设置情感提示词（CR Prompt Text 节点）
+        if emotion_prompt_node_id and emotion_prompt_node_id in workflow and emotion_prompt:
+            self._set_prompt(workflow, emotion_prompt_node_id, emotion_prompt)
+            print(f"[AudioWorkflow] Set emotion prompt to node {emotion_prompt_node_id}")
+
+        # 设置参考音频（LoadAudio 节点）
+        if reference_audio_node_id and reference_audio_node_id in workflow and reference_audio_filename:
+            workflow[reference_audio_node_id]["inputs"]["audio"] = reference_audio_filename
+            print(f"[AudioWorkflow] Set reference audio to node {reference_audio_node_id}: {reference_audio_filename}")
+
+        return workflow
+
+    def _build_default_audio_workflow(
+        self,
+        text: str,
+        novel_id: str = None,
+        character_name: str = None,
+        reference_audio_filename: str = None,
+        emotion_prompt: str = None
+    ) -> Dict[str, Any]:
+        """构建默认的音频生成工作流"""
+        workflow = {
+            "15": {
+                "inputs": {
+                    "purge_cache": True,
+                    "purge_models": True,
+                    "anything": ["31", 0]
+                },
+                "class_type": "LayerUtility: PurgeVRAM V2"
+            },
+            "19": {
+                "inputs": {
+                    "audio": reference_audio_filename or "default.flac",
+                    "audioUI": ""
+                },
+                "class_type": "LoadAudio"
+            },
+            "24": {
+                "inputs": {
+                    "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                    "precision": "bf16",
+                    "device": "cuda",
+                    "attn_implementation": "sdpa",
+                    "auto_download": False,
+                    "download_source": "ModelScope"
+                },
+                "class_type": "TDQwen3TTSModelLoader"
+            },
+            "32": {
+                "inputs": {
+                    "prompt": text
+                },
+                "class_type": "CR Prompt Text"
+            },
+            "33": {
+                "inputs": {
+                    "prompt": emotion_prompt or "自然"
+                },
+                "class_type": "CR Prompt Text"
+            },
+            "31": {
+                "inputs": {
+                    "text": ["32", 0],
+                    "language": "Chinese",
+                    "ref_text": ["33", 0],
+                    "x_vector_only_mode": True,
+                    "model": ["24", 0],
+                    "ref_audio": ["19", 0]
+                },
+                "class_type": "TDQwen3TTSVoiceClone"
+            },
+            "30": {
+                "inputs": {
+                    "audioUI": "",
+                    "audio": ["31", 0]
+                },
+                "class_type": "PreviewAudio"
+            }
+        }
+
+        return workflow
+
+    def _build_default_voice_design_workflow(
+        self,
+        voice_prompt: str,
+        text: str,
+        novel_id: str = None,
+        character_name: str = None
+    ) -> Dict[str, Any]:
+        """构建默认的音色设计工作流"""
+        save_prefix = "audio/ComfyUI"
+        if novel_id and character_name:
+            safe_name = re.sub(r'[^\w\s-]', '', character_name).strip().replace(' ', '_')
+            if not safe_name:
+                safe_name = "voice"
+            save_prefix = f"story_{novel_id}/voices/{safe_name}"
+
+        workflow = {
+            "12": {
+                "inputs": {
+                    "purge_cache": True,
+                    "purge_models": True,
+                    "anything": ["23", 0]
+                },
+                "class_type": "LayerUtility: PurgeVRAM V2"
+            },
+            "22": {
+                "inputs": {
+                    "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+                    "precision": "bf16",
+                    "device": "cuda",
+                    "attn_implementation": "sdpa",
+                    "auto_download": False,
+                    "download_source": "ModelScope"
+                },
+                "class_type": "TDQwen3TTSModelLoader"
+            },
+            "53": {
+                "inputs": {
+                    "prompt": voice_prompt
+                },
+                "class_type": "CR Prompt Text"
+            },
+            "54": {
+                "inputs": {
+                    "prompt": text
+                },
+                "class_type": "CR Prompt Text"
+            },
+            "23": {
+                "inputs": {
+                    "text": ["54", 0],
+                    "instruct": ["53", 0],
+                    "language": "Chinese",
+                    "model": ["22", 0]
+                },
+                "class_type": "TDQwen3TTSVoiceDesign"
+            },
+            "52": {
+                "inputs": {
+                    "filename_prefix": save_prefix,
+                    "audioUI": "",
+                    "audio": ["23", 0]
+                },
+                "class_type": "SaveAudio"
+            }
+        }
+
         return workflow
     
     # ==================== 工作流修改 ====================
@@ -288,11 +579,93 @@ class WorkflowBuilder:
                     workflow[nid]["inputs"]["image"] = filename
                     return True
                 load_image_count += 1
-        
+
         return False
-    
+
+    # ==================== 参考图节点处理 ====================
+
+    def disconnect_reference_chain(
+        self,
+        workflow: Dict[str, Any],
+        start_node_id: str
+    ) -> Dict[str, Any]:
+        """
+        从 LoadImage 节点开始，断开下游参考图链路的输入连接
+
+        当参考图节点未上传图片时，应该断开下游使用 latent、pixels、image 类型输入的连接，
+        而不是直接删除节点，这样可以避免工作流报错，兼容性更好。
+
+        匹配规则：
+        - latent、pixels：精确匹配
+        - image：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+
+        Args:
+            workflow: 工作流字典
+            start_node_id: 起始节点 ID（通常是 LoadImage 节点）
+
+        Returns:
+            修改后的工作流
+        """
+        # 需要断开的输入类型
+        # latent 和 pixels 精确匹配
+        # image 支持后跟数字（如 image1, image2, image_1 等）
+        EXACT_MATCH_TYPES = {"latent", "pixels"}
+
+        # 追踪已访问的节点，避免循环
+        visited = set()
+        # 待处理的节点队列
+        queue = [str(start_node_id)]
+
+        while queue:
+            current_node_id = queue.pop(0)
+
+            if current_node_id in visited:
+                continue
+            visited.add(current_node_id)
+
+            # 查找所有引用当前节点的下游节点
+            for node_id, node in workflow.items():
+                if not isinstance(node, dict):
+                    continue
+
+                inputs = node.get("inputs", {})
+                inputs_to_disconnect = []
+
+                for input_name, input_value in inputs.items():
+                    # 检查是否是连接到当前节点的输入
+                    if isinstance(input_value, list) and len(input_value) >= 2:
+                        source_node_id = str(input_value[0])
+                        if source_node_id == current_node_id:
+                            input_name_lower = input_name.lower()
+                            should_disconnect = False
+
+                            # 精确匹配 latent 和 pixels
+                            if input_name_lower in EXACT_MATCH_TYPES:
+                                should_disconnect = True
+                            # image 类型：支持 image 或 image 后跟数字（如 image1, image2, image_1）
+                            elif input_name_lower == "image":
+                                should_disconnect = True
+                            elif input_name_lower.startswith("image"):
+                                suffix = input_name_lower[5:]  # 去掉 "image" 前缀
+                                # 允许空字符串（即 "image"）或纯数字或 _数字
+                                if suffix.isdigit() or (suffix.startswith("_") and suffix[1:].isdigit()):
+                                    should_disconnect = True
+
+                            if should_disconnect:
+                                inputs_to_disconnect.append(input_name)
+                            # 将下游节点加入队列继续追踪
+                            if node_id not in visited:
+                                queue.append(str(node_id))
+
+                # 断开匹配的输入连接
+                for input_name in inputs_to_disconnect:
+                    del inputs[input_name]
+                    print(f"[Workflow] Disconnected input '{input_name}' from node {node_id} (source: {current_node_id})")
+
+        return workflow
+
     # ==================== 辅助方法 ====================
-    
+
     def get_aspect_ratio_dimensions(self, aspect_ratio: str) -> Tuple[int, int]:
         """根据画面比例返回对应的图片尺寸"""
         return self.ASPECT_RATIOS.get(aspect_ratio, (1088, 1920))
@@ -429,6 +802,8 @@ class WorkflowBuilder:
     
     def _replace_style_placeholder(self, workflow: Dict[str, Any], style: str):
         """替换 ##STYLE## 占位符"""
+        if not style:
+            return
         for node_id, node in workflow.items():
             if not isinstance(node, dict):
                 continue
@@ -437,6 +812,68 @@ class WorkflowBuilder:
                 if isinstance(value, str) and "##STYLE##" in value:
                     inputs[key] = value.replace("##STYLE##", style)
                     print(f"[Workflow] Replaced ##STYLE## with '{style}' in node {node_id}.{key}")
+
+    def _replace_scene_placeholder(self, workflow: Dict[str, Any], scene_setting: Optional[str]):
+        """替换 ##SCENE## 占位符
+
+        Args:
+            workflow: 工作流字典
+            scene_setting: 场景环境设定，来自 Scene.setting 字段
+        """
+        if not scene_setting:
+            return
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            for key, value in inputs.items():
+                if isinstance(value, str) and "##SCENE##" in value:
+                    inputs[key] = value.replace("##SCENE##", scene_setting)
+                    print(f"[Workflow] Replaced ##SCENE## with '{scene_setting}' in node {node_id}.{key}")
+
+    def _replace_characters_placeholder(self, workflow: Dict[str, Any], character_appearances: Optional[Dict[str, str]]):
+        """替换 ##CHARACTERS## 占位符
+
+        Args:
+            workflow: 工作流字典
+            character_appearances: 角色外貌描述映射 {角色名: 外貌描述}
+        """
+        if not character_appearances:
+            return
+        # 合并所有角色的外貌描述
+        merged = ", ".join([app for app in character_appearances.values() if app])
+        if not merged:
+            return
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            for key, value in inputs.items():
+                if isinstance(value, str) and "##CHARACTERS##" in value:
+                    inputs[key] = value.replace("##CHARACTERS##", merged)
+                    print(f"[Workflow] Replaced ##CHARACTERS## with '{merged}' in node {node_id}.{key}")
+
+    def _replace_props_placeholder(self, workflow: Dict[str, Any], prop_appearances: Optional[Dict[str, str]]):
+        """替换 ##PROPS## 占位符
+
+        Args:
+            workflow: 工作流字典
+            prop_appearances: 道具外观描述映射 {道具名: 外观描述}
+        """
+        if not prop_appearances:
+            return
+        # 合并所有道具的外观描述
+        merged = ", ".join([app for app in prop_appearances.values() if app])
+        if not merged:
+            return
+        for node_id, node in workflow.items():
+            if not isinstance(node, dict):
+                continue
+            inputs = node.get("inputs", {})
+            for key, value in inputs.items():
+                if isinstance(value, str) and "##PROPS##" in value:
+                    inputs[key] = value.replace("##PROPS##", merged)
+                    print(f"[Workflow] Replaced ##PROPS## with '{merged}' in node {node_id}.{key}")
     
     def convert_ui_to_api(self, workflow: Dict[str, Any]) -> Dict[str, Any]:
         """将 ComfyUI UI 格式转换为 API 格式"""

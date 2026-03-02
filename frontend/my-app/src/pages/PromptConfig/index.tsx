@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Plus, FileText, BookOpen, Palette, Users, MapPin, Image } from 'lucide-react';
+import { Loader2, Plus, FileText, BookOpen, Palette, Users, MapPin, Image, Package, Box } from 'lucide-react';
 import { useTranslation } from '../../stores/i18nStore';
 import type { PromptTemplate } from '../../types';
 import type { TemplateType } from './types';
@@ -13,8 +13,10 @@ const TYPE_ICONS: Record<TemplateType, React.ReactNode> = {
   style: <Palette className="h-4 w-4" />,
   character_parse: <Users className="h-4 w-4" />,
   scene_parse: <MapPin className="h-4 w-4" />,
+  prop_parse: <Package className="h-4 w-4" />,
   character: <FileText className="h-4 w-4" />,
   scene: <Image className="h-4 w-4" />,
+  prop: <Box className="h-4 w-4" />,
   chapter_split: <BookOpen className="h-4 w-4" />,
 };
 
@@ -23,8 +25,10 @@ const TAB_COLORS: Record<TemplateType, { active: string; inactive: string; borde
   style: { active: 'text-pink-600 bg-pink-50 border-pink-200', inactive: 'text-gray-500 hover:text-pink-600', border: 'border-pink-200' },
   character_parse: { active: 'text-blue-600 bg-blue-50 border-blue-200', inactive: 'text-gray-500 hover:text-blue-600', border: 'border-blue-200' },
   scene_parse: { active: 'text-green-600 bg-green-50 border-green-200', inactive: 'text-gray-500 hover:text-green-600', border: 'border-green-200' },
+  prop_parse: { active: 'text-yellow-600 bg-yellow-50 border-yellow-200', inactive: 'text-gray-500 hover:text-yellow-600', border: 'border-yellow-200' },
   character: { active: 'text-purple-600 bg-purple-50 border-purple-200', inactive: 'text-gray-500 hover:text-purple-600', border: 'border-purple-200' },
   scene: { active: 'text-orange-600 bg-orange-50 border-orange-200', inactive: 'text-gray-500 hover:text-orange-600', border: 'border-orange-200' },
+  prop: { active: 'text-amber-600 bg-amber-50 border-amber-200', inactive: 'text-gray-500 hover:text-amber-600', border: 'border-amber-200' },
   chapter_split: { active: 'text-cyan-600 bg-cyan-50 border-cyan-200', inactive: 'text-gray-500 hover:text-cyan-600', border: 'border-cyan-200' },
 };
 
@@ -118,7 +122,7 @@ export default function PromptConfig() {
   const [activeTab, setActiveTab] = useState<TemplateType>('character');
 
   // 模板类型顺序
-  const templateTypes: TemplateType[] = ['style', 'character_parse', 'scene_parse', 'character', 'scene', 'chapter_split'];
+  const templateTypes: TemplateType[] = ['style', 'character_parse', 'scene_parse', 'prop_parse', 'character', 'scene', 'prop', 'chapter_split'];
 
   return (
     <div className="space-y-6">

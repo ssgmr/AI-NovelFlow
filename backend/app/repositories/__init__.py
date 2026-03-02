@@ -7,6 +7,7 @@ from .novel_repository import NovelRepository
 from .chapter_repository import ChapterRepository
 from .character_repository import CharacterRepository
 from .scene_repository import SceneRepository
+from .prop_repository import PropRepository
 from .task import TaskRepository
 from .workflow import WorkflowRepository
 from .prompt_template import PromptTemplateRepository
@@ -18,6 +19,7 @@ __all__ = [
     "ChapterRepository",
     "CharacterRepository",
     "SceneRepository",
+    "PropRepository",
     "TaskRepository",
     "WorkflowRepository",
     "PromptTemplateRepository",

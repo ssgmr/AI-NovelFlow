@@ -6,6 +6,7 @@ export default {
     novels: 'Novels',
     characters: 'Characters',
     scenes: 'Scenes',
+    props: 'Props',
     tasks: 'Tasks',
     testCases: 'Test Cases',
     systemSettings: 'System Settings',

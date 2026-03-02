@@ -33,7 +33,7 @@ export const characterApi = {
 
   /** 生成人设图任务 */
   generatePortrait: (characterId: string) => 
-    api.post(`/tasks/character/${characterId}/generate-portrait/`),
+    api.post(`/characters/${characterId}/generate-portrait/`),
 
   /** 上传角色图片 */
   uploadImage: async (characterId: string, file: File) => {
@@ -43,6 +43,27 @@ export const characterApi = {
   },
 
   /** 清空角色图片目录 */
-  clearImagesDir: (novelId: string) => 
+  clearImagesDir: (novelId: string) =>
     api.post(`/characters/clear-characters-dir?novel_id=${novelId}`),
+
+  /** 生成角色音色任务 */
+  generateVoice: (characterId: string) =>
+    api.post(`/characters/${characterId}/generate-voice`),
+
+  /** 获取音色生成状态 */
+  getVoiceStatus: (characterId: string) =>
+    api.get<{
+      status: 'idle' | 'pending' | 'running' | 'completed' | 'failed';
+      taskId?: string;
+      progress: number;
+      message: string;
+      referenceAudioUrl?: string;
+    }>(`/characters/${characterId}/voice/status`),
+
+  /** 上传角色音频 */
+  uploadAudio: async (characterId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.upload<Character>(`/characters/${characterId}/upload-audio`, formData);
+  },
 };

@@ -70,8 +70,10 @@ export interface Novel {
   stylePromptTemplateId?: string;  // 风格提示词模板
   characterParsePromptTemplateId?: string;  // 角色解析提示词模板
   sceneParsePromptTemplateId?: string;  // 场景解析提示词模板
+  propParsePromptTemplateId?: string;  // 道具解析提示词模板
   promptTemplateId?: string;  // 角色生成提示词模板
   scenePromptTemplateId?: string;  // 场景生成提示词模板
+  propPromptTemplateId?: string;  // 道具生成提示词模板
   chapterSplitPromptTemplateId?: string;  // 分镜拆分提示词模板
   aspectRatio?: string;  // 画面比例: 16:9, 9:16, 4:3, 3:4, 1:1
   createdAt: string;
@@ -105,6 +107,8 @@ export interface Character {
   name: string;
   description: string;
   appearance: string;
+  voicePrompt?: string;
+  referenceAudioUrl?: string;
   imageUrl?: string;
   generatingStatus?: 'pending' | 'running' | 'completed' | 'failed';
   portraitTaskId?: string;
@@ -131,6 +135,25 @@ export interface Scene {
   updatedAt?: string;
 }
 
+export interface Prop {
+  id: string;
+  novelId: string;
+  name: string;
+  description: string;
+  appearance: string;
+  imageUrl?: string;
+  generatingStatus?: 'pending' | 'running' | 'completed' | 'failed';
+  propTaskId?: string;
+  novelName?: string;
+  startChapter?: number;
+  endChapter?: number;
+  isIncremental?: boolean;
+  sourceRange?: string;
+  lastParsedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Shot {
   id: string;
   sceneId: string;
@@ -142,7 +165,7 @@ export interface Shot {
 
 export interface Task {
   id: string;
-  type: 'character_portrait' | 'scene_image' | 'shot_image' | 'shot_video' | 'chapter_video' | 'transition_video';
+  type: 'character_portrait' | 'character_voice' | 'scene_image' | 'shot_image' | 'shot_video' | 'chapter_video' | 'transition_video';
   name: string;
   description?: string;
   status: 'pending' | 'running' | 'completed' | 'failed';

@@ -347,3 +347,71 @@ class ComfyUIService:
     async def cancel_all_matching_tasks(self, prompt_ids: List[str]) -> Dict[str, Any]:
         """取消所有匹配的任务"""
         return await self.client.cancel_all_matching_tasks(prompt_ids)
+
+    # ==================== 音频生成 ====================
+
+    async def generate_voice(
+        self,
+        voice_prompt: str,
+        text: str,
+        workflow_json: str = None,
+        novel_id: str = None,
+        character_name: str = None,
+        node_mapping: Dict[str, str] = None,
+        workflow: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        生成角色音色
+
+        Args:
+            voice_prompt: 音色提示词
+            text: 要合成的文本
+            workflow_json: 自定义工作流JSON
+            novel_id: 小说ID
+            character_name: 角色名称
+            node_mapping: 节点映射配置
+            workflow: 预构建的工作流
+
+        Returns:
+            {"success": bool, "audio_url": str, "message": str}
+        """
+        try:
+            if workflow is None:
+                workflow = self.builder.build_voice_design_workflow(
+                    voice_prompt=voice_prompt,
+                    text=text,
+                    workflow_json=workflow_json,
+                    novel_id=novel_id,
+                    character_name=character_name,
+                    node_mapping=node_mapping
+                )
+
+            queue_result = await self.client.queue_prompt(workflow)
+
+            if not queue_result.get("success"):
+                return {
+                    "success": False,
+                    "message": queue_result.get("error", "提交任务失败")
+                }
+
+            prompt_id = queue_result.get("prompt_id")
+            save_audio_node_id = node_mapping.get("save_audio_node_id") if node_mapping else None
+
+            result = await self.client.wait_for_audio_result(
+                prompt_id, workflow, save_audio_node_id, timeout=600
+            )
+
+            return {
+                "success": result.get("success"),
+                "audio_url": result.get("audio_url"),
+                "message": result.get("message", "生成成功" if result.get("success") else "生成失败"),
+                "submitted_workflow": workflow
+            }
+
+        except Exception as e:
+            return {"success": False, "message": f"生成失败: {str(e)}"}
+
+
+def get_comfyui_service() -> ComfyUIService:
+    """获取 ComfyUI 服务实例"""
+    return ComfyUIService()

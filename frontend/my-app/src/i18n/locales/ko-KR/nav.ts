@@ -5,6 +5,7 @@ export default {
     novels: '소설 관리',
     characters: '캐릭터',
     scenes: '장면',
+    props: '소품',
     tasks: '작업',
     testCases: '테스트 케이스',
     systemSettings: '시스템 설정',

@@ -11,8 +11,10 @@ export const TEMPLATE_TYPE_CONFIG: Record<TemplateType, { nameKey: string; descK
   style: { nameKey: 'promptConfig.types.style', descKey: 'promptConfig.types.styleDesc', defaultTemplate: DEFAULT_STYLE_TEMPLATE },
   character_parse: { nameKey: 'promptConfig.types.characterParse', descKey: 'promptConfig.types.characterParseDesc', defaultTemplate: '' },
   scene_parse: { nameKey: 'promptConfig.types.sceneParse', descKey: 'promptConfig.types.sceneParseDesc', defaultTemplate: '' },
+  prop_parse: { nameKey: 'promptConfig.types.propParse', descKey: 'promptConfig.types.propParseDesc', defaultTemplate: '' },
   character: { nameKey: 'promptConfig.types.character', descKey: 'promptConfig.types.characterDesc', defaultTemplate: DEFAULT_CHARACTER_TEMPLATE },
   scene: { nameKey: 'promptConfig.types.scene', descKey: 'promptConfig.types.sceneDesc', defaultTemplate: '' },
+  prop: { nameKey: 'promptConfig.types.prop', descKey: 'promptConfig.types.propDesc', defaultTemplate: '' },
   chapter_split: { nameKey: 'promptConfig.types.chapterSplit', descKey: 'promptConfig.types.chapterSplitDesc', defaultTemplate: DEFAULT_CHAPTER_SPLIT_TEMPLATE },
 };
 
@@ -24,16 +26,20 @@ export function usePromptConfigState() {
     style: [],
     character_parse: [],
     scene_parse: [],
+    prop_parse: [],
     character: [],
     scene: [],
+    prop: [],
     chapter_split: [],
   });
   const [loadingByType, setLoadingByType] = useState<Record<TemplateType, boolean>>({
     style: true,
     character_parse: true,
     scene_parse: true,
+    prop_parse: true,
     character: true,
     scene: true,
+    prop: true,
     chapter_split: true,
   });
 
@@ -50,7 +56,7 @@ export function usePromptConfigState() {
 
   // 加载所有类型的模板
   useEffect(() => {
-    const types: TemplateType[] = ['style', 'character_parse', 'scene_parse', 'character', 'scene', 'chapter_split'];
+    const types: TemplateType[] = ['style', 'character_parse', 'scene_parse', 'prop_parse', 'character', 'scene', 'prop', 'chapter_split'];
     types.forEach(type => fetchTemplates(type));
   }, []);
 

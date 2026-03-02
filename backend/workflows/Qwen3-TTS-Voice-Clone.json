@@ -1,0 +1,97 @@
+{
+  "15": {
+    "inputs": {
+      "purge_cache": true,
+      "purge_models": true,
+      "anything": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: PurgeVRAM V2",
+    "_meta": {
+      "title": "图层工具：清除VRAM V2"
+    }
+  },
+  "19": {
+    "inputs": {
+      "audio": "ComfyUI_00004_.flac",
+      "audioUI": "/api/view?filename=ComfyUI_00004_.flac&type=input&subfolder=&rand=0.9914002478596622"
+    },
+    "class_type": "LoadAudio",
+    "_meta": {
+      "title": "加载音频"
+    }
+  },
+  "24": {
+    "inputs": {
+      "model_path": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "precision": "bf16",
+      "device": "cuda",
+      "attn_implementation": "sdpa",
+      "auto_download": false,
+      "download_source": "ModelScope"
+    },
+    "class_type": "TDQwen3TTSModelLoader",
+    "_meta": {
+      "title": "TD Qwen3 TTS Model Loader"
+    }
+  },
+  "30": {
+    "inputs": {
+      "audioUI": "/api/view?filename=ComfyUI_temp_qzfka_00001_.flac&type=temp&subfolder=&rand=0.6988294931696681",
+      "audio": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "PreviewAudio",
+    "_meta": {
+      "title": "预览音频"
+    }
+  },
+  "31": {
+    "inputs": {
+      "text": [
+        "32",
+        0
+      ],
+      "language": "Chinese",
+      "ref_text": [
+        "33",
+        0
+      ],
+      "x_vector_only_mode": true,
+      "model": [
+        "24",
+        0
+      ],
+      "ref_audio": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "TDQwen3TTSVoiceClone",
+    "_meta": {
+      "title": "TD Qwen3 TTS Voice Clone"
+    }
+  },
+  "32": {
+    "inputs": {
+      "prompt": "这是一段测试文本"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "⚙️ CR Prompt Text"
+    }
+  },
+  "33": {
+    "inputs": {
+      "prompt": "充满活力和激情，兴奋"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "⚙️ CR Prompt Text"
+    }
+  }
+}

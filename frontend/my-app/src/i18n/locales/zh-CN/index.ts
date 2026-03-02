@@ -5,6 +5,7 @@ import welcome from './welcome';
 import novels from './novels';
 import characters from './characters';
 import scenes from './scenes';
+import props from './props';
 import tasks from './tasks';
 import settings from './settings';
 import logs from './logs';
@@ -19,6 +20,7 @@ export default {
   ...novels,
   ...characters,
   ...scenes,
+  ...props,
   ...tasks,
   ...settings,
   ...logs,

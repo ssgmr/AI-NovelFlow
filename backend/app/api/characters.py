@@ -1,3 +1,6 @@
+"""
+角色路由 - 角色 CRUD 和图像生成相关接口
+"""
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -5,38 +8,16 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.utils.time_utils import format_datetime
 from app.services.comfyui import ComfyUIService
-from app.services.llm_service import LLMService
 from app.services.file_storage import file_storage
-from app.services.prompt_builder import (
-    build_character_prompt,
-    get_style
-)
-from app.repositories import NovelRepository, CharacterRepository, PromptTemplateRepository
+from app.services.prompt_builder import build_character_prompt, get_style
+from app.services.character_service import CharacterService
+from app.repositories import NovelRepository, CharacterRepository, PromptTemplateRepository, TaskRepository
 from app.schemas.character import CharacterCreate, CharacterUpdate
+from app.api.deps import get_novel_repo, get_character_repo, get_prompt_template_repo, get_llm_service, get_task_repo
 
 router = APIRouter()
 settings = get_settings()
 comfyui_service = ComfyUIService()
-
-
-def get_llm_service() -> LLMService:
-    """获取 LLMService 实例（每次调用创建新实例以获取最新配置）"""
-    return LLMService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
-    """获取 CharacterRepository 实例"""
-    return CharacterRepository(db)
-
-
-def get_prompt_template_repo(db: Session = Depends(get_db)) -> PromptTemplateRepository:
-    """获取 PromptTemplateRepository 实例"""
-    return PromptTemplateRepository(db)
 
 
 @router.get("/", response_model=dict)
@@ -68,6 +49,8 @@ async def list_characters(
             "name": c.name,
             "description": c.description,
             "appearance": c.appearance,
+            "voicePrompt": c.voice_prompt,
+            "referenceAudioUrl": c.reference_audio_url,
             "imageUrl": c.image_url,
             "generatingStatus": c.generating_status,
             "portraitTaskId": c.portrait_task_id,
@@ -101,6 +84,8 @@ async def get_character(character_id: str, novel_repo: NovelRepository = Depends
             "name": character.name,
             "description": character.description,
             "appearance": character.appearance,
+            "voicePrompt": character.voice_prompt,
+            "referenceAudioUrl": character.reference_audio_url,
             "imageUrl": character.image_url,
             "generatingStatus": character.generating_status,
             "portraitTaskId": character.portrait_task_id,
@@ -166,7 +151,8 @@ async def update_character(
         character=character,
         name=data.name,
         description=data.description,
-        appearance=data.appearance
+        appearance=data.appearance,
+        voice_prompt=data.voice_prompt
     )
     
     novel = novel_repo.get_by_id(character.novel_id)
@@ -179,6 +165,7 @@ async def update_character(
             "name": character.name,
             "description": character.description,
             "appearance": character.appearance,
+            "voicePrompt": character.voice_prompt,
             "imageUrl": character.image_url,
             "novelName": novel.title if novel else None,
             "updatedAt": format_datetime(character.updated_at),
@@ -324,6 +311,16 @@ async def generate_appearance(
         }
 
 
+@router.post("/{character_id}/generate-portrait", response_model=dict)
+async def generate_character_portrait(
+    character_id: str,
+    db: Session = Depends(get_db)
+):
+    """生成角色人设图任务"""
+    character_service = CharacterService(db)
+    return character_service.create_character_portrait_task(character_id)
+
+
 @router.post("/{character_id}/upload-image", response_model=dict)
 async def upload_character_image(
     character_id: str,
@@ -389,4 +386,142 @@ async def upload_character_image(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+
+
+@router.post("/{character_id}/upload-audio", response_model=dict)
+async def upload_character_audio(
+    character_id: str,
+    file: UploadFile = File(...),
+    character_repo: CharacterRepository = Depends(get_character_repo),
+    novel_repo: NovelRepository = Depends(get_novel_repo)
+):
+    """
+    上传角色参考音频
+
+    支持用户从本地上传音频文件作为角色参考音色
+    支持格式: MP3, WAV, FLAC, OGG, M4A
+    最大文件大小: 10MB
+    """
+    character = character_repo.get_by_id(character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    # 验证文件类型
+    allowed_types = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+                     "audio/flac", "audio/x-flac", "audio/ogg", "audio/x-ogg",
+                     "audio/mp4", "audio/x-m4a", "audio/m4a"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型: {file.content_type}，仅支持 MP3, WAV, FLAC, OGG, M4A"
+        )
+
+    # 验证文件大小 (10MB)
+    content = await file.read()
+    max_size = 10 * 1024 * 1024  # 10MB
+    if len(content) > max_size:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文件大小超过限制，最大支持 10MB，当前文件大小: {len(content) / 1024 / 1024:.2f}MB"
+        )
+
+    try:
+        # 获取文件扩展名
+        ext = ".mp3"
+        if file.filename:
+            filename_lower = file.filename.lower()
+            if filename_lower.endswith(".wav"):
+                ext = ".wav"
+            elif filename_lower.endswith(".flac"):
+                ext = ".flac"
+            elif filename_lower.endswith(".ogg"):
+                ext = ".ogg"
+            elif filename_lower.endswith(".m4a"):
+                ext = ".m4a"
+
+        # 保存文件
+        file_path = file_storage.save_uploaded_audio_file(
+            novel_id=character.novel_id,
+            character_name=character.name,
+            content=content,
+            ext=ext
+        )
+
+        # 计算访问URL
+        relative_path = file_path.relative_to(file_storage.base_dir)
+        audio_url = f"/api/files/{relative_path}"
+
+        # 更新角色记录
+        character_repo.update_reference_audio(character, audio_url)
+
+        novel = novel_repo.get_by_id(character.novel_id)
+
+        return {
+            "success": True,
+            "data": {
+                "id": character.id,
+                "novelId": character.novel_id,
+                "name": character.name,
+                "referenceAudioUrl": character.reference_audio_url,
+                "novelName": novel.title if novel else None,
+                "updatedAt": character.updated_at.isoformat() if character.updated_at else None,
+            },
+            "message": "音频上传成功"
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+
+
+# ==================== 音色生成相关接口 ====================
+
+@router.post("/{character_id}/generate-voice", response_model=dict)
+async def generate_character_voice(
+    character_id: str,
+    db: Session = Depends(get_db)
+):
+    """生成角色音色任务"""
+    character_service = CharacterService(db)
+    return character_service.create_character_voice_task(character_id)
+
+
+@router.get("/{character_id}/voice/status", response_model=dict)
+async def get_voice_generation_status(
+    character_id: str,
+    task_repo: TaskRepository = Depends(get_task_repo),
+    character_repo: CharacterRepository = Depends(get_character_repo)
+):
+    """获取角色音色生成任务状态"""
+    character = character_repo.get_by_id(character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    # 查找进行中的音色生成任务
+    active_task = task_repo.get_active_by_character_and_type(character_id, "character_voice")
+
+    if active_task:
+        return {
+            "success": True,
+            "data": {
+                "status": active_task.status,
+                "taskId": active_task.id,
+                "progress": active_task.progress or 0,
+                "message": active_task.error_message or "",
+                "referenceAudioUrl": None
+            }
+        }
+
+    # 如果没有进行中的任务，返回当前音频URL
+    return {
+        "success": True,
+        "data": {
+            "status": "idle",
+            "taskId": None,
+            "progress": 0,
+            "message": "",
+            "referenceAudioUrl": character.reference_audio_url
+        }
+    }
 

@@ -26,6 +26,18 @@ export interface Scene {
   sceneTaskId?: string;
 }
 
+// 道具数据类型
+export interface Prop {
+  id: string;
+  novelId: string;
+  name: string;
+  description: string;
+  appearance: string;
+  imageUrl?: string;
+  generatingStatus?: string;
+  propTaskId?: string;
+}
+
 // 转场视频项组件接口
 export interface TransitionVideoItemProps {
   fromIndex: number;
@@ -48,7 +60,19 @@ export interface JsonTableEditorProps {
   onChange: (value: string) => void;
   availableScenes?: string[]; // 场景库中的场景名列表
   availableCharacters?: string[]; // 角色库中的角色名列表
+  availableProps?: string[]; // 道具库中的道具名列表
   activeShotWorkflow?: any; // 当前激活的分镜工作流
+  // 音频相关
+  audioUrls?: Record<string, string>; // 音频 URL，key: "shotIndex_characterName"
+  audioSources?: Record<string, string>; // 音频来源，key: "shotIndex_characterName"
+  isShotAudioGenerating?: (shotIndex: number) => boolean;
+  getShotAudioTasks?: (shotIndex: number) => Array<{ characterName: string; status: string; taskId: string }>;
+  onRegenerateAudio?: (shotIndex: number, characterName: string, dialogue: DialogueData) => void;
+  onGenerateDialogueAudio?: (shotIndex: number, dialogue: DialogueData) => void; // 单个角色台词生成音频
+  // 音频上传相关
+  onUploadDialogueAudio?: (shotIndex: number, characterName: string, file: File) => void;
+  onDeleteDialogueAudio?: (shotIndex: number, characterName: string) => void;
+  isAudioUploading?: (shotIndex: number, characterName: string) => boolean;
 }
 
 // 下载素材卡片组件接口
@@ -68,6 +92,16 @@ export interface MergeVideosCardProps {
   aspectRatio?: string;
 }
 
+// 台词数据类型
+export interface DialogueData {
+  character_name: string;    // 角色名称
+  text: string;              // 台词文本
+  emotion_prompt?: string;   // 情感提示词（可选）
+  audio_url?: string;        // 生成的音频 URL
+  audio_task_id?: string;    // 音频生成任务 ID
+  audio_source?: 'ai_generated' | 'uploaded';  // 音频来源
+}
+
 // 分镜数据类型
 export interface ShotData {
   id: number;
@@ -75,16 +109,19 @@ export interface ShotData {
   video_description?: string;
   characters: string[];
   scene: string;
+  props: string[];
   duration: number;
   image_url?: string;
   image_path?: string;
   merged_character_image?: string;
+  dialogues?: DialogueData[]; // 台词列表
 }
 
 // 解析后的章节数据类型
 export interface ParsedData {
   characters?: string[];
   scenes?: string[];
+  props?: string[];
   shots?: ShotData[];
 }
 
@@ -96,6 +133,7 @@ export interface ChapterDataState {
   editableJson: string;
   characters: Character[];
   scenes: Scene[];
+  props: Prop[];
   loading: boolean;
 }
 

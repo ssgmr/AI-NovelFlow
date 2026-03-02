@@ -17,31 +17,11 @@ from app.services.novel_service import NovelService, generate_shot_task, generat
 from app.services.task_service import TaskService
 from app.repositories import NovelRepository, ChapterRepository, TaskRepository, WorkflowRepository
 from app.schemas.shot import TransitionVideoRequest, BatchTransitionRequest, MergeVideosRequest
+from app.api.deps import get_novel_repo, get_chapter_repo, get_task_repo, get_workflow_repo
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
-
 comfyui_service = ComfyUIService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
-    """获取 ChapterRepository 实例"""
-    return ChapterRepository(db)
-
-
-def get_task_repo(db: Session = Depends(get_db)) -> TaskRepository:
-    """获取 TaskRepository 实例"""
-    return TaskRepository(db)
-
-
-def get_workflow_repo(db: Session = Depends(get_db)) -> WorkflowRepository:
-    """获取 WorkflowRepository 实例"""
-    return WorkflowRepository(db)
 
 
 # ==================== 分镜图生成 ====================
@@ -651,61 +631,61 @@ async def upload_shot_image(
     allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
     if file.content_type not in allowed_types:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"不支持的文件类型: {file.content_type}，仅支持 PNG, JPG, WEBP"
         )
-    
+
     # 获取章节
     chapter = chapter_repo.get_by_id(chapter_id, novel_id)
-    
+
     if not chapter:
         raise HTTPException(status_code=404, detail="章节不存在")
-    
+
     # 解析章节数据
     if not chapter.parsed_data:
         raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
-    
+
     parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
     shots = parsed_data.get("shots", [])
-    
+
     if shot_index < 1 or shot_index > len(shots):
         raise HTTPException(status_code=400, detail="分镜索引超出范围")
-    
+
     try:
         # 删除旧图片
         file_storage.delete_shot_image(novel_id, chapter_id, shot_index)
-        
+
         # 获取保存路径
         file_path = file_storage.get_shot_image_path(
             novel_id=novel_id,
             chapter_id=chapter_id,
             shot_number=shot_index
         )
-        
+
         # 保存文件
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
-        
+
         # 计算访问URL
         relative_path = file_path.relative_to(file_storage.base_dir)
         image_url = f"/api/files/{relative_path}"
-        
+
         # 更新 parsed_data
         parsed_data["shots"][shot_index - 1]["image_url"] = image_url
         parsed_data["shots"][shot_index - 1]["image_path"] = str(file_path)
         chapter.parsed_data = json.dumps(parsed_data, ensure_ascii=False)
-        
+
         # 更新 shot_images 数组
         shot_images = json.loads(chapter.shot_images) if chapter.shot_images else []
         while len(shot_images) < shot_index:
             shot_images.append(None)
         shot_images[shot_index - 1] = image_url
         chapter.shot_images = json.dumps(shot_images, ensure_ascii=False)
-        
+
         db.commit()
         db.refresh(chapter)
-        
+
         return {
             "success": True,
             "data": {
@@ -715,8 +695,373 @@ async def upload_shot_image(
             },
             "message": "分镜图片上传成功"
         }
-        
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+
+
+# ==================== 台词音频生成 ====================
+
+@router.post("/{novel_id}/chapters/{chapter_id}/shots/{shot_index}/audio", response_model=dict)
+async def generate_shot_audio(
+    novel_id: str,
+    chapter_id: str,
+    shot_index: int,
+    data: dict,
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
+):
+    """
+    为指定分镜的角色台词生成音频
+
+    Request Body:
+    {
+        "dialogues": [
+            {
+                "character_name": "角色名",
+                "text": "台词文本",
+                "emotion_prompt": "情感提示词（可选）"
+            }
+        ]
+    }
+    """
+    from app.repositories.character_repository import CharacterRepository
+    from app.services.shot_audio_service import ShotAudioService
+
+    # 获取章节
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    # 获取小说
+    novel = novel_repo.get_by_id(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+
+    # 解析章节数据
+    if not chapter.parsed_data:
+        raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
+
+    parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
+    shots = parsed_data.get("shots", [])
+
+    if shot_index < 1 or shot_index > len(shots):
+        raise HTTPException(status_code=400, detail="分镜索引超出范围")
+
+    # 获取台词数据
+    dialogues = data.get("dialogues", [])
+    if not dialogues:
+        raise HTTPException(status_code=400, detail="请提供要生成的台词数据")
+
+    # 获取音频工作流
+    workflow = workflow_repo.get_active_by_type("audio")
+    if not workflow:
+        raise HTTPException(status_code=400, detail="未配置音频生成工作流，请在系统设置中配置")
+
+    # 验证工作流节点映射
+    is_valid, error_msg = TaskService.validate_workflow_node_mapping(workflow, "character_audio")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # 初始化服务和仓库
+    character_repo = CharacterRepository(db)
+    audio_service = ShotAudioService(db)
+
+    # 创建任务
+    result = audio_service.create_shot_audio_tasks(
+        novel_id=novel_id,
+        chapter_id=chapter_id,
+        shot_index=shot_index,
+        dialogues=dialogues,
+        chapter_title=chapter.title,
+        workflow=workflow,
+        character_repo=character_repo,
+        task_repo=task_repo
+    )
+
+    return result
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/audio/generate-all", response_model=dict)
+async def generate_all_shot_audio(
+    novel_id: str,
+    chapter_id: str,
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo),
+    task_repo: TaskRepository = Depends(get_task_repo),
+    workflow_repo: WorkflowRepository = Depends(get_workflow_repo)
+):
+    """
+    批量生成章节所有分镜的角色台词音频
+
+    遍历所有分镜的 dialogues 字段，为每个角色台词创建音频生成任务。
+    跳过没有参考音频的角色，并在返回结果中记录警告。
+    """
+    from app.repositories.character_repository import CharacterRepository
+    from app.services.shot_audio_service import ShotAudioService
+
+    # 获取章节
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    # 获取小说
+    novel = novel_repo.get_by_id(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+
+    # 解析章节数据
+    if not chapter.parsed_data:
+        raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
+
+    parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
+    shots = parsed_data.get("shots", [])
+
+    if not shots:
+        raise HTTPException(status_code=400, detail="章节没有分镜数据")
+
+    # 获取音频工作流
+    workflow = workflow_repo.get_active_by_type("audio")
+    if not workflow:
+        raise HTTPException(status_code=400, detail="未配置音频生成工作流，请在系统设置中配置")
+
+    # 验证工作流节点映射
+    is_valid, error_msg = TaskService.validate_workflow_node_mapping(workflow, "character_audio")
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # 初始化服务和仓库
+    character_repo = CharacterRepository(db)
+    audio_service = ShotAudioService(db)
+
+    # 批量创建任务
+    result = audio_service.create_batch_audio_tasks(
+        novel_id=novel_id,
+        chapter_id=chapter_id,
+        shots=shots,
+        chapter_title=chapter.title,
+        workflow=workflow,
+        character_repo=character_repo,
+        task_repo=task_repo
+    )
+
+    return result
+
+
+# ==================== 台词音频上传 ====================
+
+# 支持的音频格式
+ALLOWED_AUDIO_TYPES = {
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/flac": ".flac",
+    "audio/x-flac": ".flac",
+}
+MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+@router.post("/{novel_id}/chapters/{chapter_id}/shots/{shot_index}/dialogues/{character_name}/audio/upload", response_model=dict)
+async def upload_dialogue_audio(
+    novel_id: str,
+    chapter_id: str,
+    shot_index: int,
+    character_name: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
+):
+    """
+    上传分镜台词音频
+
+    Args:
+        novel_id: 小说ID
+        chapter_id: 章节ID
+        shot_index: 分镜索引（1-based）
+        character_name: 角色名称（URL编码）
+        file: 音频文件（mp3、wav、flac，最大10MB）
+
+    Returns:
+        上传结果，包含音频URL和更新后的分镜数据
+    """
+    from urllib.parse import unquote
+
+    # 解码角色名（URL编码）
+    character_name = unquote(character_name)
+
+    # 验证文件类型
+    if file.content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型: {file.content_type}，仅支持 mp3、wav、flac 格式"
+        )
+
+    # 验证文件大小
+    content = await file.read()
+    if len(content) > MAX_AUDIO_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文件大小超过限制（最大 10MB），当前文件大小: {len(content) / 1024 / 1024:.2f}MB"
+        )
+
+    # 获取章节
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    # 解析章节数据
+    if not chapter.parsed_data:
+        raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
+
+    parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
+    shots = parsed_data.get("shots", [])
+
+    if shot_index < 1 or shot_index > len(shots):
+        raise HTTPException(status_code=400, detail="分镜索引超出范围")
+
+    # 查找指定角色的台词
+    shot = shots[shot_index - 1]
+    dialogues = shot.get("dialogues", [])
+    target_dialogue = None
+    for dialogue in dialogues:
+        if dialogue.get("character_name") == character_name:
+            target_dialogue = dialogue
+            break
+
+    if not target_dialogue:
+        raise HTTPException(
+            status_code=404,
+            detail=f"分镜 {shot_index} 中未找到角色 '{character_name}' 的台词"
+        )
+
+    try:
+        # 保存音频文件
+        ext = ALLOWED_AUDIO_TYPES.get(file.content_type, ".flac")
+        audio_path = file_storage.save_shot_audio(
+            novel_id=novel_id,
+            shot_index=shot_index,
+            character_name=character_name,
+            content=content,
+            ext=ext
+        )
+
+        # 计算访问 URL
+        relative_path = audio_path.relative_to(file_storage.base_dir)
+        audio_url = f"/api/files/{relative_path}"
+
+        # 更新 parsed_data 中的音频信息
+        target_dialogue["audio_url"] = audio_url
+        target_dialogue["audio_source"] = "uploaded"
+        target_dialogue["audio_task_id"] = None  # 清除任务ID
+
+        chapter.parsed_data = json.dumps(parsed_data, ensure_ascii=False)
+        db.commit()
+
+        return {
+            "success": True,
+            "data": {
+                "shot_index": shot_index,
+                "character_name": character_name,
+                "audio_url": audio_url,
+                "audio_source": "uploaded",
+                "parsed_data": parsed_data
+            },
+            "message": "音频上传成功"
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"上传失败: {str(e)}")
+
+
+@router.delete("/{novel_id}/chapters/{chapter_id}/shots/{shot_index}/dialogues/{character_name}/audio", response_model=dict)
+async def delete_dialogue_audio(
+    novel_id: str,
+    chapter_id: str,
+    shot_index: int,
+    character_name: str,
+    db: Session = Depends(get_db),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
+):
+    """
+    删除分镜台词音频
+
+    Args:
+        novel_id: 小说ID
+        chapter_id: 章节ID
+        shot_index: 分镜索引（1-based）
+        character_name: 角色名称（URL编码）
+
+    Returns:
+        删除结果
+    """
+    from urllib.parse import unquote
+
+    # 解码角色名（URL编码）
+    character_name = unquote(character_name)
+
+    # 获取章节
+    chapter = chapter_repo.get_by_id(chapter_id, novel_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="章节不存在")
+
+    # 解析章节数据
+    if not chapter.parsed_data:
+        raise HTTPException(status_code=400, detail="章节未拆分，请先进行AI拆分")
+
+    parsed_data = json.loads(chapter.parsed_data) if isinstance(chapter.parsed_data, str) else chapter.parsed_data
+    shots = parsed_data.get("shots", [])
+
+    if shot_index < 1 or shot_index > len(shots):
+        raise HTTPException(status_code=400, detail="分镜索引超出范围")
+
+    # 查找指定角色的台词
+    shot = shots[shot_index - 1]
+    dialogues = shot.get("dialogues", [])
+    target_dialogue = None
+    for dialogue in dialogues:
+        if dialogue.get("character_name") == character_name:
+            target_dialogue = dialogue
+            break
+
+    if not target_dialogue:
+        raise HTTPException(
+            status_code=404,
+            detail=f"分镜 {shot_index} 中未找到角色 '{character_name}' 的台词"
+        )
+
+    try:
+        # 删除物理文件
+        old_audio_url = target_dialogue.get("audio_url")
+        if old_audio_url and old_audio_url.startswith("/api/files/"):
+            file_storage.delete_shot_audio(novel_id, shot_index, character_name)
+
+        # 清除 parsed_data 中的音频信息
+        target_dialogue["audio_url"] = None
+        target_dialogue["audio_source"] = None
+        target_dialogue["audio_task_id"] = None
+
+        chapter.parsed_data = json.dumps(parsed_data, ensure_ascii=False)
+        db.commit()
+
+        return {
+            "success": True,
+            "data": {
+                "shot_index": shot_index,
+                "character_name": character_name
+            },
+            "message": "音频删除成功"
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")

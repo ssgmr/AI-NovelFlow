@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../stores/i18nStore';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Loader2,
   RefreshCw,
   Image as ImageIcon,
@@ -15,14 +15,15 @@ import {
   AlertTriangle,
   Upload,
   Clock,
-  Grid3x3
+  Grid3x3,
+  Volume2,
 } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import ComfyUIStatus from '../../components/ComfyUIStatus';
 
 // 导入拆分后的组件和 hooks
 import { STEPS_CONFIG, API_BASE } from './constants';
-import type { ParsedData, Character, Scene } from './types';
+import type { ParsedData, Character, Scene, Prop } from './types';
 import DownloadMaterialsCard from './components/DownloadMaterialsCard';
 import MergeVideosCard from './components/MergeVideosCard';
 import TransitionVideoItem from './components/TransitionVideoItem';
@@ -33,6 +34,7 @@ import useTransitionGeneration from './hooks/useTransitionGeneration';
 import useChapterGenerateState from './hooks/useChapterGenerateState';
 import useTaskPolling from './hooks/useTaskPolling';
 import useChapterActions from './hooks/useChapterActions';
+import useAudioGeneration from './hooks/useAudioGeneration';
 
 // 导入组件
 import { FullTextModal, MergedImageModal, ImagePreviewModal, SplitConfirmDialog } from './components/Modals';
@@ -42,6 +44,7 @@ import { Tabs } from './components/Tabs';
 import { JsonEditor } from './components/JsonEditor';
 import { CharacterImages } from './components/CharacterImages';
 import { SceneImages } from './components/SceneImages';
+import { PropImages } from './components/PropImages';
 import { getAspectRatioStyle, getInvalidSceneShots as getInvalidSceneShotsUtil } from './utils';
 
 // Shot 工作流类型
@@ -49,8 +52,11 @@ interface ShotWorkflow {
   id: string;
   name: string;
   isActive: boolean;
-  extension?: {
-    reference_image_count?: string;
+  nodeMapping?: {
+    character_reference_image_node_id?: string;
+    scene_reference_image_node_id?: string;
+    prop_reference_image_node_id?: string;
+    [key: string]: string | undefined;
   };
 }
 
@@ -67,15 +73,18 @@ export default function ChapterGenerate() {
     editableJson,
     characters,
     scenes,
+    props,
     loading,
     fetchNovel,
     fetchChapter,
     fetchCharacters,
     fetchScenes,
+    fetchProps,
     setParsedData,
     setEditableJson,
     getCharacterImage,
     getSceneImage,
+    getPropImage,
   } = useChapterData();
 
   const {
@@ -162,12 +171,15 @@ export default function ChapterGenerate() {
     cid,
     characters,
     scenes,
+    props,
     parsedData,
     shotImages,
     shotVideos,
     transitionVideos,
     mergedImage,
     getCharacterImage,
+    getSceneImage,
+    getPropImage,
     setParsedData,
     setEditableJson,
     setShotImages,
@@ -184,6 +196,28 @@ export default function ChapterGenerate() {
     currentShot,
   });
 
+  // 音频生成 hook - 必须在 useTaskPolling 之前调用
+  const {
+    generatingAudios: generatingAudiosSet,
+    audioWarnings,
+    audioTasks,
+    audioUrls,
+    audioSources,
+    generateShotAudio,
+    generateAllAudio,
+    clearWarnings,
+    isGenerating: isGeneratingAudio,
+    checkAudioTaskStatus,
+    getAudioUrl,
+    getShotAudioTasks,
+    isShotAudioGenerating,
+    regenerateAudio,
+    uploadDialogueAudio,
+    deleteDialogueAudio,
+    isUploading,
+    initAudioFromShots,
+  } = useAudioGeneration();
+
   // 任务轮询
   useTaskPolling({
     cid,
@@ -191,9 +225,11 @@ export default function ChapterGenerate() {
     pendingShots,
     pendingVideos,
     generatingTransitions,
+    audioTasks,
     checkShotTaskStatus,
     checkVideoTaskStatus,
     checkTransitionTaskStatus,
+    checkAudioTaskStatus,
     fetchChapter,
   });
 
@@ -203,11 +239,12 @@ export default function ChapterGenerate() {
       fetchNovel(id);
       fetchCharacters(id);
       fetchScenes(id);
+      fetchProps(id);
       fetchChapter(id, cid);
       fetchTransitionWorkflows();
       fetchShotWorkflows();
     }
-  }, [cid, id]);
+  }, [cid, id, fetchProps]);
 
   // 从章节数据初始化状态
   useEffect(() => {
@@ -221,8 +258,8 @@ export default function ChapterGenerate() {
         }
         if (chapter.parsedData) {
           try {
-            const parsed = typeof chapter.parsedData === 'string' 
-              ? JSON.parse(chapter.parsedData) 
+            const parsed = typeof chapter.parsedData === 'string'
+              ? JSON.parse(chapter.parsedData)
               : chapter.parsedData;
             if (parsed?.shots && Array.isArray(parsed.shots)) {
               parsed.shots.forEach((shot: any, index: number) => {
@@ -231,6 +268,8 @@ export default function ChapterGenerate() {
                   images[shotNum] = shot.image_url;
                 }
               });
+              // 初始化音频数据
+              initAudioFromShots(parsed.shots);
             }
           } catch (e) {
             console.error('解析 parsedData 失败:', e);
@@ -238,7 +277,7 @@ export default function ChapterGenerate() {
         }
         return images;
       });
-      
+
       if (chapter.shotVideos && Array.isArray(chapter.shotVideos)) {
         setShotVideos(prev => {
           const videos = { ...prev };
@@ -248,7 +287,7 @@ export default function ChapterGenerate() {
           return videos;
         });
       }
-      
+
       if (chapter.transitionVideos && typeof chapter.transitionVideos === 'object') {
         setTransitionVideos(prev => ({ ...prev, ...chapter.transitionVideos}));
       }
@@ -282,10 +321,10 @@ export default function ChapterGenerate() {
           return;
         }
       }
-      
+
       if (!parsedData?.shots || parsedData.shots.length === 0) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       if (e.key === 'ArrowLeft') {
         setCurrentShot(prev => Math.max(1, prev - 1));
       } else if (e.key === 'ArrowRight') {
@@ -296,6 +335,21 @@ export default function ChapterGenerate() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [parsedData?.shots?.length, showImagePreview, previewImageUrl, previewImageIndex, setCurrentShot, setShowImagePreview]);
+
+  // 监听 JsonTableEditor 中的生成音频事件
+  useEffect(() => {
+    const handleGenerateShotAudio = (e: CustomEvent) => {
+      const { shotIndex, dialogues } = e.detail;
+      if (id && cid && dialogues && dialogues.length > 0) {
+        generateShotAudio(id, cid, shotIndex + 1, dialogues);
+      }
+    };
+
+    window.addEventListener('generateShotAudio', handleGenerateShotAudio as EventListener);
+    return () => {
+      window.removeEventListener('generateShotAudio', handleGenerateShotAudio as EventListener);
+    };
+  }, [id, cid, generateShotAudio]);
 
   // 图片预览导航
   const navigateImagePreview = (direction: 'prev' | 'next') => {
@@ -391,7 +445,7 @@ export default function ChapterGenerate() {
               {loading ? t('chapterGenerate.loading') : chapter?.content || t('chapterGenerate.noContent')}
             </p>
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-              {hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual' && (
+              {hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -404,11 +458,11 @@ export default function ChapterGenerate() {
                   </div>
                 </div>
               )}
-              <button 
+              <button
                 onClick={actions.handleSplitChapterClick}
                 disabled={isSplitting}
                 className={`w-full py-3 px-4 text-white rounded-lg font-medium transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.extension?.reference_image_count === 'dual'
+                  hasInvalidScenesInShots && !isSplitting && activeShotWorkflow?.nodeMapping?.scene_reference_image_node_id
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
                 }`}
@@ -435,7 +489,33 @@ export default function ChapterGenerate() {
               editorKey={editorKey}
               availableScenes={scenes.map(s => s.name)}
               availableCharacters={characters.map(c => c.name)}
+              availableProps={props.map(p => p.name)}
               activeShotWorkflow={activeShotWorkflow}
+              audioUrls={audioUrls}
+              audioSources={audioSources}
+              isShotAudioGenerating={isShotAudioGenerating}
+              getShotAudioTasks={getShotAudioTasks}
+              onRegenerateAudio={(shotIndex, characterName, dialogue) => {
+                if (id && cid) {
+                  regenerateAudio(id, cid, shotIndex + 1, characterName, dialogue);
+                }
+              }}
+              onGenerateDialogueAudio={(shotIndex, dialogue) => {
+                if (id && cid) {
+                  generateShotAudio(id, cid, shotIndex + 1, [dialogue]);
+                }
+              }}
+              onUploadDialogueAudio={(shotIndex, characterName, file) => {
+                if (id && cid) {
+                  uploadDialogueAudio(id, cid, shotIndex + 1, characterName, file, () => fetchChapter(id, cid));
+                }
+              }}
+              onDeleteDialogueAudio={(shotIndex, characterName) => {
+                if (id && cid) {
+                  deleteDialogueAudio(id, cid, shotIndex + 1, characterName, () => fetchChapter(id, cid));
+                }
+              }}
+              isAudioUploading={isUploading}
             />
           </div>
 
@@ -448,6 +528,7 @@ export default function ChapterGenerate() {
             getCharacterImage={getCharacterImage}
             onRegenerateCharacter={actions.handleRegenerateCharacter}
             aspectStyle={aspectStyle}
+            activeShotWorkflow={activeShotWorkflow}
           />
 
           {/* 场景图片 */}
@@ -466,6 +547,18 @@ export default function ChapterGenerate() {
             activeShotWorkflow={activeShotWorkflow}
           />
 
+          {/* 道具图片 */}
+          <PropImages
+            parsedData={parsedData}
+            currentShot={currentShot}
+            novelAspectRatio={novel?.aspectRatio || '1:1'}
+            novelId={id}
+            getPropImage={getPropImage}
+            onRegenerateProp={actions.handleRegenerateProp}
+            aspectStyle={aspectStyle}
+            activeShotWorkflow={activeShotWorkflow}
+          />
+
           {/* 分镜图片 */}
           <div className="card">
             <div className="flex justify-between items-center mb-4">
@@ -473,7 +566,7 @@ export default function ChapterGenerate() {
               <div className="flex items-center gap-3">
                 {(parsedData?.shots?.length ?? 0) > 0 && (
                   <>
-                    <button 
+                    <button
                       onClick={() => handleGenerateAllShots(parsedData, id, cid)}
                       disabled={isGeneratingAll || pendingShots.size > 0}
                       className="btn-secondary text-sm py-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50"
@@ -484,7 +577,7 @@ export default function ChapterGenerate() {
                         <><RefreshCw className="h-3 w-3 mr-1" />{t('chapterGenerate.generateAllShots')}</>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleGenerateAllVideos(parsedData, shotImages, id, cid)}
                       disabled={generatingVideos.size > 0 || pendingVideos.size > 0}
                       className="btn-secondary text-sm py-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-50"
@@ -492,6 +585,22 @@ export default function ChapterGenerate() {
                     >
                       <Film className="h-3 w-3 mr-1" />
                       {t('chapterGenerate.generateAllShotVideos')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (id && cid) {
+                          generateAllAudio(id, cid);
+                        }
+                      }}
+                      disabled={isGeneratingAudio()}
+                      className="btn-secondary text-sm py-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-50"
+                      title={t('chapterGenerate.generateAllAudioHint')}
+                    >
+                      {isGeneratingAudio('all') ? (
+                        <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{t('chapterGenerate.generatingAudio')}</>
+                      ) : (
+                        <><Volume2 className="h-3 w-3 mr-1" />{t('chapterGenerate.generateAllAudio')}</>
+                      )}
                     </button>
                   </>
                 )}

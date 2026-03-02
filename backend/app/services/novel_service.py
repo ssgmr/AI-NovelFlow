@@ -99,6 +99,8 @@ class NovelService:
                             existing.description = char_data.get("description")
                         if not existing.appearance and char_data.get("appearance"):
                             existing.appearance = char_data.get("appearance")
+                        if not existing.voice_prompt and char_data.get("voice_prompt"):
+                            existing.voice_prompt = char_data.get("voice_prompt")
                         if source_range:
                             if existing.source_range:
                                 existing.source_range += f", {source_range}"
@@ -108,6 +110,8 @@ class NovelService:
                         # 全量更新模式：直接覆盖
                         existing.description = char_data.get("description", existing.description)
                         existing.appearance = char_data.get("appearance", existing.appearance)
+                        if char_data.get("voice_prompt"):
+                            existing.voice_prompt = char_data.get("voice_prompt")
                         existing.source_range = source_range
                     
                     existing.last_parsed_at = datetime.utcnow()
@@ -119,6 +123,7 @@ class NovelService:
                         name=name,
                         description=char_data.get("description", ""),
                         appearance=char_data.get("appearance", ""),
+                        voice_prompt=char_data.get("voice_prompt", ""),
                         start_chapter=start_chapter,
                         end_chapter=end_chapter,
                         is_incremental=is_incremental,
@@ -149,6 +154,7 @@ class NovelService:
                         "name": c.name,
                         "description": c.description,
                         "appearance": c.appearance,
+                        "voicePrompt": c.voice_prompt,
                         "startChapter": c.start_chapter,
                         "endChapter": c.end_chapter,
                         "isIncremental": c.is_incremental,
@@ -169,7 +175,167 @@ class NovelService:
             import traceback
             traceback.print_exc()
             return {"success": False, "message": f"解析异常: {str(e)}"}
-    
+
+    # ==================== 道具解析 ====================
+
+    async def parse_props(
+        self,
+        novel_id: str,
+        chapters: List[Chapter],
+        start_chapter: int = None,
+        end_chapter: int = None,
+        is_incremental: bool = False,
+        prop_repo = None
+    ) -> Dict[str, Any]:
+        """
+        解析小说内容，自动提取道具信息
+
+        Args:
+            novel_id: 小说ID
+            chapters: 章节列表
+            start_chapter: 起始章节号
+            end_chapter: 结束章节号
+            is_incremental: 是否增量更新
+            prop_repo: 道具仓库
+
+        Returns:
+            解析结果
+        """
+        from app.models.novel import Prop
+
+        # 构造章节范围描述
+        source_range = None
+        if start_chapter is not None or end_chapter is not None:
+            start_desc = f"第{start_chapter}章" if start_chapter is not None else "第1章"
+            end_desc = f"第{end_chapter}章" if end_chapter is not None else f"第{chapters[-1].number}章"
+            source_range = f"{start_desc}至{end_desc}"
+
+        full_text = "\n\n".join([c.content for c in chapters if c.content])
+        if not full_text.strip():
+            return {"success": False, "message": "章节内容为空"}
+
+        try:
+            # 获取道具解析提示词模板
+            prompt_template = None
+            template = self.db.query(PromptTemplate).filter(
+                PromptTemplate.type == 'prop_parse',
+                PromptTemplate.is_system == True
+            ).order_by(PromptTemplate.created_at.asc()).first()
+
+            if template:
+                prompt_template = template.template
+
+            # 如果没有系统模板，使用默认模板文件
+            if not prompt_template:
+                template_path = os.path.join(os.path.dirname(__file__), '..', 'prompt_templates', 'prop_parse.txt')
+                if os.path.exists(template_path):
+                    with open(template_path, "r", encoding="utf-8") as f:
+                        prompt_template = f.read()
+
+            # 调用 LLM 解析文本提取道具
+            result = await self.get_llm_service().parse_props(
+                text=full_text[:150000],  # 限制长度
+                prompt_template=prompt_template
+            )
+
+            if result.get("error"):
+                return {"success": False, "message": result["error"]}
+
+            props_data = result.get("props", [])
+            if not props_data:
+                return {"success": True, "data": [], "message": "未识别到道具"}
+
+            # 创建道具记录
+            created_props = []
+            updated_props = []
+
+            # 获取现有道具
+            existing_props = prop_repo.get_dict_by_novel(novel_id)
+
+            for prop_data in props_data:
+                name = prop_data.get("name", "").strip()
+                if not name:
+                    continue
+
+                if name in existing_props:
+                    # 更新现有道具
+                    existing = existing_props[name]
+
+                    if is_incremental:
+                        if not existing.description and prop_data.get("description"):
+                            existing.description = prop_data.get("description")
+                        if not existing.appearance and prop_data.get("appearance"):
+                            existing.appearance = prop_data.get("appearance")
+                        if source_range:
+                            if existing.source_range:
+                                existing.source_range += f", {source_range}"
+                            else:
+                                existing.source_range = source_range
+                    else:
+                        existing.description = prop_data.get("description", existing.description)
+                        existing.appearance = prop_data.get("appearance", existing.appearance)
+                        existing.source_range = source_range
+
+                    existing.last_parsed_at = datetime.utcnow()
+                    updated_props.append(existing)
+                else:
+                    # 创建新道具
+                    prop = Prop(
+                        novel_id=novel_id,
+                        name=name,
+                        description=prop_data.get("description", ""),
+                        appearance=prop_data.get("appearance", ""),
+                        start_chapter=start_chapter,
+                        end_chapter=end_chapter,
+                        is_incremental=is_incremental,
+                        source_range=source_range,
+                        last_parsed_at=datetime.utcnow()
+                    )
+                    self.db.add(prop)
+                    created_props.append(prop)
+
+            self.db.commit()
+
+            # 刷新对象以获取 ID
+            for prop in created_props + updated_props:
+                self.db.refresh(prop)
+
+            # 构造响应消息
+            message_parts = []
+            if created_props:
+                message_parts.append(f"新增 {len(created_props)} 个道具")
+            if updated_props:
+                message_parts.append(f"更新 {len(updated_props)} 个道具")
+
+            return {
+                "success": True,
+                "data": [
+                    {
+                        "id": p.id,
+                        "name": p.name,
+                        "description": p.description,
+                        "appearance": p.appearance,
+                        "startChapter": p.start_chapter,
+                        "endChapter": p.end_chapter,
+                        "isIncremental": p.is_incremental,
+                        "sourceRange": p.source_range,
+                        "lastParsedAt": format_datetime(p.last_parsed_at)
+                    }
+                    for p in created_props + updated_props
+                ],
+                "message": "，".join(message_parts) if message_parts else "未识别到道具",
+                "statistics": {
+                    "created": len(created_props),
+                    "updated": len(updated_props),
+                    "total": len(created_props) + len(updated_props)
+                }
+            }
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "message": f"解析异常: {str(e)}"}
+
     # ==================== 场景解析 ====================
     
     async def parse_scenes_from_chapters(
@@ -450,7 +616,8 @@ class NovelService:
         novel: Novel,
         chapter: Chapter,
         character_names: List[str],
-        scene_names: List[str]
+        scene_names: List[str],
+        prop_names: List[str] = None
     ) -> Dict[str, Any]:
         """
         使用小说配置的拆分提示词将章节拆分为分镜
@@ -460,6 +627,7 @@ class NovelService:
             chapter: 章节对象
             character_names: 角色名称列表
             scene_names: 场景名称列表
+            prop_names: 道具名称列表
             
         Returns:
             拆分结果
@@ -516,9 +684,10 @@ class NovelService:
             chapter_title=chapter.title,
             chapter_content=chapter.content or "",
             prompt_template=prompt_template.template,
-            word_count=50,
+            word_count=100,
             character_names=character_names,
             scene_names=scene_names,
+            prop_names=prop_names,
             style=style
         )
         

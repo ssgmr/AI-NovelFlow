@@ -17,10 +17,14 @@ class PromptTemplateType:
     CHARACTER_PARSE = "character_parse"
     # 场景解析提示词 - 用于从小说文本中解析场景信息
     SCENE_PARSE = "scene_parse"
+    # 道具解析提示词 - 用于从小说文本中解析道具信息
+    PROP_PARSE = "prop_parse"
     # 角色生成提示词 - 用于生成角色图片
     CHARACTER = "character"
     # 场景生成提示词 - 用于生成场景图片
     SCENE = "scene"
+    # 道具生成提示词 - 用于生成道具图片
+    PROP = "prop"
     # 分镜拆分提示词 - 用于将章节拆分为分镜
     CHAPTER_SPLIT = "chapter_split"
 
@@ -30,8 +34,10 @@ PROMPT_TEMPLATE_TYPES: List[str] = [
     PromptTemplateType.STYLE,
     PromptTemplateType.CHARACTER_PARSE,
     PromptTemplateType.SCENE_PARSE,
+    PromptTemplateType.PROP_PARSE,
     PromptTemplateType.CHARACTER,
     PromptTemplateType.SCENE,
+    PromptTemplateType.PROP,
     PromptTemplateType.CHAPTER_SPLIT,
 ]
 
@@ -68,11 +74,23 @@ PROMPT_TEMPLATE_TYPE_CONFIG: Dict[str, Dict] = {
         "icon": "Image",
         "color": "orange",
     },
+    PromptTemplateType.PROP_PARSE: {
+        "name_key": "promptConfig.types.propParse",
+        "desc_key": "promptConfig.types.propParseDesc",
+        "icon": "Package",
+        "color": "yellow",
+    },
     PromptTemplateType.CHAPTER_SPLIT: {
         "name_key": "promptConfig.types.chapterSplit",
         "desc_key": "promptConfig.types.chapterSplitDesc",
         "icon": "BookOpen",
         "color": "cyan",
+    },
+    PromptTemplateType.PROP: {
+        "name_key": "promptConfig.types.prop",
+        "desc_key": "promptConfig.types.propDesc",
+        "icon": "Box",
+        "color": "amber",
     },
 }
 

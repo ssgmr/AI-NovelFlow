@@ -54,6 +54,9 @@ export default {
     copyFailed: '复制失败',
     deleteFailed: '删除失败',
     optional: '可选',
+    add: '添加',
+    remove: '移除',
+    select: '请选择',
   },
 
   // 状态

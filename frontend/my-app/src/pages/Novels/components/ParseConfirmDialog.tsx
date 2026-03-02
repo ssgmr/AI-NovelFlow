@@ -8,11 +8,19 @@ interface ParseConfirmDialogProps {
   chapterRange: ChapterRange;
   parsingNovelId: string | null;
   parsingScenesNovelId: string | null;
+  parsingPropsNovelId: string | null;
   onClose: () => void;
   onConfirmCharacters: () => void;
   onConfirmScenes: () => void;
+  onConfirmProps: () => void;
   onChapterRangeChange: (range: ChapterRange) => void;
 }
+
+const TYPE_CONFIG = {
+  characters: { bgColor: 'bg-purple-100', textColor: 'text-purple-600' },
+  scenes: { bgColor: 'bg-teal-100', textColor: 'text-teal-600' },
+  props: { bgColor: 'bg-amber-100', textColor: 'text-amber-600' },
+};
 
 export function ParseConfirmDialog({
   isOpen,
@@ -20,34 +28,73 @@ export function ParseConfirmDialog({
   chapterRange,
   parsingNovelId,
   parsingScenesNovelId,
+  parsingPropsNovelId,
   onClose,
   onConfirmCharacters,
   onConfirmScenes,
+  onConfirmProps,
   onChapterRangeChange,
 }: ParseConfirmDialogProps) {
   const { t } = useTranslation();
 
   if (!isOpen) return null;
 
-  const isCharacters = confirmDialog.type === 'characters';
+  const type = confirmDialog.type;
+  const config = TYPE_CONFIG[type];
+  const isCharacters = type === 'characters';
+  const isScenes = type === 'scenes';
+  const isProps = type === 'props';
+
   const isParsing = isCharacters
     ? parsingNovelId === confirmDialog.novelId
-    : parsingScenesNovelId === confirmDialog.novelId;
+    : isScenes
+    ? parsingScenesNovelId === confirmDialog.novelId
+    : parsingPropsNovelId === confirmDialog.novelId;
+
+  const getTitle = () => {
+    if (isCharacters) return t('novels.aiParseCharactersTitle');
+    if (isScenes) return t('novels.aiParseScenesTitle');
+    return t('novels.aiParsePropsTitle');
+  };
+
+  const getMessage = () => {
+    if (isCharacters) return t('novels.parseConfirmMessage');
+    if (isScenes) return t('novels.parseScenesConfirmMessage');
+    return t('novels.parsePropsConfirmMessage');
+  };
+
+  const onConfirm = () => {
+    if (isCharacters) onConfirmCharacters();
+    else if (isScenes) onConfirmScenes();
+    else onConfirmProps();
+  };
+
+  const getButtonColor = () => {
+    if (isCharacters) return 'bg-purple-600 hover:bg-purple-700';
+    if (isScenes) return 'bg-teal-600 hover:bg-teal-700';
+    return 'bg-amber-600 hover:bg-amber-700';
+  };
+
+  const getCheckboxColor = () => {
+    if (isCharacters) return 'text-purple-600 focus:ring-purple-500';
+    if (isScenes) return 'text-teal-600 focus:ring-teal-500';
+    return 'text-amber-600 focus:ring-amber-500';
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
         <div className="flex items-center gap-3 mb-4">
-          <div className={`p-2 rounded-full ${isCharacters ? 'bg-purple-100' : 'bg-teal-100'}`}>
-            <Sparkles className={`h-6 w-6 ${isCharacters ? 'text-purple-600' : 'text-teal-600'}`} />
+          <div className={`p-2 rounded-full ${config.bgColor}`}>
+            <Sparkles className={`h-6 w-6 ${config.textColor}`} />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {isCharacters ? t('novels.aiParseCharactersTitle') : t('novels.aiParseScenesTitle')}
+            {getTitle()}
           </h3>
         </div>
 
         <p className="text-gray-600 mb-4">
-          {isCharacters ? t('novels.parseConfirmMessage') : t('novels.parseScenesConfirmMessage')}
+          {getMessage()}
         </p>
 
         <div className="mb-4 space-y-3">
@@ -94,7 +141,7 @@ export function ParseConfirmDialog({
                   ...chapterRange,
                   isIncremental: e.target.checked
                 })}
-                className={`rounded focus:ring-0 ${isCharacters ? 'text-purple-600 focus:ring-purple-500' : 'text-teal-600 focus:ring-teal-500'}`}
+                className={`rounded focus:ring-0 ${getCheckboxColor()}`}
               />
               <span className="text-sm text-gray-700">{t('novels.incrementalUpdate')}</span>
             </label>
@@ -112,8 +159,8 @@ export function ParseConfirmDialog({
             {t('common.cancel')}
           </button>
           <button
-            onClick={isCharacters ? onConfirmCharacters : onConfirmScenes}
-            className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 ${isCharacters ? 'bg-purple-600 hover:bg-purple-700' : 'bg-teal-600 hover:bg-teal-700'}`}
+            onClick={onConfirm}
+            className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 ${getButtonColor()}`}
           >
             {isParsing ? (
               <>

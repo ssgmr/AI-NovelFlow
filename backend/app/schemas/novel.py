@@ -11,8 +11,10 @@ class NovelBase(BaseModel):
     style_prompt_template_id: Optional[str] = None  # 风格提示词模板
     character_parse_prompt_template_id: Optional[str] = None  # 角色解析提示词模板
     scene_parse_prompt_template_id: Optional[str] = None  # 场景解析提示词模板
+    prop_parse_prompt_template_id: Optional[str] = None  # 道具解析提示词模板
     prompt_template_id: Optional[str] = None  # 角色生成提示词模板
     scene_prompt_template_id: Optional[str] = None  # 场景生成提示词模板
+    prop_prompt_template_id: Optional[str] = None  # 道具生成提示词模板
     chapter_split_prompt_template_id: Optional[str] = None  # 分镜拆分提示词模板
     aspect_ratio: Optional[str] = "16:9"
 

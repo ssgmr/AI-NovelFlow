@@ -2,6 +2,16 @@
 
 感谢您对 AI-NovelFlow 项目的关注！本文档将帮助您了解如何为项目做出贡献。
 
+## 目录
+
+- [开发规范](#开发规范)
+- [OpenSpec 驱动开发](#openspec-驱动开发)
+- [Git 工作流](#git-工作流)
+- [Pull Request 流程](#pull-request-流程)
+- [问题反馈](#问题反馈)
+
+---
+
 ## 开发规范
 
 为保持代码质量和可维护性，我们建议遵循以下开发规范（AI Coding 时请要求 AI 参考本规范）：
@@ -112,6 +122,188 @@ function MyComponent() {
 }
 ```
 
+---
+
+## OpenSpec 驱动开发
+
+本项目采用 **OpenSpec** 作为 AI 辅助编程的核心驱动工具。所有功能开发、Bug 修复、架构变更都应通过 OpenSpec 工作流进行管理。
+
+**OpenSpec 仓库**：https://github.com/Fission-AI/OpenSpec/blob/main/README.md
+
+### 为什么使用 OpenSpec
+
+- **结构化产出**：强制通过 proposal → design → specs → tasks 的流程，确保设计先行
+- **规范一致性**：统一的变更管理，便于追溯和审查
+- **AI 友好**：产出物格式标准化，AI 可以准确理解和执行
+- **知识沉淀**：specs 目录积累项目的能力规范文档
+
+### 目录结构
+
+```
+openspec/
+├── config.yaml              # OpenSpec 全局配置
+├── specs/                   # 主规范目录（能力文档）
+│   ├── character-parse/
+│   │   └── spec.md
+│   ├── character-voice/
+│   │   └── spec.md
+│   ├── voice-workflow-builder/
+│   │   └── spec.md
+│   └── workflow-node-mapping/
+│       └── spec.md
+└── changes/                 # 变更目录
+    ├── <change-name>/       # 进行中的变更
+    │   ├── .openspec.yaml
+    │   ├── proposal.md
+    │   ├── design.md
+    │   ├── tasks.md
+    │   └── specs/           # Delta specs
+    └── archive/             # 已归档的变更
+        └── YYYY-MM-DD-<name>/
+```
+
+### 工作流程
+
+标准工作流程：
+
+```
+new → continue → apply → (continue) → verify → sync → archive
+```
+
+#### 1. 创建变更
+
+使用 `/opsx:new` 创建新的变更目录和初始配置：
+
+```
+/opsx:new
+```
+
+此命令会创建变更目录和 `.openspec.yaml` 配置文件。
+
+#### 2. 生成产出物
+
+使用 `/opsx:continue` 逐个生成产出物：
+
+```
+/opsx:continue
+```
+
+每次调用会生成下一个产出物，按顺序：
+
+| 顺序 | 产出物 | 说明 |
+|------|--------|------|
+| 1 | `proposal.md` | 变更提案：Why、What、Impact |
+| 2 | `design.md` | 技术设计：方案细节、接口定义 |
+| 3 | `specs/*.md` | Delta specs：本次变更涉及的规范变更 |
+| 4 | `tasks.md` | 任务清单：具体的实现步骤 |
+
+**快捷方式**：如果需求明确，可使用 `/opsx:propose` 或 `/opsx:ff` 一次性生成所有产出物。
+
+#### 3. 探索模式（可选）
+
+当需求不清晰时，可在任何阶段使用 `/opsx:explore` 进入探索模式：
+
+```
+/opsx:explore
+```
+
+探索模式用于：
+- 理解问题和需求
+- 调查现有代码
+- 澄清技术方案
+- 在正式创建变更前进行思考
+
+#### 4. 实现变更
+
+产出物完成后，使用 `/opsx:apply` 开始实现：
+
+```
+/opsx:apply
+```
+
+AI 会按照 `tasks.md` 中的任务清单逐步执行实现。如果实现过程中发现问题，可使用 `/opsx:continue` 更新产出物。
+
+#### 5. 验证实现
+
+实现完成后，使用 `/opsx:verify` 验证：
+
+```
+/opsx:verify
+```
+
+验证内容包括：
+- 代码是否与设计一致
+- 任务是否全部完成
+- 规范是否正确实现
+
+#### 6. 同步规范
+
+验证通过后，使用 `/opsx:sync` 将 Delta specs 同步到主 specs 目录：
+
+```
+/opsx:sync
+```
+
+此步骤将 `changes/<name>/specs/` 下的规范变更合并到 `specs/` 目录。
+
+#### 7. 归档变更
+
+最后使用 `/opsx:archive` 归档变更：
+
+```
+/opsx:archive
+```
+
+归档操作会将变更目录移动到 `archive/`，并按日期命名（`YYYY-MM-DD-<name>`）。
+
+**注意**：`/opsx:archive` 会在归档前自动检查是否需要同步，如未同步会提示用户。
+
+### 常用命令速查
+
+| 命令 | 说明 |
+|------|------|
+| `/opsx:new` | 创建新变更 |
+| `/opsx:continue` | 生成下一个产出物 |
+| `/opsx:propose` | 快速提案（一次性生成所有产出物） |
+| `/opsx:ff` | Fast-forward 模式 |
+| `/opsx:explore` | 探索模式 |
+| `/opsx:apply` | 开始实现 |
+| `/opsx:verify` | 验证实现 |
+| `/opsx:sync` | 同步 Delta specs 到主 specs |
+| `/opsx:archive` | 归档变更 |
+| `/opsx:bulk-archive` | 批量归档 |
+
+### 规范文件（Specs）编写指南
+
+规范文件位于 `openspec/specs/<capability>/spec.md`，使用以下格式：
+
+```markdown
+## Requirement: <需求标题>
+
+<需求描述>
+
+### Scenario: <场景标题>
+- **WHEN** <触发条件>
+- **THEN** 系统 SHALL <预期行为>
+- **AND** 系统 SHALL <附加行为>
+```
+
+**Delta Specs**（变更目录下的 specs）使用额外标记：
+
+- `## NEW Requirements` - 新增需求
+- `## MODIFIED Requirements` - 修改需求
+- `## REMOVED Requirements` - 删除需求
+
+### 最佳实践
+
+1. **一个变更一个功能**：保持变更范围小而专注
+2. **先设计后实现**：确保 proposal 和 design 完成后再 apply
+3. **任务粒度适中**：每个任务应可在 2 小时内完成
+4. **及时归档**：完成的变更及时归档，避免 changes 目录堆积
+5. **保持规范更新**：归档前确保 Delta specs 已同步到主 specs
+
+---
+
 ## Git 工作流
 
 ### 提交信息规范
@@ -139,6 +331,8 @@ feat(api): 添加章节视频导出接口
 fix(character): 修复角色解析时增量更新不生效的问题
 ```
 
+---
+
 ## Pull Request 流程
 
 ### 提交前检查清单
@@ -158,6 +352,8 @@ fix(character): 修复角色解析时增量更新不生效的问题
 - `feat: 添加视频导出功能`
 - `fix: 修复角色解析增量更新问题`
 
+---
+
 ## 问题反馈
 
 ### Bug 报告
@@ -176,3 +372,9 @@ fix(character): 修复角色解析时增量更新不生效的问题
 - 使用场景
 - 期望的实现方式（可选）
 
+---
+
+## 相关文档
+
+- [README.md](../README.md) - 项目说明文档
+- [OpenSpec 仓库](https://github.com/Fission-AI/OpenSpec/blob/main/README.md) - OpenSpec 官方文档

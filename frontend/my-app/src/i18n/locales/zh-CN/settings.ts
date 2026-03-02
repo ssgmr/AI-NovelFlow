@@ -101,6 +101,8 @@ export default {
       shot: '分镜生图',
       video: '分镜生视频',
       transition: '分镜生转场视频',
+      prop: '道具生成',
+      voiceDesign: '音色设计',
       // 上传弹窗
       type: '工作流类型',
       name: '工作流名称',
@@ -136,13 +138,6 @@ export default {
       jsonEditableTip: '可编辑，请确保 JSON 格式正确',
       saving: '保存中...',
       close: '关闭',
-      // 扩展属性
-      extension: {
-        referenceImageCount: '参考图数量',
-        single: '单图',
-        dual: '双图',
-        triple: '三图',
-      },
       // 映射配置
       mappingConfig: '映射配置',
       mappingConfigIncomplete: '映射配置不完整，请点击配置',
@@ -168,6 +163,7 @@ export default {
       referenceImageNodeTip: '选择用于加载参考图片（分镜图）的 LoadImage 节点',
       characterReferenceNode: '角色参考图节点',
       sceneReferenceNode: '场景参考图节点',
+      referenceImageNodeDisconnectTip: '提示：在工作流执行时，未上传图片的参考图节点会动态断开连接',
       frameCountNode: '总帧数节点',
       frameCountNodeTip: '选择用于设置视频总帧数的 easy int 节点（值应为 8 的倍数 + 1）',
       firstImageNode: '首帧图节点 (LoadImage - First IMG)',
@@ -178,6 +174,17 @@ export default {
       selectNodeToView: '选择节点查看 JSON 数据',
       nodeNotFound: '未找到该节点数据',
       nodeMapping: '节点映射配置',
+      customReferenceImageNodes: '自定义参考图节点',
+      nodeTypeHint: '需要节点类型',
+      // 音色设计节点
+      voicePromptNode: '音色提示词节点',
+      refTextNode: '参考音频文本节点',
+      saveAudioNode: '保存音频节点',
+      // 音频生成节点
+      audio: '音频生成',
+      referenceAudioNode: '参考音频节点',
+      textNode: '生成文本节点',
+      emotionPromptNode: '情感提示词节点',
     },
   },
 
@@ -210,10 +217,14 @@ export default {
       characterParseDesc: '用于从小说文本中解析角色信息的提示词',
       sceneParse: '场景解析提示词',
       sceneParseDesc: '用于从小说文本中解析场景信息的提示词',
+      propParse: '道具解析提示词',
+      propParseDesc: '用于从小说文本中解析道具信息的提示词',
       character: '角色生成提示词',
       characterDesc: '用于生成角色图片的提示词模板',
       scene: '场景生成提示词',
       sceneDesc: '用于生成场景图片的提示词模板',
+      prop: '道具生成提示词',
+      propDesc: '用于生成道具图片的提示词模板',
       chapterSplit: '分镜拆分提示词',
       chapterSplitDesc: '用于将章节拆分为分镜的提示词模板',
     },
@@ -233,6 +244,7 @@ export default {
     templatePlaceholderCharacter: 'character portrait...',
     templatePlaceholderChapter: '你是一名资深影视导演...',
     systemPromptSaved: '系统提示词已保存',
+    copySuccess: '复制成功',
     resetSuccess: '已恢复默认提示词',
     resetSuccessFrontend: '已恢复默认提示词（仅前端）',
     templateNames: {

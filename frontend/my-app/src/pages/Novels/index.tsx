@@ -20,6 +20,7 @@ export default function Novels() {
     setEditingNovel,
     parsingNovelId,
     parsingScenesNovelId,
+    parsingPropsNovelId,
     confirmDialog,
     chapterRange,
     setChapterRange,
@@ -32,6 +33,7 @@ export default function Novels() {
     closeParseConfirm,
     confirmParseCharacters,
     confirmParseScenes,
+    confirmParseProps,
     getTemplateDisplayName,
   } = useNovelsState();
 
@@ -42,8 +44,10 @@ export default function Novels() {
     stylePromptTemplateId: '',
     characterParsePromptTemplateId: '',
     sceneParsePromptTemplateId: '',
+    propParsePromptTemplateId: '',
     promptTemplateId: '',
     scenePromptTemplateId: '',
+    propPromptTemplateId: '',
     chapterSplitPromptTemplateId: '',
     aspectRatio: '16:9'
   });
@@ -59,8 +63,10 @@ export default function Novels() {
       stylePromptTemplateId: '',
       characterParsePromptTemplateId: '',
       sceneParsePromptTemplateId: '',
+      propParsePromptTemplateId: '',
       promptTemplateId: '',
       scenePromptTemplateId: '',
+      propPromptTemplateId: '',
       chapterSplitPromptTemplateId: '',
       aspectRatio: '16:9'
     });
@@ -76,8 +82,10 @@ export default function Novels() {
       stylePromptTemplateId: editingNovel.stylePromptTemplateId,
       characterParsePromptTemplateId: editingNovel.characterParsePromptTemplateId,
       sceneParsePromptTemplateId: editingNovel.sceneParsePromptTemplateId,
+      propParsePromptTemplateId: editingNovel.propParsePromptTemplateId,
       promptTemplateId: editingNovel.promptTemplateId,
       scenePromptTemplateId: editingNovel.scenePromptTemplateId,
+      propPromptTemplateId: editingNovel.propPromptTemplateId,
       chapterSplitPromptTemplateId: editingNovel.chapterSplitPromptTemplateId,
       aspectRatio: editingNovel.aspectRatio,
     });
@@ -131,6 +139,7 @@ export default function Novels() {
               templatesByType={templatesByType}
               parsingNovelId={parsingNovelId}
               parsingScenesNovelId={parsingScenesNovelId}
+              parsingPropsNovelId={parsingPropsNovelId}
               onDelete={deleteNovel}
               onEdit={setEditingNovel}
               onParseConfirm={openParseConfirm}
@@ -168,9 +177,11 @@ export default function Novels() {
         chapterRange={chapterRange}
         parsingNovelId={parsingNovelId}
         parsingScenesNovelId={parsingScenesNovelId}
+        parsingPropsNovelId={parsingPropsNovelId}
         onClose={closeParseConfirm}
         onConfirmCharacters={confirmParseCharacters}
         onConfirmScenes={confirmParseScenes}
+        onConfirmProps={confirmParseProps}
         onChapterRangeChange={setChapterRange}
       />
     </div>

@@ -9,18 +9,8 @@ from typing import Dict, List, Optional, Any
 
 # 扩展属性定义
 # 每种工作流类型可以有自己的扩展属性配置
+# 注：分镜生图(shot)不再需要选择参考图数量，用户可通过节点映射自定义添加参考图节点
 WORKFLOW_EXTENSIONS: Dict[str, Dict[str, Any]] = {
-    "shot": {
-        "name": "reference_image_count",
-        "label": "参考图数量",
-        "labelKey": "workflow.extension.referenceImageCount",
-        "options": [
-            {"value": "single", "label": "单图", "labelKey": "workflow.extension.single"},
-            {"value": "dual", "label": "双图", "labelKey": "workflow.extension.dual"},
-            {"value": "triple", "label": "三图", "labelKey": "workflow.extension.triple"},
-        ],
-        "default": "single"
-    },
     # 其他类型可以在这里添加扩展属性
     # "character": { ... },
     # "scene": { ... },
@@ -45,33 +35,26 @@ def get_extension_config(workflow_type: str) -> Optional[Dict[str, Any]]:
 def get_default_extension(workflow_type: str, workflow_name: str = "") -> Optional[Dict[str, Any]]:
     """
     获取指定工作流类型的默认扩展属性值
-    
-    对于分镜生图类型:
-    - "Flux2-Klein-9B 分镜生图双图参考" 默认为 "dual"
-    - 其他分镜生图工作流默认为 "single"
-    
+
     Args:
         workflow_type: 工作流类型
         workflow_name: 工作流名称（用于判断特殊默认值）
-        
+
     Returns:
-        默认扩展属性值字典，如 {"reference_image_count": "single"}
+        默认扩展属性值字典，如 {"type": "value"}
     """
     config = get_extension_config(workflow_type)
     if not config:
         return None
-    
+
     # 获取属性名
     prop_name = config.get("name", "type")
-    
-    # 特殊默认值逻辑
-    if workflow_type == "shot":
-        if "双图" in workflow_name or "dual" in workflow_name.lower():
-            return {prop_name: "dual"}
-    
+
     # 返回配置的默认值
-    default_value = config.get("default", "single")
-    return {prop_name: default_value}
+    default_value = config.get("default")
+    if default_value:
+        return {prop_name: default_value}
+    return None
 
 
 def validate_extension(workflow_type: str, extension: Dict[str, Any]) -> tuple[bool, str]:

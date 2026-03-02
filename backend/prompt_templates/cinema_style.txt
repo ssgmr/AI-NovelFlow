@@ -163,6 +163,43 @@ video_description 动作约束规则
    - 若 allowed_characters 中没有任何可对应的具体角色名，则该镜头不得把泛称写入 shots[].characters；只能作为“背景剪影/远处人群”环境元素描述（且不得作为 speaker）。
 
 ━━━━━━━━━━━━━━━━━━
+【道具白名单硬约束（必须执行，保持道具一致性）】
+━━━━━━━━━━━━━━━━━━
+
+你将收到一个 allowed_props 数组，表示本章允许出现的道具名称列表。
+
+规则：
+
+1) 任何输出字段中出现的道具名必须严格来自 allowed_props，禁止出现任何不在 allowed_props 中的道具名。范围包括：
+   - shots[].props
+   - description 中描述的道具
+   - video_description 中描述的道具
+
+2) 道具名称一致性：
+   - 所有道具名称必须与 allowed_props 中完全一致
+   - 禁止更改、简化或替换道具名
+
+3) 道具使用规则：
+   - 只有当镜头中明确出现某道具时才添加到 shots[].props
+   - 若正文道具无法匹配 allowed_props 中的任何道具，不要添加到 props 列表
+
+━━━━━━━━━━━━━━━━━━
+dialogues 字段规则（自动提取台词）
+━━━━━━━━━━━━━━━━━━
+
+每个分镜必须包含 dialogues 字段，用于存储该镜头中角色台词的结构化数据。
+
+规则：
+1) dialogues 必须是数组格式
+2) 每条台词必须包含：
+   - character_name: 说话角色名（必须来自 allowed_characters）
+   - text: 台词文本（逐字复制原文，保持原标点）
+   - emotion_prompt: 情感提示词（根据上下文推断，如：愤怒、悲伤、平静、惊讶、喜悦等）
+3) 若该镜头无台词，dialogues 必须为空数组 []
+4) 台词必须与 video_description 的 Dialogue 段保持一致
+5) emotion_prompt 根据原文描述和上下文推断角色说话时的情感状态
+
+━━━━━━━━━━━━━━━━━━
 禁止
 ━━━━━━━━━━━━━━━━━━
 
@@ -181,6 +218,7 @@ video_description 动作约束规则
   "chapter": "…",
   "characters": ["…"],
   "scenes": ["…"],
+  "props": ["…"],
   "shots": [
     {
       "id": 1,
@@ -188,7 +226,15 @@ video_description 动作约束规则
       "video_description": "Character Constraints:\n- ...\nMotion:\n...\nDialogue (spoken, no on-screen text):\n- ...: \"...\"",
       "characters": ["..."],
       "scene": "...",
-      "duration": 5
+      "props": [],
+      "duration": 5,
+      "dialogues": [
+        {
+          "character_name": "角色名",
+          "text": "台词文本",
+          "emotion_prompt": "情感"
+        }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { API_BASE } from '../constants';
-import type { Chapter, Novel, Character, Scene, ParsedData } from '../types';
+import type { Chapter, Novel, Character, Scene, Prop, ParsedData } from '../types';
 
 interface UseChapterDataReturn {
   // 状态
@@ -10,16 +10,19 @@ interface UseChapterDataReturn {
   editableJson: string;
   characters: Character[];
   scenes: Scene[];
+  props: Prop[];
   loading: boolean;
   // 方法
   fetchNovel: (novelId: string | undefined) => Promise<void>;
   fetchChapter: (novelId: string | undefined, chapterId: string | undefined) => Promise<void>;
   fetchCharacters: (novelId: string | undefined) => Promise<void>;
   fetchScenes: (novelId: string | undefined) => Promise<void>;
+  fetchProps: (novelId: string | undefined) => Promise<void>;
   setParsedData: React.Dispatch<React.SetStateAction<ParsedData | null>>;
   setEditableJson: React.Dispatch<React.SetStateAction<string>>;
   getCharacterImage: (name: string) => string | undefined;
   getSceneImage: (name: string) => string | null;
+  getPropImage: (name: string) => string | null;
 }
 
 export default function useChapterData(): UseChapterDataReturn {
@@ -29,6 +32,7 @@ export default function useChapterData(): UseChapterDataReturn {
   const [editableJson, setEditableJson] = useState<string>('');
   const [characters, setCharacters] = useState<Character[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [props, setProps] = useState<Prop[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 获取小说数据
@@ -103,6 +107,20 @@ export default function useChapterData(): UseChapterDataReturn {
     }
   }, []);
 
+  // 获取道具列表
+  const fetchProps = useCallback(async (novelId: string | undefined) => {
+    if (!novelId) return;
+    try {
+      const res = await fetch(`${API_BASE}/props/?novel_id=${novelId}`);
+      const data = await res.json();
+      if (data.success) {
+        setProps(data.data);
+      }
+    } catch (error) {
+      console.error('获取道具列表失败:', error);
+    }
+  }, []);
+
   // 根据角色名获取角色图片
   const getCharacterImage = useCallback((name: string): string | undefined => {
     const character = characters.find(c => c.name === name);
@@ -115,6 +133,12 @@ export default function useChapterData(): UseChapterDataReturn {
     return scene?.imageUrl || null;
   }, [scenes]);
 
+  // 根据道具名获取道具图片
+  const getPropImage = useCallback((name: string): string | null => {
+    const prop = props.find(p => p.name === name);
+    return prop?.imageUrl || null;
+  }, [props]);
+
   return {
     chapter,
     novel,
@@ -122,14 +146,17 @@ export default function useChapterData(): UseChapterDataReturn {
     editableJson,
     characters,
     scenes,
+    props,
     loading,
     fetchNovel,
     fetchChapter,
     fetchCharacters,
     fetchScenes,
+    fetchProps,
     setParsedData,
     setEditableJson,
     getCharacterImage,
     getSceneImage,
+    getPropImage,
   };
 }

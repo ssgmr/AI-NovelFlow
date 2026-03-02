@@ -51,6 +51,13 @@ export default {
     parseScenesFailed: '场景解析失败',
     noNewScenes: '未发现新场景',
     viewScenes: '查看场景',
+    // 道具解析相关
+    parseProps: '解析道具',
+    parsePropsComplete: '道具解析完成',
+    parsePropsResult: '新增 {created} 个道具，更新 {updated} 个道具',
+    parsePropsFailed: '道具解析失败',
+    noNewProps: '未发现新道具',
+    viewProps: '查看道具',
     characterImageAlt: '角色图片 {index}',
     shotImages: '分镜图片',
     shotImageAlt: '分镜图片 {index}',
@@ -108,8 +115,10 @@ export default {
     downloadMaterialsDesc: '打包下载当前章节的所有素材，包括：',
     characterImages: '角色图片',
     characterImagesLabel: '角色图',
+    sceneImages: '场景图片',
     mergedCharacterImage: '合并角色图',
     shotImages: '分镜图片',
+    dialogueAudios: '台词音频',
     shotVideos: '分镜视频',
     transitionVideos: '转场视频',
     packing: '打包中...',
@@ -160,6 +169,60 @@ export default {
     removeScene: '移除场景',
     orAddCustom: '或手动输入',
     
+    // 道具相关
+    props: '道具',
+    selectPropFromChapter: '从章节道具列表选择...',
+    selectPropFromLibrary: '从道具库选择...',
+    removeProp: '移除道具',
+    noPropsInLibrary: '道具库中没有道具，请先解析或添加道具',
+    allPropsAdded: '道具库中的道具已全部添加',
+
+    // 占位符提示
+    placeholderHint: '💡 可用占位符：',
+    placeholderStyle: '##STYLE## - 风格提示词',
+    placeholderScene: '##SCENE## - 场景环境设定',
+    placeholderCharacters: '##CHARACTERS## - 角色外貌描述',
+    placeholderProps: '##PROPS## - 道具外观描述',
+
+    // 台词相关
+    dialogues: '台词',
+    addDialogue: '添加台词',
+    addDialogueDisabledHint: '请先添加角色',
+    selectCharacter: '选择角色',
+    deleteDialogue: '删除台词',
+    dialogueTextPlaceholder: '输入台词内容...',
+    emotionPrompt: '情感',
+    emotionPromptPlaceholder: '自然',
+    noDialogues: '暂无台词，点击上方按钮添加',
+
+    // 音频生成
+    generateAudio: '生成音频',
+    generateAllAudio: '批量生成音频',
+    generatingAudio: '音频生成中...',
+    audioTaskCreated: '音频生成任务已创建',
+    audioTasksCreated: '已创建 {count} 个音频生成任务',
+    audioGenerateFailed: '音频生成失败',
+    audioGenerateSuccess: '音频生成成功',
+    noReferenceAudio: '角色 "{name}" 尚未生成音色',
+    characterNotFound: '角色 "{name}" 不存在',
+    noDialoguesToGenerate: '没有可生成的台词',
+    audioWarnings: '跳过 {count} 个台词',
+    playAudio: '播放',
+    regenerateAudio: '重新生成',
+    // 音频上传
+    uploadAudio: '上传音频',
+    uploadReplaceAudio: '上传替换',
+    deleteAudio: '删除音频',
+    uploadingAudio: '上传中...',
+    audioUploadSuccess: '音频上传成功',
+    audioUploadFailed: '音频上传失败',
+    audioDeleteSuccess: '音频删除成功',
+    audioDeleteFailed: '音频删除失败',
+    audioFileTooLarge: '音频文件大小不能超过 10MB',
+    confirmDeleteAudio: '确定要删除此音频吗？',
+    audioSourceAi: 'AI 生成',
+    audioSourceUploaded: '已上传',
+
     // 合并视频
     mergeVideo: '合并视频',
     noShotVideos: '暂无分镜视频',
@@ -184,12 +247,16 @@ export default {
     generateMergedImageFirst: '请先生成合并角色图',
     mergedCharacterImageTitle: '合并角色图',
     characterImage: '角色图',
-    
+
     // 场景图
-    sceneImages: '场景图片',
-    aiGenerateScene: 'AI生成场景图',
+    aiGenerateScene: 'AI 生成场景图',
     noSceneImages: '暂无场景图片',
     
+    // 道具图
+    propImages: '道具图片',
+    aiGenerateProp: 'AI 生成道具图',
+    noPropImages: '暂无道具图片',
+
     // 分镜图
     noShotsToGenerate: '没有可分镜生成的图片',
     pendingShotsInQueue: '已有 {count} 个分镜在队列中，请等待完成后再试',
@@ -227,6 +294,7 @@ export default {
     createVideoTaskFailedCheckNetwork: '创建视频生成任务失败，请检查网络连接',
     generateAllShotVideos: '生成全部分镜视频',
     generateVideoForShotsWithImages: '为所有已有分镜图片的分镜生成视频',
+    generateAllAudioHint: '为所有分镜的角色台词生成音频',
     generating: '生成中...',
     videoGenerating: '视频生成中...',
     generateVideoBasedOnImage: '基于当前分镜图片生成视频',

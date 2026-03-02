@@ -1,3 +1,6 @@
+"""
+健康检查路由 - 系统状态检查相关接口
+"""
 from fastapi import APIRouter, HTTPException
 import httpx
 

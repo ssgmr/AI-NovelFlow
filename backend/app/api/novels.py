@@ -7,33 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.novel import Novel
-from app.models.prompt_template import PromptTemplate
 from app.schemas.novel import NovelCreate
+from app.repositories import NovelRepository, ChapterRepository, CharacterRepository, PromptTemplateRepository
 from app.services.llm_service import LLMService
-from app.repositories import NovelRepository, ChapterRepository, CharacterRepository
+from app.services.novel_service import NovelService
+from app.api.deps import get_novel_repo, get_chapter_repo, get_character_repo
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
-
-
-def get_llm_service() -> LLMService:
-    """获取 LLMService 实例（每次调用创建新实例以获取最新配置）"""
-    return LLMService()
-
-
-def get_novel_repo(db: Session = Depends(get_db)) -> NovelRepository:
-    """获取 NovelRepository 实例"""
-    return NovelRepository(db)
-
-
-def get_chapter_repo(db: Session = Depends(get_db)) -> ChapterRepository:
-    """获取 ChapterRepository 实例"""
-    return ChapterRepository(db)
-
-
-def get_character_repo(db: Session = Depends(get_db)) -> CharacterRepository:
-    """获取 CharacterRepository 实例"""
-    return CharacterRepository(db)
 
 
 # ==================== 小说 CRUD ====================
@@ -76,8 +57,10 @@ async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
         style_prompt_template_id=style_prompt_template_id,
         character_parse_prompt_template_id=novel.character_parse_prompt_template_id,
         scene_parse_prompt_template_id=novel.scene_parse_prompt_template_id,
+        prop_parse_prompt_template_id=novel.prop_parse_prompt_template_id,
         prompt_template_id=prompt_template_id,
         scene_prompt_template_id=novel.scene_prompt_template_id,
+        prop_prompt_template_id=novel.prop_prompt_template_id,
         chapter_split_prompt_template_id=novel.chapter_split_prompt_template_id,
         aspect_ratio=novel.aspect_ratio or "16:9",
     )
@@ -97,8 +80,10 @@ async def create_novel(novel: NovelCreate, db: Session = Depends(get_db)):
             "stylePromptTemplateId": db_novel.style_prompt_template_id,
             "characterParsePromptTemplateId": db_novel.character_parse_prompt_template_id,
             "sceneParsePromptTemplateId": db_novel.scene_parse_prompt_template_id,
+            "propParsePromptTemplateId": db_novel.prop_parse_prompt_template_id,
             "promptTemplateId": db_novel.prompt_template_id,
             "scenePromptTemplateId": db_novel.scene_prompt_template_id,
+            "propPromptTemplateId": db_novel.prop_prompt_template_id,
             "chapterSplitPromptTemplateId": db_novel.chapter_split_prompt_template_id,
             "aspectRatio": db_novel.aspect_ratio or "16:9",
             "createdAt": format_datetime(db_novel.created_at),
@@ -138,8 +123,10 @@ async def update_novel(
         "stylePromptTemplateId": "style_prompt_template_id",
         "characterParsePromptTemplateId": "character_parse_prompt_template_id",
         "sceneParsePromptTemplateId": "scene_parse_prompt_template_id",
+        "propParsePromptTemplateId": "prop_parse_prompt_template_id",
         "promptTemplateId": "prompt_template_id",
         "scenePromptTemplateId": "scene_prompt_template_id",
+        "propPromptTemplateId": "prop_prompt_template_id",
         "chapterSplitPromptTemplateId": "chapter_split_prompt_template_id",
         "aspectRatio": "aspect_ratio",
     }
@@ -253,4 +240,41 @@ async def parse_characters(
         end_chapter=end_chapter,
         is_incremental=is_incremental,
         character_repo=character_repo
+    )
+
+
+@router.post("/{novel_id}/parse-props/", response_model=dict)
+async def parse_props(
+    novel_id: str,
+    sync: bool = False,
+    start_chapter: int = None,
+    end_chapter: int = None,
+    is_incremental: bool = False,
+    db: Session = Depends(get_db),
+    novel_repo: NovelRepository = Depends(get_novel_repo),
+    chapter_repo: ChapterRepository = Depends(get_chapter_repo)
+):
+    """解析小说内容，自动提取道具信息（支持章节范围和增量更新）"""
+    from app.services.novel_service import NovelService
+    from app.repositories import PropRepository
+
+    novel = novel_repo.get_by_id(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="小说不存在")
+
+    # 获取指定章节范围的章节
+    chapters = chapter_repo.get_by_range(novel_id, start_chapter, end_chapter)
+
+    if not chapters:
+        return {"success": False, "message": "指定章节范围内没有内容"}
+
+    prop_repo = PropRepository(db)
+    service = NovelService(db)
+    return await service.parse_props(
+        novel_id=novel_id,
+        chapters=chapters,
+        start_chapter=start_chapter,
+        end_chapter=end_chapter,
+        is_incremental=is_incremental,
+        prop_repo=prop_repo
     )

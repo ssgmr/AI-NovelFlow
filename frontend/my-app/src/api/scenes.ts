@@ -33,7 +33,7 @@ export const sceneApi = {
 
   /** 生成场景图任务 */
   generateImage: (sceneId: string) => 
-    api.post(`/tasks/scene/${sceneId}/generate-image`),
+    api.post(`/scenes/${sceneId}/generate-image`),
 
   /** 上传场景图片 */
   uploadImage: async (sceneId: string, file: File) => {

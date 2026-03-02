@@ -12,13 +12,9 @@ from app.models.novel import Novel, Chapter
 from app.models.workflow import Workflow
 from app.repositories import TaskRepository
 from app.services.task_service import TaskService
+from app.api.deps import get_task_repo
 
 router = APIRouter()
-
-
-def get_task_repo(db: Session = Depends(get_db)) -> TaskRepository:
-    """获取 TaskRepository 实例"""
-    return TaskRepository(db)
 
 
 def get_task_service(db: Session = Depends(get_db)) -> TaskService:
@@ -66,28 +62,6 @@ async def get_task(task_id: str, task_repo: TaskRepository = Depends(get_task_re
         "success": True,
         "data": TaskService.format_task_detail(task)
     }
-
-
-# ==================== 角色任务 ====================
-
-@router.post("/character/{character_id}/generate-portrait")
-async def generate_character_portrait(
-        character_id: str,
-        task_service: TaskService = Depends(get_task_service)
-):
-    """生成角色人设图任务"""
-    return task_service.create_character_portrait_task(character_id)
-
-
-# ==================== 场景任务 ====================
-
-@router.post("/scene/{scene_id}/generate-image")
-async def generate_scene_image(
-        scene_id: str,
-        task_service: TaskService = Depends(get_task_service)
-):
-    """生成场景图任务"""
-    return task_service.create_scene_image_task(scene_id)
 
 
 # ==================== 任务操作 ====================
