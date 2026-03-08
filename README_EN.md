@@ -12,41 +12,34 @@ NovelFlow is an AI platform that automatically converts novels into videos.
 
 ```
 ┌─────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐
-│  Novel  │ → │ AI Parse  │ → │ AI Parse  │ → │ Generate  │ → │ Generate  │
-│         │    │ Characters│    │  Scenes   │    │Character  │    │  Scene    │
-│         │    │           │    │           │    │  Images   │    │  Images   │
+│  Novel  │ → │ AI Parse  │ → │ AI Parse  │ → │ AI Parse  │ → │ Generate  │
+│         │    │ Characters│    │  Scenes   │    │   Props   │    │Character  │
+│         │    │           │    │           │    │           │    │  Images   │
 └─────────┘    └───────────┘    └───────────┘    └───────────┘    └───────────┘
-                                                            ↓
-┌───────────┐    ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│   Merge   │ ← │ Gen Transition│ ← │  Gen Shot     │ ← │   Gen Shot    │
-│   Video   │    │    Video      │    │    Video      │    │     Image     │
-└───────────┘    └───────────────┘    └───────────────┘    └───────┬───────┘
-                                                                    ↑
-                              ┌───────────────┐    ┌───────────┐    │
-                              │ Merge Char    │ ← │  JSON     │ ← ┘
-                              │    Image      │    │ Structure │
-                              └───────────────┘    └───────────┘
-                                                              ↑
-                                              ┌───────────┐    │
-                                              │   Edit    │ ← ┘
-                                              │  Chapter  │
-                                              │AI Split   │
-                                              └───────────┘
+                                                                    ↓
+┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐
+│  Generate │ ← │  Generate │ ← │ Gen Shot  │ ← │ AI Split  │ ← │ Generate  │
+│   Video   │    │   Audio   │    │  Image    │    │   Shots   │    │  Scene    │
+└───────────┘    └───────────┘    └───────────┘    └───────────┘    └───────────┘
+                                                        ↑
+                              ┌───────────┐    ┌───────────┐
+                              │   Edit    │ ← │ Generate  │
+                              │  Chapter  │    │Prop Images│
+                              └───────────┘    └───────────┘
 ```
 
 **Detailed Steps:**
 1. **Import Novel** - Create new or import novel text (TXT, EPUB supported)
 2. **AI Parse Characters** - Automatically extract character info (name, description, appearance)
 3. **AI Parse Scenes** - Automatically extract scene info (scene name, environment description)
-4. **Generate Character Images** - Generate AI character portraits for each character
-5. **Generate Scene Images** - Generate reference images for each scene (optional)
-6. **Edit Chapter / AI Split Shots** - Edit chapter content, AI automatically splits into shots; supports incremental parsing of characters and scenes during editing
-7. **JSON Structure** - Generate shot data (characters, scenes, shot descriptions)
-8. **Generate Merged Character Image** - Merge multiple characters into reference image (for shot generation)
+4. **AI Parse Props** - Automatically extract prop info (prop name, appearance description)
+5. **Generate Character Images** - Generate AI character portraits for each character
+6. **Generate Scene Images** - Generate reference images for each scene
+7. **Generate Prop Images** - Generate reference images for each prop
+8. **Edit Chapter / AI Split Shots** - Edit chapter content, AI automatically splits into shots
 9. **Generate Shot Images** - Generate scene images based on shot descriptions
-10. **Generate Shot Videos** - Convert shot images into video clips
-11. **Generate Transition Videos** - Generate transition videos between shots (optional)
-12. **Merge Videos** - Combine all clips into a complete video
+10. **Generate Audio** - Generate voiceover/sound effects for shots (optional)
+11. **Generate Video** - Generate shot videos, transition videos and merge into complete video
 
 **Key Features:**
 - Support for chapter-style novel parsing
@@ -282,30 +275,30 @@ Configure in [System Settings] → [Language & Timezone] page.
 - Click [Create Novel] to create a novel
 - Or select preset test cases for quick experience
 
-### 2. AI Parse Characters and Scenes
+### 2. AI Parse Characters, Scenes and Props
 - Click [AI Parse Characters] on novel detail page to extract character info
 - Click [AI Parse Scenes] to extract scene info
+- Click [AI Parse Props] to extract prop info
 - Support chapter range selection and incremental update
 
-### 3. Generate Character and Scene Images
+### 3. Generate Character, Scene and Prop Images
 - Enter [Character Library] page, click [AI Generate All Character Images]
-- Enter [Scene Library] page, click [Generate All Scene Images] (optional)
+- Enter [Scene Library] page, click [Generate All Scene Images]
+- Enter [Props Library] page, click [Generate All Prop Images]
 
 ### 4. Edit Chapter and AI Split Shots
 - Enter [Chapter Generation] page, click [AI Split Shots] to automatically split into shots
-- Enter [Chapter Edit] page to edit chapter content, supports incremental parsing of characters and scenes during editing
+- Enter [Chapter Edit] page to edit chapter content, supports incremental parsing of characters, scenes and props during editing
 
 ### 5. Generate Shot Images
 - Click [Generate All Shot Images]
 
-### 6. Generate Shot Videos
-- After shot images are generated
-- Click [Generate All Shot Videos]
+### 6. Generate Audio (Optional)
+- Click [Generate All Audio] to generate voiceover/sound effects for shots
 
-### 7. Generate Transition Videos (Optional)
-- Generate transition videos between shots
-
-### 8. Merge Video
+### 7. Generate Video
+- Click [Generate All Shot Videos] to generate shot videos
+- Click [Generate All Transition Videos] to generate transition videos (optional)
 - Click [Merge Video] to combine all clips into complete video
 
 ## Contributing
@@ -314,4 +307,4 @@ Contributions are welcome! Please read the [Contributing Guide](docs/CONTRIBUTE_
 
 ## License
 
-MIT
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
