@@ -61,7 +61,7 @@
       ],
       "length": [
         "287",
-        1
+        0
       ],
       "batch_size": 1
     },
@@ -184,7 +184,7 @@
         0
       ],
       "vae": [
-        "361",
+        "184",
         0
       ]
     },
@@ -257,7 +257,7 @@
         0
       ],
       "vae": [
-        "361",
+        "184",
         0
       ]
     },
@@ -342,7 +342,7 @@
         0
       ],
       "vae": [
-        "361",
+        "184",
         0
       ],
       "image": [
@@ -367,7 +367,7 @@
         0
       ],
       "vae": [
-        "361",
+        "184",
         0
       ],
       "image": [
@@ -504,7 +504,7 @@
     "inputs": {
       "frames_number": [
         "287",
-        1
+        0
       ],
       "frame_rate": [
         "311",
@@ -604,7 +604,7 @@
   },
   "291": {
     "inputs": {
-      "value": 10
+      "value": 6
     },
     "class_type": "INTConstant",
     "_meta": {
@@ -627,22 +627,6 @@
     "class_type": "INTConstant",
     "_meta": {
       "title": "HEIGHT"
-    }
-  },
-  "301": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "➕ Add Lora": "",
-      "model": [
-        "345",
-        0
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "Power Lora Loader (rgthree)"
     }
   },
   "311": {
@@ -681,7 +665,7 @@
     "inputs": {
       "preview_rate": 8,
       "model": [
-        "301",
+        "345",
         0
       ],
       "vae": [
@@ -754,17 +738,6 @@
     "class_type": "ManualSigmas",
     "_meta": {
       "title": "自定义Sigmas"
-    }
-  },
-  "361": {
-    "inputs": {
-      "vae_name": "LTX23_video_vae_bf16.safetensors",
-      "device": "main_device",
-      "weight_dtype": "bf16"
-    },
-    "class_type": "VAELoaderKJ",
-    "_meta": {
-      "title": "VAELoader KJ"
     }
   }
 }
