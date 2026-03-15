@@ -59,10 +59,7 @@
         "163",
         1
       ],
-      "length": [
-        "287",
-        0
-      ],
+      "length": 97,
       "batch_size": 1
     },
     "class_type": "EmptyLTXVLatentVideo",
@@ -129,7 +126,7 @@
   },
   "114": {
     "inputs": {
-      "noise_seed": 420
+      "noise_seed": 86637162153250
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -138,7 +135,7 @@
   },
   "115": {
     "inputs": {
-      "noise_seed": 43
+      "noise_seed": 660999432033269
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -502,10 +499,7 @@
   },
   "199": {
     "inputs": {
-      "frames_number": [
-        "287",
-        0
-      ],
+      "frames_number": 97,
       "frame_rate": [
         "311",
         1
@@ -578,15 +572,7 @@
   },
   "287": {
     "inputs": {
-      "expression": "1+ 8*(round(a*b)/8)",
-      "a": [
-        "291",
-        0
-      ],
-      "b": [
-        "285",
-        0
-      ]
+      "expression": "1+ 8*(round(a*b)/8)"
     },
     "class_type": "SimpleCalculatorKJ",
     "_meta": {
