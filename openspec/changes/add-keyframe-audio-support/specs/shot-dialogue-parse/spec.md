@@ -1,9 +1,6 @@
-# shot-dialogue-parse Specification
+# 功能规格说明
 
-## Purpose
-定义分镜数据解析时提取角色台词、旁白台词和情感提示词的能力要求，支持在章节分镜生成页面展示和编辑。支持台词类型区分和时序控制。
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 分镜数据存储台词列表
 
@@ -79,60 +76,3 @@
 #### Scenario: 添加旁白台词无需角色列表
 - **WHEN** 用户添加旁白台词
 - **THEN** 系统 SHALL 允许添加，无需检查分镜角色列表
-
-### Requirement: 台词数据持久化
-
-台词数据 SHALL 随章节数据一起保存，无需独立的持久化逻辑。
-
-#### Scenario: 保存章节数据时包含台词
-- **WHEN** 用户保存章节的解析数据
-- **THEN** 台词数据 SHALL 随 `parsedData` 一起保存到数据库
-
-#### Scenario: 加载章节数据时恢复台词
-- **WHEN** 用户加载已保存的章节
-- **THEN** 分镜的台词数据 SHALL 正确显示在编辑器中
-
-### Requirement: 台词编辑输入缓存
-
-系统 SHALL 提供本地编辑缓存机制，确保用户输入时的输入框状态稳定。
-
-#### Scenario: 台词文本输入缓存
-- **WHEN** 用户在台词文本输入框中输入内容
-- **THEN** 系统 SHALL 使用本地编辑缓存显示输入内容
-- **AND** 缓存 SHALL 在 JSON 更新时保持输入框状态稳定
-
-#### Scenario: 情感提示词输入缓存
-- **WHEN** 用户在情感提示词输入框中输入内容
-- **THEN** 系统 SHALL 使用本地编辑缓存显示输入内容
-
-### Requirement: 台词角色切换历史缓存
-
-系统 SHALL 在切换台词角色时保存和恢复该角色的台词内容。
-
-#### Scenario: 切换角色时保存旧角色台词
-- **WHEN** 用户在台词条目中切换角色
-- **THEN** 系统 SHALL 保存旧角色的台词文本和情感提示词到历史缓存
-- **AND** 缓存 key SHALL 使用格式 `shotIndex_dialogueIndex_characterName`
-
-#### Scenario: 切换回已编辑过的角色时恢复内容
-- **WHEN** 用户切换到一个之前在该台词位置编辑过的角色
-- **THEN** 系统 SHALL 从历史缓存中恢复该角色的台词文本和情感提示词
-- **AND** 若无缓存，系统 SHALL 使用默认值（空文本，"自然"情感）
-
-### Requirement: 单个台词生成音频
-
-台词编辑区 SHALL 为每条台词提供单独的音频生成入口。
-
-#### Scenario: 无音频时显示生成按钮
-- **WHEN** 台词有角色名且无音频
-- **THEN** 系统 SHALL 显示"生成音频"按钮
-- **AND** 点击按钮 SHALL 为该台词创建音频生成任务
-
-#### Scenario: 音频生成中状态显示
-- **WHEN** 音频生成任务进行中
-- **THEN** 系统 SHALL 显示加载动画和"音频生成中..."提示
-
-#### Scenario: 音频生成失败状态
-- **WHEN** 音频生成任务失败
-- **THEN** 系统 SHALL 显示失败提示
-- **AND** 系统 SHALL 显示"重新生成"按钮
