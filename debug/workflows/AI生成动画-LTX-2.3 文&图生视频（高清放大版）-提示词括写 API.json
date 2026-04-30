@@ -1,0 +1,692 @@
+{
+  "1": {
+    "inputs": {
+      "samples": [
+        "80",
+        1
+      ],
+      "audio_vae": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "#1 LTXV Audio VAE Decode"
+    }
+  },
+  "3": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "#3 fps"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fpmixed.safetensors",
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors",
+      "device": "default"
+    },
+    "class_type": "LTXAVTextEncoderLoader",
+    "_meta": {
+      "title": "#4 LTXV Audio Text Encoder Loader"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": [
+        "13",
+        0
+      ],
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "#5 CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "pc game, console game, video game, cartoon, childish, ugly",
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "#7 CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "11": {
+    "inputs": {
+      "value": "a * b + 1",
+      "a": [
+        "83",
+        0
+      ],
+      "b": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "#11 🔧 Simple Math"
+    }
+  },
+  "13": {
+    "inputs": {
+      "text": "A low-angle tracking shot opens on a lone warrior in a shattered temple courtyard with dust swirling in the golden afternoon light. First, he drops his sword and lunges forward with a brutal sprint, kicking up debris as his boots smash through broken stone, then leaps over a collapsed pillar while screaming, before spinning mid-air to deliver a horizontal slash that splits the air into wind-scarred ribbons, finally landing on a crumbling altar with a thunderous crash that sends shockwaves through the ruins. The camera darts alongside him, tilting upward as he soars, then jerks backward to emphasize his explosive descent. 用标准普通话说：The character says, 以血为誓，今日必斩此魔！in a roaring, desperate voice.",
+      "anything": [
+        "85",
+        0
+      ]
+    },
+    "class_type": "easy showAnything",
+    "_meta": {
+      "title": "#13 Show Any"
+    }
+  },
+  "18": {
+    "inputs": {
+      "img_compression": 18,
+      "image": [
+        "93",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "#18 LTXVPreprocess"
+    }
+  },
+  "19": {
+    "inputs": {
+      "strength": 0.7,
+      "bypass": [
+        "52",
+        0
+      ],
+      "vae": [
+        "27",
+        2
+      ],
+      "image": [
+        "18",
+        0
+      ],
+      "latent": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoConditionOnly",
+    "_meta": {
+      "title": "#19 🅛🅣🅧 LTXV Img To Video Condition Only"
+    }
+  },
+  "20": {
+    "inputs": {
+      "video_latent": [
+        "19",
+        0
+      ],
+      "audio_latent": [
+        "21",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "#20 LTXVConcatAVLatent"
+    }
+  },
+  "21": {
+    "inputs": {
+      "frames_number": [
+        "11",
+        0
+      ],
+      "frame_rate": [
+        "89",
+        0
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "#21 LTXV Empty Latent Audio"
+    }
+  },
+  "22": {
+    "inputs": {
+      "width": [
+        "93",
+        3
+      ],
+      "height": [
+        "93",
+        4
+      ],
+      "length": [
+        "11",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "#22 EmptyLTXVLatentVideo"
+    }
+  },
+  "27": {
+    "inputs": {
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "#27 Load Checkpoint"
+    }
+  },
+  "29": {
+    "inputs": {
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "LTXVAudioVAELoader",
+    "_meta": {
+      "title": "#29 LTXV Audio VAE Loader"
+    }
+  },
+  "33": {
+    "inputs": {
+      "anything": [
+        "91",
+        0
+      ]
+    },
+    "class_type": "easy cleanGpuUsed",
+    "_meta": {
+      "title": "#33 Clean VRAM Used"
+    }
+  },
+  "37": {
+    "inputs": {
+      "frame_rate": [
+        "3",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "#37 LTXVConditioning"
+    }
+  },
+  "38": {
+    "inputs": {
+      "noise": [
+        "40",
+        0
+      ],
+      "guider": [
+        "39",
+        0
+      ],
+      "sampler": [
+        "42",
+        0
+      ],
+      "sigmas": [
+        "43",
+        0
+      ],
+      "latent_image": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "#38 SamplerCustomAdvanced"
+    }
+  },
+  "39": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "55",
+        0
+      ],
+      "positive": [
+        "37",
+        0
+      ],
+      "negative": [
+        "37",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "#39 CFGGuider"
+    }
+  },
+  "40": {
+    "inputs": {
+      "noise_seed": 43
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "#40 RandomNoise"
+    }
+  },
+  "42": {
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "#42 KSamplerSelect"
+    }
+  },
+  "43": {
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "#43 ManualSigmas"
+    }
+  },
+  "44": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 512,
+      "temporal_overlap": 64,
+      "samples": [
+        "80",
+        0
+      ],
+      "vae": [
+        "27",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "#44 VAE Decode (Tiled)"
+    }
+  },
+  "46": {
+    "inputs": {
+      "av_latent": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "#46 LTXVSeparateAVLatent"
+    }
+  },
+  "52": {
+    "inputs": {
+      "value": false
+    },
+    "class_type": "PrimitiveBoolean",
+    "_meta": {
+      "title": "#52 切换文生视频"
+    }
+  },
+  "55": {
+    "inputs": {
+      "lora_name": "LTX2.3\\ltx-2.3-22b-distilled-lora-384.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "#55 Load LoRA"
+    }
+  },
+  "57": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "#57 Load Latent Upscale Model"
+    }
+  },
+  "60": {
+    "inputs": {
+      "samples": [
+        "46",
+        0
+      ],
+      "upscale_model": [
+        "57",
+        0
+      ],
+      "vae": [
+        "27",
+        2
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "#60 LTXVLatentUpsampler"
+    }
+  },
+  "64": {
+    "inputs": {
+      "strength": 1,
+      "bypass": false,
+      "vae": [
+        "27",
+        2
+      ],
+      "image": [
+        "66",
+        0
+      ],
+      "latent": [
+        "60",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoConditionOnly",
+    "_meta": {
+      "title": "#64 🅛🅣🅧 LTXV Img To Video Condition Only"
+    }
+  },
+  "66": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 0.5000000000000001,
+      "image": [
+        "93",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "#66 Upscale Image By"
+    }
+  },
+  "73": {
+    "inputs": {
+      "noise": [
+        "74",
+        0
+      ],
+      "guider": [
+        "75",
+        0
+      ],
+      "sampler": [
+        "77",
+        0
+      ],
+      "sigmas": [
+        "78",
+        0
+      ],
+      "latent_image": [
+        "79",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "#73 SamplerCustomAdvanced"
+    }
+  },
+  "74": {
+    "inputs": {
+      "noise_seed": 42
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "#74 RandomNoise"
+    }
+  },
+  "75": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "55",
+        0
+      ],
+      "positive": [
+        "37",
+        0
+      ],
+      "negative": [
+        "37",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "#75 CFGGuider"
+    }
+  },
+  "77": {
+    "inputs": {
+      "sampler_name": "euler_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "#77 KSamplerSelect"
+    }
+  },
+  "78": {
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "#78 ManualSigmas"
+    }
+  },
+  "79": {
+    "inputs": {
+      "video_latent": [
+        "64",
+        0
+      ],
+      "audio_latent": [
+        "46",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "#79 LTXVConcatAVLatent"
+    }
+  },
+  "80": {
+    "inputs": {
+      "av_latent": [
+        "73",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "#80 LTXVSeparateAVLatent"
+    }
+  },
+  "82": {
+    "inputs": {
+      "frame_rate": [
+        "3",
+        0
+      ],
+      "loop_count": 0,
+      "filename_prefix": "LTX2/ltx2-i2v",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": false,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "44",
+        0
+      ],
+      "audio": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "#82 Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "83": {
+    "inputs": {
+      "value": 8
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "#83 时长"
+    }
+  },
+  "85": {
+    "inputs": {
+      "text": [
+        "88",
+        0
+      ],
+      "model": "Qwen3-VL-4B-Instruct",
+      "quantization": "none",
+      "keep_model_loaded": false,
+      "temperature": 0.7,
+      "max_new_tokens": 2048,
+      "min_pixels": 200704,
+      "max_pixels": 1003520,
+      "seed": 114,
+      "attention": "eager"
+    },
+    "class_type": "Qwen3_VQA",
+    "_meta": {
+      "title": "#85 Qwen3 VQA"
+    }
+  },
+  "86": {
+    "inputs": {
+      "text": "Role\n\n你是一个 LTX-2 提示词专家。请将用户的【台词】和【画面描述】改写成一段连贯但简单的英文段落，并设计一套8秒时长的、带有明显“空间位移”的连续动作序列，让角色不仅有肢体动作，还要在场景中产生移动（如跑、飞、走、跳等），形成完整的动态叙事。\n\nGoal\n\n生成一段 5-7 句的英文，要求读起来像一个动作分镜脚本，单词难度初中水平，动作必须有明确的时间先后顺序和空间位置变化。\n\nRules (关键！)\n\n合并主语：不要每一句都用 \"He is...\" 开头。\n\n使用连接词：用 \"first\", \"then\", \"as\", \"before\", \"finally\" 来标记动作的时间顺序。\n\n严格遵循顺序：构图/氛围 -> 角色空间位移动作 -> 运镜跟随 -> 音频/台词。\n\n必须是连贯段落：不要分行。\n\n拒绝“站桩输出”：角色绝对不能站在原地只挥动手臂或施法，必须发生位置改变（如向前冲刺、向后滑行、升入空中、边走边说）。\n\n10秒空间位移动作设计原则（核心！）：\n\n第0-2秒（起势/预备）：角色处于初始位置（A点），身体重心改变，准备发力。\n\n第2-5秒（核心位移）：产生大幅度空间移动（奔跑/飞行/跳跃/踱步），穿越当前环境。\n\n第5-8秒（动作交汇/高潮）：在移动中完成核心动作（如在半空中挥剑、在冲刺时施法）。\n\n第8-10秒（落地/到达新位置）：到达B点，通过滑行缓冲、落地砸坑或停下脚步来收尾。\n\nStructure\n\n[Setup]: \"A [Shot Type] opens on [Subject] in [Environment] with [Lighting].\"\n2.[Action & Movement Sequence - 必须包含空间位移]:\n\n动作1（起步）：\"First, he/she [起始动作]...\"\n\n动作2（位移）：\"then[位移动词，如 strides forward / sprints / leaps / levitates] as [伴随效果]...\"\n\n动作3（高潮）：\"before[在移动中爆发的核心动作]...\"\n\n动作4（定格）：\"finally[到达新位置的收尾姿态]...\"\n示例：\"First he draws his sword, then sprints forward through the falling rain, before leaping high into the air to deliver a crushing blow, finally sliding to a halt on the muddy ground.\"\n3.[Camera]: \"The camera [持续跟随角色移动的运镜]，[具体运镜描述]...\"\n4.[Audio]: 描述声音层次（环境音→动作音→台词），引出台词。格式：用标准普通话说（用中文）：The character says, [用户台词] in a [Tone] voice.\n\nConstraints\n\n不要使用列表，必须是一段完整的文字（Single Paragraph）。\n\n必须包含用户的台词（台词部分必须输出中文）。\n\nThe character says, 前必须加 [用标准普通话说]\n\n严禁原地静止描述（如 \"he stands there\", \"she waves her hands\"），必须使用位移动词（如 walk, run, dash, fly, slide, jump, backflip）。\n\n每个动作必须包含：身体部位 + 位移方式 + 动作反馈/环境交互。\n\n动态与位移强度分级（根据场景类型选择）\n1. 日常/剧情类（走/踱步/转身）\n\n起步：转身面向镜头 → 迈出第一步\n\n位移：慢慢向前走近 (strides forward) / 焦躁地来回踱步 (paces back and forth) / 边走边推开障碍物\n\n收尾：停在镜头极近处 → 俯身/抬头看着对方\n\n2. 移动/追击类（跑/冲刺/跑酷）\n\n启动：屈膝下蹲 → 猛然蹬地发力 (pushes off the ground)\n\n位移：极速冲刺 (sprints rapidly) → 踩着墙壁跳跃 (wall-running) / 跨过障碍物 / 留下残影\n\n落地：翻滚缓冲 (rolls forward to absorb impact) → 单膝跪地滑行 (slides on one knee)\n\n3. 战斗类（位移与攻击结合）\n\n启动：握紧武器 → 压低身体重心\n\n位移：贴地疾驰 (dashes close to the ground) → 跃起拉近距离 (leaps towards the enemy) / 向后空翻躲避 (backflips away)\n\n连招：在空中旋身劈砍 → 落地时借着惯性转身横扫 → 收剑\n\n4. 魔法/玄幻类（飞/悬浮/瞬移）\n\n启动：双脚离地 (feet leave the ground) → 能量环绕全身\n\n位移：升入高空 (levitates high into the air) / 向后滑行拉开距离 (glides backward) / 化作一道光束冲破云层\n\n收尾：从空中缓缓降落 (descends slowly) / 斗篷在落地时重重落下\n\nExamples\n示例1：东方玄幻剑术（高速突进+攻击）\n\n输入：台词\"一剑霜寒十四州！\"，画面\"白衣剑客在竹林中\"\n输出：A wide tracking shot opens on a white-robed swordsman in a dense bamboo forest with mist swirling around his ankles. First he lowers his stance and touches his sword hilt, then violently dashes forward like a phantom, shattering the bamboo stalks in his path as he sprints, before leaping horizontally through the air to deliver a spinning slash that freezes the surrounding mist, finally sliding backward on the muddy ground to a perfect halt, leaving a deep trail in the dirt. The camera rushes forward alongside him, capturing the intense speed of his sprint before orbiting during his final landing. 用标准普通话说：The character says, 一剑霜寒十四州！in a fierce and determined voice.\n\n示例2：魔法施法（升空与环境破坏）\n\n输入：台词\"以星辰之名，赐予我力量！\"，画面\"紫袍法师在星空下\"\n输出：A dynamic low-angle shot opens on a purple-robed mage under a starry night sky. First she raises her arms as her feet slowly leave the ground, then gracefully levitates higher into the air while magical wind blows her hood back, before soaring backward and thrusting both hands forward to release a massive beam of starlight that pushes her even further back through the sky, finally landing gently on a ruined pillar as the cosmic energy fades. The camera tilts up as she rises, then pulls back quickly to emphasize her backward flight and the massive energy blast. 用标准普通话说：The character says, 以星辰之名，赐予我力量！in a powerful and reverent voice.\n\n示例3：日常情绪压迫感（走近+压迫）\n\n输入：台词\"这是最后一次警告。\"，画面\"西装黑帮大佬在昏暗仓库\"\n输出：A medium shot opens on a mafia boss in a sharp suit standing at the far end of a dimly lit warehouse. First he drops his cigar and crushes it with his heavy leather shoe, then slowly strides forward with heavy, echoing footsteps as he steps out of the shadows into a pool of harsh light, before suddenly speeding up his walk and grabbing a hanging lightbulb, finally stopping mere inches from the camera with a terrifying glare. The camera slowly dollies backward to maintain distance, keeping his imposing figure constantly moving toward the viewer. 用标准普通话说：The character says, 这是最后一次警告。in a cold, low, and menacing voice."
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "#86 系统提示词"
+    }
+  },
+  "88": {
+    "inputs": {
+      "delimiter": " ",
+      "string1": [
+        "86",
+        0
+      ],
+      "string2": [
+        "94",
+        0
+      ]
+    },
+    "class_type": "JoinStrings",
+    "_meta": {
+      "title": "#88 Join Strings"
+    }
+  },
+  "89": {
+    "inputs": {
+      "value": [
+        "3",
+        0
+      ],
+      "mode": "round"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "#89 Float to Integer"
+    }
+  },
+  "91": {
+    "inputs": {
+      "image": "7c2f51b077553bae23c8aa62e1808ba61c37a2b2f1803df9bb454d3b96e1c885 (1).jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "#91 Load Image"
+    }
+  },
+  "92": {
+    "inputs": {
+      "value": 960
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "#92 最长边"
+    }
+  },
+  "93": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "32",
+      "scale_to_side": "longest",
+      "scale_to_length": [
+        "92",
+        0
+      ],
+      "background_color": "#000000",
+      "image": [
+        "91",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "#93 LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "94": {
+    "inputs": {
+      "prompt": "(00-1.5s): Macro Push In从写轮眼特写开始，三勾玉在猩红虹膜中缓慢旋转，瞳孔收缩成针尖，宇智波鼬的睫毛在结印带起的气流中颤动，乌鸦羽毛从画面边缘飘入，在他指尖0.5厘米处悬浮，背景火星呈螺旋状上升，黑色斗篷上的红云纹路因呼吸而起伏。\n(1.5-3.0s): Whip Pan跟随结印手势，手指残影在空中留下红色查克拉轨迹，乌鸦群从斗篷内炸裂飞出，羽翼拍打声与心跳低频共振，鼬的写轮眼转速骤增，三勾玉连成风车状图案，他下颌微收，嘴角肌肉牵动出0.3秒的冷笑，背景光线被鸦群切割成明暗交错的条纹。\n(3.0-4.5s): Bullet Time环绕定格，鼬悬停于鸦群中心呈单膝跪地姿态，黑色羽毛在空中凝固成漩涡状，他瞳孔中倒映出敌人的剪影，写轮眼血丝如树根般向眼白蔓延，斗篷下摆被无形气浪掀起，露出脚踝处绑着的苦无皮套，背景火星重新点燃成漂浮的鬼火。\n(4.5-6.0s): Handheld Chaos突进面部特写，鼬猛然抬头，写轮眼旋转产生的离心力使虹膜边缘泛起涟漪，乌鸦从他肩头弹射而起，利爪在空气中划出三道真空痕迹，他咬肌滚动发出低沉的幻术吟唱，几缕黑发被鸦翼扇动的气流黏在额角，背景鸦群瞳孔同时亮起红光。\n(6.0-7.2s): Slow Dolly Out至半身，鼬收印时五指依次扣合发出脆响，乌鸦群在他身后聚合成巨大的黑色漩涡，写轮眼转速减缓至每两秒一圈，血丝逐渐退潮，他肩胛骨下沉，喉结滚动咽下查克拉反噬的血腥，一片烧焦的羽毛落在他掌心化为灰烬。\n(7.2-8.0s): Fade to Black从地面仰拍，鼬靴跟碾碎火星，鸦群向天空四散成黑点，写轮眼最后闪烁一次后熄灭成普通黑瞳，他侧脸轮廓被逆光切割成青铜面具，嘴角弧度彻底平复，画面收束于一片缓缓飘落的黑色羽毛，在触及地面瞬间被余烬点燃成红色火星。"
+    },
+    "class_type": "CR Prompt Text",
+    "_meta": {
+      "title": "⚙️ CR Prompt Text"
+    }
+  }
+}

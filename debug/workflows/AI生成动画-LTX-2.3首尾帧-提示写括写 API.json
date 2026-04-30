@@ -1,0 +1,723 @@
+{
+  "1": {
+    "inputs": {
+      "samples": [
+        "80",
+        1
+      ],
+      "audio_vae": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "LTXVAudioVAEDecode",
+    "_meta": {
+      "title": "#1 LTXV Audio VAE Decode"
+    }
+  },
+  "3": {
+    "inputs": {
+      "value": 24
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "#3 fps"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fpmixed.safetensors",
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors",
+      "device": "default"
+    },
+    "class_type": "LTXAVTextEncoderLoader",
+    "_meta": {
+      "title": "#4 LTXV Audio Text Encoder Loader"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": [
+        "110",
+        0
+      ],
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "#5 CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "pc game, console game, video game, cartoon, childish, ugly",
+      "clip": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "#7 CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "20": {
+    "inputs": {
+      "video_latent": [
+        "112",
+        0
+      ],
+      "audio_latent": [
+        "21",
+        0
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "#20 LTXVConcatAVLatent"
+    }
+  },
+  "21": {
+    "inputs": {
+      "frames_number": [
+        "119",
+        0
+      ],
+      "frame_rate": [
+        "111",
+        0
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "LTXVEmptyLatentAudio",
+    "_meta": {
+      "title": "#21 LTXV Empty Latent Audio"
+    }
+  },
+  "22": {
+    "inputs": {
+      "width": [
+        "118",
+        3
+      ],
+      "height": [
+        "118",
+        4
+      ],
+      "length": [
+        "119",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLTXVLatentVideo",
+    "_meta": {
+      "title": "#22 EmptyLTXVLatentVideo"
+    }
+  },
+  "27": {
+    "inputs": {
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "#27 Load Checkpoint"
+    }
+  },
+  "29": {
+    "inputs": {
+      "ckpt_name": "LTX-2.3\\ltx-2.3-22b-dev-fp8.safetensors"
+    },
+    "class_type": "LTXVAudioVAELoader",
+    "_meta": {
+      "title": "#29 LTXV Audio VAE Loader"
+    }
+  },
+  "37": {
+    "inputs": {
+      "frame_rate": [
+        "3",
+        0
+      ],
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "#37 LTXVConditioning"
+    }
+  },
+  "38": {
+    "inputs": {
+      "noise": [
+        "40",
+        0
+      ],
+      "guider": [
+        "39",
+        0
+      ],
+      "sampler": [
+        "42",
+        0
+      ],
+      "sigmas": [
+        "43",
+        0
+      ],
+      "latent_image": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "#38 SamplerCustomAdvanced"
+    }
+  },
+  "39": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "55",
+        0
+      ],
+      "positive": [
+        "37",
+        0
+      ],
+      "negative": [
+        "37",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "#39 CFGGuider"
+    }
+  },
+  "40": {
+    "inputs": {
+      "noise_seed": 75625604208369
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "#40 RandomNoise"
+    }
+  },
+  "42": {
+    "inputs": {
+      "sampler_name": "euler_ancestral_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "#42 KSamplerSelect"
+    }
+  },
+  "43": {
+    "inputs": {
+      "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "#43 ManualSigmas"
+    }
+  },
+  "44": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 2048,
+      "temporal_overlap": 64,
+      "samples": [
+        "80",
+        0
+      ],
+      "vae": [
+        "27",
+        2
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "#44 VAE Decode (Tiled)"
+    }
+  },
+  "46": {
+    "inputs": {
+      "av_latent": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "#46 LTXVSeparateAVLatent"
+    }
+  },
+  "55": {
+    "inputs": {
+      "lora_name": "LTX2.3\\ltx-2.3-22b-distilled-lora-384.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "#55 Load LoRA"
+    }
+  },
+  "57": {
+    "inputs": {
+      "model_name": "ltx-2.3-spatial-upscaler-x2-1.0.safetensors"
+    },
+    "class_type": "LatentUpscaleModelLoader",
+    "_meta": {
+      "title": "#57 Load Latent Upscale Model"
+    }
+  },
+  "60": {
+    "inputs": {
+      "samples": [
+        "46",
+        0
+      ],
+      "upscale_model": [
+        "57",
+        0
+      ],
+      "vae": [
+        "27",
+        2
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "#60 LTXVLatentUpsampler"
+    }
+  },
+  "73": {
+    "inputs": {
+      "noise": [
+        "74",
+        0
+      ],
+      "guider": [
+        "75",
+        0
+      ],
+      "sampler": [
+        "77",
+        0
+      ],
+      "sigmas": [
+        "78",
+        0
+      ],
+      "latent_image": [
+        "79",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "#73 SamplerCustomAdvanced"
+    }
+  },
+  "74": {
+    "inputs": {
+      "noise_seed": 42
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "#74 RandomNoise"
+    }
+  },
+  "75": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "55",
+        0
+      ],
+      "positive": [
+        "37",
+        0
+      ],
+      "negative": [
+        "37",
+        1
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "#75 CFGGuider"
+    }
+  },
+  "77": {
+    "inputs": {
+      "sampler_name": "euler_cfg_pp"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "#77 KSamplerSelect"
+    }
+  },
+  "78": {
+    "inputs": {
+      "sigmas": "0.85, 0.7250, 0.4219, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "#78 ManualSigmas"
+    }
+  },
+  "79": {
+    "inputs": {
+      "video_latent": [
+        "115",
+        0
+      ],
+      "audio_latent": [
+        "46",
+        1
+      ]
+    },
+    "class_type": "LTXVConcatAVLatent",
+    "_meta": {
+      "title": "#79 LTXVConcatAVLatent"
+    }
+  },
+  "80": {
+    "inputs": {
+      "av_latent": [
+        "73",
+        0
+      ]
+    },
+    "class_type": "LTXVSeparateAVLatent",
+    "_meta": {
+      "title": "#80 LTXVSeparateAVLatent"
+    }
+  },
+  "82": {
+    "inputs": {
+      "frame_rate": [
+        "3",
+        0
+      ],
+      "loop_count": 0,
+      "filename_prefix": "LTX2/ltx2-i2v",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": false,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "44",
+        0
+      ],
+      "audio": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "#82 Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "91": {
+    "inputs": {
+      "image": "d34d11008b81685aa9c050c6a8f803ad27f2e8d9d0f452f28e8026424f02a89c.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "#91 Load Image [Last Image]"
+    }
+  },
+  "95": {
+    "inputs": {
+      "inputcount": 2,
+      "direction": "right",
+      "match_image_size": true,
+      "Update inputs": null,
+      "image_1": [
+        "118",
+        0
+      ],
+      "image_2": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "ImageConcatMulti",
+    "_meta": {
+      "title": "#95 Image Concatenate Multi"
+    }
+  },
+  "98": {
+    "inputs": {
+      "width": [
+        "118",
+        3
+      ],
+      "height": [
+        "118",
+        4
+      ],
+      "upscale_method": "lanczos",
+      "keep_proportion": "crop",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 2,
+      "device": "cpu",
+      "image": [
+        "100",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "#98 Resize Image v2"
+    }
+  },
+  "99": {
+    "inputs": {
+      "img_compression": 18,
+      "image": [
+        "117",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "#99 LTXVPreprocess"
+    }
+  },
+  "100": {
+    "inputs": {
+      "img_compression": 18,
+      "image": [
+        "91",
+        0
+      ]
+    },
+    "class_type": "LTXVPreprocess",
+    "_meta": {
+      "title": "#100 LTXVPreprocess"
+    }
+  },
+  "106": {
+    "inputs": {
+      "text": "# Role\n你是一名精通 LTX 2.3 官方提示词指南的“首尾帧过渡（Start-to-End Keyframe）导演兼提示词架构师”。你的任务是接收用户上传的【一张左右拼接的对比图（左半部分为首帧起点，右半部分为尾帧终点）】以及【运动意图描述】，将其转化为一段完美连接这两个画面的、纯英文单段落好莱坞级提示词。\n\n# Rules (核心生成规则)\n1. **左右分屏解析与过渡逻辑 (Split-Screen Parsing & Transition)**：\n   - 精准识别对比：**左侧画面是起点，右侧画面是终点**。\n   - 提示词必须按此逻辑展开：起势（左图状态） -> 过渡动作与运镜（建立动态桥梁） -> 收势定格（对齐右图状态）。\n2. **泛称与特征锚定 (Generic Identity & Visual Anchors) - 防形变机制**：\n   - 绝对禁止使用真实姓名或知名角色名，必须使用泛称（如 a young female warrior, the swordsman）。\n   - 紧跟泛称保留 3-5 个词的核心物理特征锚点（如 a woman in flowing green robes wielding a glowing sword），防止过渡中形变。\n3. **台词绝对防幻觉法则 (Strict No-Hallucination Dialogue Rule) - 核心红线**：\n   - **最高警告：如果用户没有明确提供台词，【绝对禁止】脑补、猜测或发明任何台词。必须彻底移除所有关于说话的描写！**\n   - **只有当**用户给出台词时，才可使用无引号格式：`the character clearly says the line [用户原文] in [语言种类] with a [Tone] voice and perfect lip sync`。\n4. **时机与物理过渡控制 (Timing & Physical Transition)**：\n   - 必须使用明确的肢体动词（如 lunges, thrusts, leans back）渲染物理运动。\n   - 若用户指定了转变时机，使用显性时间标记（如 `At the 3rd second...`）。若未指定，使用自然连接词（如 `Suddenly`, `In a rapid motion`）推演顺滑过渡。\n5. **专业摄影与极致清晰度 (Camera & Crystal Clear Optics) - 防模糊机制**：\n   - 必须用专业的电影运镜术语（dolly, pan, push in）解释画面空间的移动。\n   - **绝对禁止使用 motion blur（动态模糊）等任何会导致画面拖影的词汇。**\n   - 在结尾强制加入保持画面锐利的光学质感词汇（如 stable motion, sharp focus, crisp details, high resolution, 35mm lens）。\n6. **严苛的输出格式 (Strict Format)**：\n   - 必须是**一镜到底的单个连贯段落**（Single continuous paragraph）。使用现在时态，禁止换行、列表或分点。\n\n# The Formula (LTX 2.3 极致清晰生成公式)\n在脑海中严格遵循以下无缝拼接公式，融合成一段自然流水的文字：\n\"A continuous [运镜方式] opens on [左图的泛称与特征锚点]. [根据时间要求: Suddenly / At the X second], the camera [过渡运镜方式] as the character [从左图过渡到右图的具体肢体动作]. [⚠️重要判定：没给台词彻底跳过！给了台词才写：During the clash, the character clearly says the line [台词原文无引号] in [语言种类] with a [Tone] voice and perfect lip sync.] Ambient sounds of [具体环境音效/SFX] fill the scene. The stable, coherent movement resolves as the scene matches the final frame showing [右图的主体最终姿态与环境], concluding with [3-4个清晰光学参数, 如 sharp focus, crisp details, stable motion, 35mm lens].\"\n\n# Workflow\n当用户提供【一张左首右尾的拼接图】和【简述】后，请仔细分析左图和右图的差异，并直接输出最终的英文提示词。\n**最高指令：禁止输出任何标题、前言、后语、Markdown 代码块（绝对不许加 ``` 包裹）。你唯一的输出只能是那一段纯文本的英文提示词本身。**"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "#106 系统提示词"
+    }
+  },
+  "107": {
+    "inputs": {
+      "text": "镜头推进到图1中树上果实，果实裂开后看到图片2中的女子"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "#107 用户提示词"
+    }
+  },
+  "108": {
+    "inputs": {
+      "delimiter": " ",
+      "string1": [
+        "106",
+        0
+      ],
+      "string2": [
+        "107",
+        0
+      ]
+    },
+    "class_type": "JoinStrings",
+    "_meta": {
+      "title": "#108 Join Strings"
+    }
+  },
+  "109": {
+    "inputs": {
+      "text": [
+        "108",
+        0
+      ],
+      "model": "Qwen3-VL-4B-Instruct",
+      "quantization": "none",
+      "keep_model_loaded": false,
+      "temperature": 0.7,
+      "max_new_tokens": 2048,
+      "min_pixels": 200704,
+      "max_pixels": 1003520,
+      "seed": 762,
+      "attention": "eager",
+      "image": [
+        "95",
+        0
+      ]
+    },
+    "class_type": "Qwen3_VQA",
+    "_meta": {
+      "title": "#109 Qwen3 VQA"
+    }
+  },
+  "110": {
+    "inputs": {
+      "text": "A slow dolly-in opens on a young warrior cloaked in dark, tattered robes with red cloud insignias, surrounded by swirling black crows and glowing embers, her face half-obscured by shadow and her eyes burning crimson as she grips a dagger with a ringed finger; suddenly, the camera pans upward and tilts right as the warrior’s body erupts in a burst of crimson energy, her cloak unraveling into flowing, fiery red ribbons that spiral around her as she transforms into a figure with fox-like ears and long, luminous red hair, her hand now cradling a glowing white lotus against a backdrop of swirling golden clouds and deep blue void, the scene resolves with the character standing in serene stillness, her expression calm and focused, ambient sounds of crackling embers and distant wind filling the space, concluding with sharp focus, crisp details, stable motion, and 35mm lens.",
+      "anything": [
+        "109",
+        0
+      ]
+    },
+    "class_type": "easy showAnything",
+    "_meta": {
+      "title": "#110 Show Any"
+    }
+  },
+  "111": {
+    "inputs": {
+      "value": [
+        "3",
+        0
+      ],
+      "mode": "round"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "#111 Float to Integer"
+    }
+  },
+  "112": {
+    "inputs": {
+      "num_images": "2",
+      "num_images.strength_1": 1,
+      "num_images.strength_2": 1,
+      "num_images.index_1": 0,
+      "num_images.index_2": 0,
+      "vae": [
+        "27",
+        2
+      ],
+      "latent": [
+        "22",
+        0
+      ],
+      "num_images.image_1": [
+        "118",
+        0
+      ],
+      "num_images.image_2": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplaceKJ",
+    "_meta": {
+      "title": "#112 LTXVImgToVideoInplaceKJ"
+    }
+  },
+  "115": {
+    "inputs": {
+      "num_images": "2",
+      "num_images.strength_1": 1,
+      "num_images.strength_2": 1,
+      "num_images.index_1": 0,
+      "num_images.index_2": 0,
+      "vae": [
+        "27",
+        2
+      ],
+      "latent": [
+        "60",
+        0
+      ],
+      "num_images.image_1": [
+        "118",
+        0
+      ],
+      "num_images.image_2": [
+        "98",
+        0
+      ]
+    },
+    "class_type": "LTXVImgToVideoInplaceKJ",
+    "_meta": {
+      "title": "#115 LTXVImgToVideoInplaceKJ"
+    }
+  },
+  "116": {
+    "inputs": {
+      "value": 960
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "#116 最长边"
+    }
+  },
+  "117": {
+    "inputs": {
+      "image": "7c2f51b077553bae23c8aa62e1808ba61c37a2b2f1803df9bb454d3b96e1c885 (1).jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "#117 Load Image [first Image]"
+    }
+  },
+  "118": {
+    "inputs": {
+      "aspect_ratio": "original",
+      "proportional_width": 1,
+      "proportional_height": 1,
+      "fit": "crop",
+      "method": "lanczos",
+      "round_to_multiple": "32",
+      "scale_to_side": "longest",
+      "scale_to_length": [
+        "116",
+        0
+      ],
+      "background_color": "#000000",
+      "image": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
+    "_meta": {
+      "title": "#118 LayerUtility: ImageScaleByAspectRatio V2"
+    }
+  },
+  "119": {
+    "inputs": {
+      "value": 121
+    },
+    "class_type": "INTConstant",
+    "_meta": {
+      "title": "#119 total frame number"
+    }
+  }
+}
