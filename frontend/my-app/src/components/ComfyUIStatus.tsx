@@ -3,6 +3,12 @@ import { Server, Loader2, Thermometer, MemoryStick } from 'lucide-react';
 import { useTranslation } from '../stores/i18nStore';
 import { healthApi, type SystemStats } from '../api/health';
 
+const asNumber = (value: unknown, fallback = 0) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const asOptionalNumber = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
 export default function ComfyUIStatus() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<SystemStats>({
@@ -30,19 +36,22 @@ export default function ComfyUIStatus() {
     try {
       const data = await healthApi.getComfyUIStatus();
       if (data.status === 'ok') {
+        const vramUsed = asNumber(data.data?.vram_used);
+        const vramTotal = asNumber(data.data?.vram_total, 16);
+
         setStats({
           status: 'online',
-          gpuUsage: data.data?.gpu_usage || 0,
-          vramUsed: data.data?.vram_used || 0,
-          vramTotal: data.data?.vram_total || 16,
-          vramPercent: ((data.data?.vram_used || 0) / (data.data?.vram_total || 16)) * 100,
-          queueSize: (data.data?.queue_running || 0) + (data.data?.queue_pending || 0),
-          temperature: data.data?.temperature,
+          gpuUsage: asNumber(data.data?.gpu_usage),
+          vramUsed,
+          vramTotal,
+          vramPercent: vramTotal > 0 ? (vramUsed / vramTotal) * 100 : 0,
+          queueSize: asNumber(data.data?.queue_running) + asNumber(data.data?.queue_pending),
+          temperature: asOptionalNumber(data.data?.temperature),
           gpuSource: data.data?.gpu_source,
           gpuName: data.data?.device_name,
-          ramUsed: data.data?.ram_used,
-          ramTotal: data.data?.ram_total,
-          ramPercent: data.data?.ram_percent,
+          ramUsed: asOptionalNumber(data.data?.ram_used),
+          ramTotal: asOptionalNumber(data.data?.ram_total),
+          ramPercent: asOptionalNumber(data.data?.ram_percent),
         });
       }
     } catch (error) {
@@ -139,7 +148,7 @@ export default function ComfyUIStatus() {
         </div>
 
         {/* 内存占用 */}
-        {stats.ramUsed !== undefined && stats.ramTotal !== undefined && (
+        {stats.ramUsed != null && stats.ramTotal != null && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">

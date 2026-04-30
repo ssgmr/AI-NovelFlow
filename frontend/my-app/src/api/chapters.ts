@@ -88,7 +88,7 @@ export const chapterApi = {
 
   /** 合并章节视频 */
   mergeVideos: (novelId: string, chapterId: string) =>
-    api.post(`/novels/${novelId}/chapters/${chapterId}/merge-videos/`),
+    api.post(`/novels/${novelId}/chapters/${chapterId}/merge-videos`),
 
   /** 生成分镜台词音频 */
   generateShotAudio: (novelId: string, chapterId: string, shotIndex: number, dialogues: DialogueData[]) =>

@@ -55,6 +55,7 @@ from app.api.deps import (
     get_workflow_repo,
     get_shot_repo,
 )
+from app.utils.path_utils import url_to_local_path
 from app.utils.time_utils import format_datetime
 
 router = APIRouter()
@@ -567,7 +568,7 @@ async def merge_chapter_videos(
     video_paths = []
     for video_url in shot_videos:
         if video_url and video_url.startswith("/api/files/"):
-            full_path = NovelService.url_to_local_path(video_url)
+            full_path = url_to_local_path(video_url)
             if full_path:
                 video_paths.append(full_path)
 
@@ -581,7 +582,7 @@ async def merge_chapter_videos(
             key = f"{i + 1}-{i + 2}"
             trans_url = transition_videos.get(key)
             if trans_url and trans_url.startswith("/api/files/"):
-                full_path = NovelService.url_to_local_path(trans_url)
+                full_path = url_to_local_path(trans_url)
                 if full_path:
                     trans_paths.append(full_path)
                 else:

@@ -292,7 +292,7 @@ export function VideoGenTab({
     setIsMerging(true);
     try {
       const response = await fetch(
-        `/api/novels/${effectiveNovelId}/chapters/${effectiveChapterId}/merge-videos/`,
+        `/api/novels/${effectiveNovelId}/chapters/${effectiveChapterId}/merge-videos`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

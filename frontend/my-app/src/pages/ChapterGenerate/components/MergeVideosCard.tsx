@@ -31,7 +31,7 @@ export default function MergeVideosCard({
     setIsMerging(true);
     try {
       const response = await fetch(
-        `${API_BASE}/novels/${novelId}/chapters/${chapterId}/merge-videos/`,
+        `${API_BASE}/novels/${novelId}/chapters/${chapterId}/merge-videos`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

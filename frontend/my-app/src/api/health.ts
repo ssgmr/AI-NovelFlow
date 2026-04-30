@@ -21,17 +21,17 @@ export interface SystemStats {
 export interface HealthResponse {
   status: string;
   data?: {
-    gpu_usage?: number;
-    vram_used?: number;
-    vram_total?: number;
-    queue_running?: number;
-    queue_pending?: number;
-    temperature?: number;
+    gpu_usage?: number | null;
+    vram_used?: number | null;
+    vram_total?: number | null;
+    queue_running?: number | null;
+    queue_pending?: number | null;
+    temperature?: number | null;
     gpu_source?: 'real' | 'estimated';
     device_name?: string;
-    ram_used?: number;
-    ram_total?: number;
-    ram_percent?: number;
+    ram_used?: number | null;
+    ram_total?: number | null;
+    ram_percent?: number | null;
   };
 }
 
