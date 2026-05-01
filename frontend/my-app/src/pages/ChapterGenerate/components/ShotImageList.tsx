@@ -6,7 +6,7 @@
  * - 点击可切换选中上一个/下一个分镜
  */
 
-import { Film, Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { Film, Eye } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
 
 interface ShotImageListProps {
@@ -102,22 +102,20 @@ export function ShotImageList({
             </p>
 
             {/* 切换按钮 */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <button
                 onClick={handlePrevious}
                 disabled={currentShotIndex <= 1}
-                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-gray-700 flex items-center justify-center gap-1 transition-colors"
+                className="w-full sm:flex-1 min-h-10 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-gray-700 flex items-center justify-center gap-1 whitespace-nowrap transition-colors"
               >
-                <ChevronUp className="w-4 h-4" />
-                {t('chapterGenerate.previousShot')}
+                上一个
               </button>
               <button
                 onClick={handleNext}
                 disabled={currentShotIndex >= shots.length}
-                className="flex-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-gray-700 flex items-center justify-center gap-1 transition-colors"
+                className="w-full sm:flex-1 min-h-10 px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm text-gray-700 flex items-center justify-center gap-1 whitespace-nowrap transition-colors"
               >
-                {t('chapterGenerate.nextShot')}
-                <ChevronDown className="w-4 h-4" />
+                下一个
               </button>
             </div>
           </div>

@@ -21,6 +21,35 @@ import type { KeyframeData } from '../../../types';
 
 const VIDEO_TAB_UI_STORAGE_KEY = 'chapterGenerate_videoTab_ui';
 
+const getSavedVideoTabUiState = () => {
+  try {
+    const saved = localStorage.getItem(VIDEO_TAB_UI_STORAGE_KEY);
+    if (!saved) {
+      return { showKeyframes: true, showAudioRef: true };
+    }
+
+    const parsed = JSON.parse(saved) as {
+      showKeyframes?: boolean;
+      showAudioRef?: boolean;
+    };
+
+    return {
+      showKeyframes: typeof parsed.showKeyframes === 'boolean' ? parsed.showKeyframes : true,
+      showAudioRef: typeof parsed.showAudioRef === 'boolean' ? parsed.showAudioRef : true,
+    };
+  } catch {
+    return { showKeyframes: true, showAudioRef: true };
+  }
+};
+
+const saveVideoTabUiState = (state: { showKeyframes: boolean; showAudioRef: boolean }) => {
+  try {
+    localStorage.setItem(VIDEO_TAB_UI_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore localStorage errors
+  }
+};
+
 interface VideoGenTabProps {
   chapter?: any;
   shotVideos?: Record<string, string>;
@@ -78,11 +107,13 @@ export function VideoGenTab({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewTransitionVideo, setPreviewTransitionVideo] = useState<string | null>(null);
 
+  const initialVideoTabUiState = getSavedVideoTabUiState();
+
   // 关键帧展开状态
-  const [showKeyframes, setShowKeyframes] = useState(true);
+  const [showKeyframes, setShowKeyframes] = useState(initialVideoTabUiState.showKeyframes);
 
   // 音频参考展开状态
-  const [showAudioRef, setShowAudioRef] = useState(true);
+  const [showAudioRef, setShowAudioRef] = useState(initialVideoTabUiState.showAudioRef);
 
   // 合并视频相关状态
   const [isMerging, setIsMerging] = useState(false);
@@ -113,34 +144,20 @@ export function VideoGenTab({
   }, [fetchTransitionWorkflows, transitionWorkflows.length]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIDEO_TAB_UI_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as {
-        showKeyframes?: boolean;
-        showAudioRef?: boolean;
-      };
-      if (typeof parsed.showKeyframes === 'boolean') {
-        setShowKeyframes(parsed.showKeyframes);
-      }
-      if (typeof parsed.showAudioRef === 'boolean') {
-        setShowAudioRef(parsed.showAudioRef);
-      }
-    } catch {
-      // ignore localStorage errors
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        VIDEO_TAB_UI_STORAGE_KEY,
-        JSON.stringify({ showKeyframes, showAudioRef })
-      );
-    } catch {
-      // ignore localStorage errors
-    }
+    saveVideoTabUiState({ showKeyframes, showAudioRef });
   }, [showKeyframes, showAudioRef]);
+
+  const handleToggleKeyframes = () => {
+    const nextShowKeyframes = !showKeyframes;
+    setShowKeyframes(nextShowKeyframes);
+    saveVideoTabUiState({ showKeyframes: nextShowKeyframes, showAudioRef });
+  };
+
+  const handleToggleAudioRef = () => {
+    const nextShowAudioRef = !showAudioRef;
+    setShowAudioRef(nextShowAudioRef);
+    saveVideoTabUiState({ showKeyframes, showAudioRef: nextShowAudioRef });
+  };
 
   // 同步 currentShot 和 selectedVideo
   useEffect(() => {
@@ -536,7 +553,7 @@ export function VideoGenTab({
           {/* 关键帧设置区 */}
           <div className="border-b border-gray-200 pb-4">
             <button
-              onClick={() => setShowKeyframes(!showKeyframes)}
+              onClick={handleToggleKeyframes}
               className="w-full flex items-center justify-between mb-3 text-left"
             >
               <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -565,7 +582,7 @@ export function VideoGenTab({
           {/* 音频参考设置区 */}
           <div className="border-b border-gray-200 pb-4">
             <button
-              onClick={() => setShowAudioRef(!showAudioRef)}
+              onClick={handleToggleAudioRef}
               className="w-full flex items-center justify-between mb-3 text-left"
             >
               <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
