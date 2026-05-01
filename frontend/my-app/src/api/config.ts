@@ -5,6 +5,7 @@ import { api } from './index';
 
 export interface SystemConfig {
   parseCharactersPrompt?: string;
+  systemStatusSource?: 'comfyui' | 'windows_gpu_monitor';
 }
 
 export const configApi = {

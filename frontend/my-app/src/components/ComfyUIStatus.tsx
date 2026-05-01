@@ -9,6 +9,21 @@ const asNumber = (value: unknown, fallback = 0) =>
 const asOptionalNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
+const getSourceLabel = (gpuSource?: SystemStats['gpuSource']) => {
+  switch (gpuSource) {
+    case 'windows_gpu_monitor':
+      return 'windows_gpu_monitor';
+    case 'comfyui_fallback':
+      return 'ComfyUI';
+    case 'comfyui':
+      return 'ComfyUI';
+    case 'real':
+      return 'windows_gpu_monitor';
+    default:
+      return undefined;
+  }
+};
+
 export default function ComfyUIStatus() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<SystemStats>({
@@ -34,7 +49,7 @@ export default function ComfyUIStatus() {
 
   const fetchStats = async () => {
     try {
-      const data = await healthApi.getComfyUIStatus();
+      const data = await healthApi.getSystemStatus();
       if (data.status === 'ok') {
         const vramUsed = asNumber(data.data?.vram_used);
         const vramTotal = asNumber(data.data?.vram_total, 16);
@@ -84,8 +99,13 @@ export default function ComfyUIStatus() {
             <div className="p-2 bg-gray-50 rounded-lg">
               <Server className="h-5 w-5 text-gray-600" />
             </div>
-            <span className="text-gray-700 font-medium">ComfyUI</span>
-          </div>
+              <span className="text-gray-700 font-medium">ComfyUI</span>
+              {getSourceLabel(stats.gpuSource) && (
+                <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                  {getSourceLabel(stats.gpuSource)}
+                </span>
+              )}
+            </div>
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${stats.status === 'online' ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className={`text-sm font-medium ${stats.status === 'online' ? 'text-green-600' : 'text-gray-400'}`}>

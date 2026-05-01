@@ -11,7 +11,7 @@ export interface SystemStats {
   vramPercent: number;
   queueSize: number;
   temperature?: number;
-  gpuSource?: 'real' | 'estimated';
+  gpuSource?: 'real' | 'estimated' | 'comfyui' | 'windows_gpu_monitor' | 'comfyui_fallback';
   gpuName?: string;
   ramUsed?: number;
   ramTotal?: number;
@@ -27,7 +27,7 @@ export interface HealthResponse {
     queue_running?: number | null;
     queue_pending?: number | null;
     temperature?: number | null;
-    gpu_source?: 'real' | 'estimated';
+    gpu_source?: 'real' | 'estimated' | 'comfyui' | 'windows_gpu_monitor' | 'comfyui_fallback';
     device_name?: string;
     ram_used?: number | null;
     ram_total?: number | null;
@@ -41,6 +41,14 @@ export const healthApi = {
    */
   getComfyUIStatus: async (): Promise<HealthResponse> => {
     const response = await fetch('/api/health/comfyui');
+    if (!response.ok) {
+      return { status: 'error' };
+    }
+    return response.json();
+  },
+
+  getSystemStatus: async (): Promise<HealthResponse> => {
+    const response = await fetch('/api/health/system-status');
     if (!response.ok) {
       return { status: 'error' };
     }

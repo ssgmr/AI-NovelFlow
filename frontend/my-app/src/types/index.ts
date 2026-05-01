@@ -1,5 +1,6 @@
 // 支持的 LLM 厂商
 export type LLMProvider = 'deepseek' | 'openai' | 'gemini' | 'anthropic' | 'azure' | 'aliyun-bailian' | 'ollama' | 'custom';
+export type SystemStatusSource = 'comfyui' | 'windows_gpu_monitor';
 
 // LLM 模型配置
 export interface LLMModelConfig {
@@ -34,6 +35,7 @@ export interface SystemConfig {
   
   // ComfyUI 配置
   comfyUIHost: string;
+  systemStatusSource: SystemStatusSource;
   
   // 输出配置（已废弃，保留兼容）
   outputResolution?: string;

@@ -24,6 +24,9 @@ export default {
     enableProxy: 'Enable Proxy',
     httpProxy: 'HTTP Proxy',
     httpsProxy: 'HTTPS Proxy',
+    systemStatusSettings: 'System Status',
+    systemStatusSource: 'GPU Status Source',
+    systemStatusSourceHint: 'Choose the data source used by the system status cards in Tasks and Video Generation pages.',
     comfyUISettings: 'ComfyUI Settings',
     comfyUIHost: 'ComfyUI Host',
     comfyUIHostHint: 'ComfyUI service address and port',
@@ -43,6 +46,16 @@ export default {
       aliyunBailian: 'Alibaba Cloud Bailian',
       ollama: 'Ollama',
       custom: 'Custom API',
+    },
+    systemStatusSources: {
+      comfyui: {
+        title: 'ComfyUI',
+        description: 'Read GPU and queue status directly from ComfyUI. This is the default option.',
+      },
+      windows_gpu_monitor: {
+        title: 'windows_gpu_monitor',
+        description: 'Read GPU, VRAM, and RAM status from the Windows GPU Monitor service on port 9999.',
+      },
     },
     // Model names (for those that need translation)
     modelNames: {

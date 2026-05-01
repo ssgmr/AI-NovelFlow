@@ -1,34 +1,27 @@
 // Settings 页面主组件
 
 import { useState, useEffect, useRef } from 'react';
-import { Save, Loader2, Bot, Network, Server, CheckCircle } from 'lucide-react';
+import { Save, Loader2, Bot, Network, Server, CheckCircle, Activity } from 'lucide-react';
 import { useTranslation } from '../../stores/i18nStore';
 import { toast } from '../../stores/toastStore';
 import LLMConfig from './components/LLMConfig';
 import ProxyConfigPanel from './components/ProxyConfig';
 import ComfyUIConfig from './components/ComfyUIConfig';
 import WorkflowManager from './components/WorkflowManager';
+import SystemStatusConfig from './components/SystemStatusConfig';
 import type { SettingsFormData } from './types';
 import { configApi } from '../../api/config';
+import { DEFAULT_CONFIG } from '../../constants';
 
 export default function Settings() {
   const { t } = useTranslation();
   
   // 表单数据
-  const [formData, setFormData] = useState<SettingsFormData>({
-    llmProvider: 'deepseek',
-    llmModel: 'deepseek-v4-flash',
-    llmApiKey: '',
-    llmApiUrl: 'https://api.deepseek.com',
-    llmMaxTokens: 393216,
-    llmTemperature: undefined,
-    proxy: { enabled: false, httpProxy: '', httpsProxy: '' },
-    comfyUIHost: 'http://localhost:8188',
-  });
+  const [formData, setFormData] = useState<SettingsFormData>(DEFAULT_CONFIG);
   
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'llm' | 'proxy' | 'comfyui' | 'workflows'>('llm');
+  const [activeTab, setActiveTab] = useState<'llm' | 'proxy' | 'comfyui' | 'systemStatus' | 'workflows'>('llm');
   const isUserModifiedRef = useRef(false);
 
   // 从后端加载配置
@@ -44,14 +37,15 @@ export default function Settings() {
             llmModel: config.llmModel || 'deepseek-v4-flash',
             llmApiKey: '', // API Key 不从前端获取
             llmApiUrl: config.llmApiUrl || 'https://api.deepseek.com',
-            llmMaxTokens: config.llmMaxTokens || 393216,
+            llmMaxTokens: config.llmMaxTokens || DEFAULT_CONFIG.llmMaxTokens,
             llmTemperature: config.llmTemperature,
             proxy: config.proxyEnabled !== undefined ? {
               enabled: config.proxyEnabled,
               httpProxy: config.httpProxy || '',
               httpsProxy: config.httpsProxy || '',
-            } : { enabled: false, httpProxy: '', httpsProxy: '' },
-            comfyUIHost: config.comfyUIHost || 'http://localhost:8188',
+            } : DEFAULT_CONFIG.proxy,
+            comfyUIHost: config.comfyUIHost || DEFAULT_CONFIG.comfyUIHost,
+            systemStatusSource: config.systemStatusSource || DEFAULT_CONFIG.systemStatusSource,
           });
         }
       } catch (error) {
@@ -66,18 +60,28 @@ export default function Settings() {
     setSaving(true);
     
     try {
-      const result = await configApi.update({
-        llm: {
-          provider: formData.llmProvider,
-          model: formData.llmModel,
-          apiKey: formData.llmApiKey,
-          apiUrl: formData.llmApiUrl,
-          maxTokens: formData.llmMaxTokens,
-          temperature: formData.llmTemperature,
-        },
-        proxy: formData.proxy,
-        comfyUIHost: formData.comfyUIHost,
-      } as any);
+      let payload: any = {};
+
+      if (activeTab === 'llm') {
+        payload = {
+          llm: {
+            provider: formData.llmProvider,
+            model: formData.llmModel,
+            apiKey: formData.llmApiKey,
+            apiUrl: formData.llmApiUrl,
+            maxTokens: formData.llmMaxTokens,
+            temperature: formData.llmTemperature,
+          },
+        };
+      } else if (activeTab === 'proxy') {
+        payload = { proxy: formData.proxy };
+      } else if (activeTab === 'comfyui') {
+        payload = { comfyUIHost: formData.comfyUIHost };
+      } else if (activeTab === 'systemStatus') {
+        payload = { systemStatusSource: formData.systemStatusSource };
+      }
+
+      const result = await configApi.update(payload);
       
       if (result.success) {
         isUserModifiedRef.current = false;
@@ -179,6 +183,20 @@ export default function Settings() {
               {t('systemSettings.workflow.title')}
             </div>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('systemStatus')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'systemStatus'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              {t('systemSettings.systemStatusSettings')}
+            </div>
+          </button>
         </div>
 
         {/* 工作流管理面板 - 独立于表单之外，避免嵌套表单问题 */}
@@ -210,6 +228,14 @@ export default function Settings() {
             {/* ComfyUI 配置面板 */}
             {activeTab === 'comfyui' && (
               <ComfyUIConfig 
+                formData={formData}
+                onFormDataChange={setFormData}
+                onUserModified={handleUserModified}
+              />
+            )}
+
+            {activeTab === 'systemStatus' && (
+              <SystemStatusConfig
                 formData={formData}
                 onFormDataChange={setFormData}
                 onUserModified={handleUserModified}

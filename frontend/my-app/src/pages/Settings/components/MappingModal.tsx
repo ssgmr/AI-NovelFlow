@@ -210,7 +210,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: '',
                 textNodeId: '',
                 emotionPromptNodeId: '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             } else if (wf.type === 'shot') {
               setMappingForm({
@@ -233,7 +234,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: '',
                 textNodeId: '',
                 emotionPromptNodeId: '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             } else if (wf.type === 'voice_design') {
               setMappingForm({
@@ -256,7 +258,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: '',
                 textNodeId: '',
                 emotionPromptNodeId: '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             } else if (wf.type === 'audio') {
               setMappingForm({
@@ -279,7 +282,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: mapping.reference_audio_node_id || '',
                 textNodeId: mapping.text_node_id || '',
                 emotionPromptNodeId: mapping.emotion_prompt_node_id || '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             } else if (wf.type === 'keyframe_image') {
               // 关键帧图片生成工作流
@@ -303,7 +307,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: '',
                 textNodeId: '',
                 emotionPromptNodeId: '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             } else {
               setMappingForm({
@@ -326,7 +331,8 @@ export function MappingModal({ workflow, onClose, onSuccess }: MappingModalProps
                 referenceAudioNodeId: '',
                 textNodeId: '',
                 emotionPromptNodeId: '',
-                keyframeNodes: []
+                keyframeNodes: [],
+                durationSecondsNodeId: ''
               });
             }
           } catch (e) {

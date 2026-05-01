@@ -66,7 +66,7 @@ export default function ComfyUIConfig({ formData, onFormDataChange, onUserModifi
             value={formData.comfyUIHost}
             onChange={(e) => { onUserModified(); onFormDataChange({ ...formData, comfyUIHost: e.target.value }); }}
             className="input-field flex-1"
-            placeholder="http://localhost:8188"
+            placeholder="http://127.0.0.1:8188"
           />
           <button
             type="button"

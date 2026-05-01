@@ -24,6 +24,9 @@ export default {
     enableProxy: '启用代理',
     httpProxy: 'HTTP 代理',
     httpsProxy: 'HTTPS 代理',
+    systemStatusSettings: '系统状态',
+    systemStatusSource: 'GPU 状态来源',
+    systemStatusSourceHint: '选择任务页和视频生成页右侧系统状态卡片使用的数据来源',
     comfyUISettings: 'ComfyUI 配置',
     comfyUIHost: 'ComfyUI 地址',
     comfyUIHostHint: 'ComfyUI 服务的地址和端口',
@@ -43,6 +46,16 @@ export default {
       aliyunBailian: '阿里云百炼',
       ollama: 'Ollama',
       custom: '自定义 API',
+    },
+    systemStatusSources: {
+      comfyui: {
+        title: 'ComfyUI',
+        description: '直接通过 ComfyUI 接口获取显卡与队列状态，作为默认方式。',
+      },
+      windows_gpu_monitor: {
+        title: 'windows_gpu_monitor',
+        description: '通过 9999 端口的 Windows GPU Monitor 接口获取 GPU、显存和内存状态。',
+      },
     },
     // Model names (for those that need translation)
     modelNames: {

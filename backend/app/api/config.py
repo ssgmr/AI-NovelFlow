@@ -38,6 +38,7 @@ class SystemConfigUpdate(BaseModel):
     llm: Optional[LLMConfig] = None
     proxy: Optional[ProxyConfig] = None
     comfyUIHost: Optional[str] = None
+    systemStatusSource: Optional[str] = None
     outputResolution: Optional[str] = None
     outputFrameRate: Optional[int] = None
     parseCharactersPrompt: Optional[str] = None
@@ -76,6 +77,7 @@ async def get_config(db: Session = Depends(get_db)):
             "httpsProxy": config.https_proxy,
             # ComfyUI 配置
             "comfyUIHost": config.comfyui_host,
+            "systemStatusSource": config.system_status_source or "comfyui",
             # 输出配置
             "outputResolution": config.output_resolution,
             "outputFrameRate": config.output_frame_rate,
@@ -109,6 +111,7 @@ async def get_full_config(db: Session = Depends(get_db)):
             "http_proxy": config.http_proxy,
             "https_proxy": config.https_proxy,
             "comfyui_host": config.comfyui_host,
+            "system_status_source": config.system_status_source or "comfyui",
             "output_resolution": config.output_resolution,
             "output_frame_rate": config.output_frame_rate,
             "parse_characters_prompt": config.parse_characters_prompt,
@@ -156,6 +159,10 @@ async def update_config(config: SystemConfigUpdate, db: Session = Depends(get_db
         if config.comfyUIHost:
             db_config.comfyui_host = config.comfyUIHost
             updates["comfyui_host"] = config.comfyUIHost
+
+        if config.systemStatusSource is not None:
+            db_config.system_status_source = config.systemStatusSource
+            updates["system_status_source"] = config.systemStatusSource
         
         if config.outputResolution:
             db_config.output_resolution = config.outputResolution
@@ -336,6 +343,7 @@ def init_system_config(db: Session) -> None:
         "http_proxy": config.http_proxy,
         "https_proxy": config.https_proxy,
         "comfyui_host": config.comfyui_host,
+        "system_status_source": config.system_status_source or "comfyui",
         "output_resolution": config.output_resolution,
         "output_frame_rate": config.output_frame_rate,
         "parse_characters_prompt": config.parse_characters_prompt,

@@ -1,6 +1,6 @@
 // Settings 页面类型定义
 
-import type { LLMProvider, ProxyConfig, LLMModel } from '../../types';
+import type { LLMProvider, ProxyConfig, LLMModel, SystemStatusSource } from '../../types';
 
 export interface Workflow {
   id: string;
@@ -61,6 +61,7 @@ export interface SettingsFormData {
   llmTemperature?: string;
   proxy: ProxyConfig;
   comfyUIHost: string;
+  systemStatusSource: SystemStatusSource;
 }
 
 export interface MappingForm {

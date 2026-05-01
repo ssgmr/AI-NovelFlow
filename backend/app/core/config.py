@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     
     # ComfyUI
     COMFYUI_HOST: str = "http://127.0.0.1:8188"
+    SYSTEM_STATUS_SOURCE: str = "comfyui"
     
     # Output
     OUTPUT_DIR: str = "./output"
@@ -97,6 +98,8 @@ def reload_settings_from_db(db_config: dict) -> None:
     
     if db_config.get("comfyui_host"):
         _settings_instance.COMFYUI_HOST = db_config["comfyui_host"]
+    if db_config.get("system_status_source"):
+        _settings_instance.SYSTEM_STATUS_SOURCE = db_config["system_status_source"]
     
     if db_config.get("parse_characters_prompt"):
         _settings_instance.PARSE_CHARACTERS_PROMPT = db_config["parse_characters_prompt"]

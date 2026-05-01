@@ -25,6 +25,7 @@ export const DEFAULT_CONFIG: SystemConfig = {
   llmTemperature: undefined,
   proxy: DEFAULT_PROXY,
   comfyUIHost: 'http://127.0.0.1:8188',
+  systemStatusSource: 'comfyui',
   outputResolution: '1920x1080',
   outputFrameRate: 24,
 };

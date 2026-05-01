@@ -26,6 +26,7 @@ class SystemConfig(Base):
     
     # ComfyUI 配置
     comfyui_host = Column(String, default="http://127.0.0.1:8188")
+    system_status_source = Column(String, default="comfyui")
     
     # 输出配置
     output_resolution = Column(String, default="1920x1080")
