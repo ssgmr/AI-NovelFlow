@@ -201,6 +201,8 @@ async def get_llm_presets():
                 "name": "DeepSeek",
                 "defaultApiUrl": "https://api.deepseek.com",
                 "models": [
+                    {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash", "description": "新一代快速模型", "maxTokens": 393216},
+                    {"id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro", "description": "新一代高性能模型", "maxTokens": 393216},
                     {"id": "deepseek-chat", "name": "DeepSeek Chat", "description": "通用对话模型", "maxTokens": 8192},
                     {"id": "deepseek-coder", "name": "DeepSeek Coder", "description": "代码专用模型", "maxTokens": 8192},
                     {"id": "deepseek-reasoner", "name": "DeepSeek Reasoner", "description": "推理模型", "maxTokens": 8192},
@@ -213,6 +215,10 @@ async def get_llm_presets():
                 "name": "OpenAI",
                 "defaultApiUrl": "https://api.openai.com/v1",
                 "models": [
+                    {"id": "gpt-5.5", "name": "GPT-5.5", "description": "旗舰推理与编码模型", "maxTokens": 1000000},
+                    {"id": "gpt-5.4", "name": "GPT-5.4", "description": "高性价比专业模型", "maxTokens": 1000000},
+                    {"id": "gpt-5.4-mini", "name": "GPT-5.4 Mini", "description": "轻量高性能模型", "maxTokens": 400000},
+                    {"id": "gpt-5.4-nano", "name": "GPT-5.4 Nano", "description": "超低延迟模型", "maxTokens": 400000},
                     {"id": "gpt-4o", "name": "GPT-4o", "description": "多模态旗舰模型", "maxTokens": 128000},
                     {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "description": "轻量快速模型", "maxTokens": 128000},
                     {"id": "gpt-4-turbo", "name": "GPT-4 Turbo", "description": "高性能模型", "maxTokens": 128000},
@@ -226,6 +232,9 @@ async def get_llm_presets():
                 "name": "Google Gemini",
                 "defaultApiUrl": "https://generativelanguage.googleapis.com/v1beta",
                 "models": [
+                    {"id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro", "description": "稳定专业版", "maxTokens": 1000000},
+                    {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "description": "稳定快速版", "maxTokens": 1000000},
+                    {"id": "gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite", "description": "稳定轻量版", "maxTokens": 1000000},
                     {"id": "gemini-2.5-flash-preview-05-20", "name": "Gemini 2.5 Flash Preview", "description": "快速预览版", "maxTokens": 1000000},
                     {"id": "gemini-2.5-pro-preview-05-20", "name": "Gemini 2.5 Pro Preview", "description": "专业预览版", "maxTokens": 1000000},
                     {"id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "description": "快速模型", "maxTokens": 1000000},
@@ -265,6 +274,9 @@ async def get_llm_presets():
                 "name": "阿里云百炼",
                 "defaultApiUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 "models": [
+                    {"id": "qwen3.6-max-preview", "name": "通义千问 3.6 Max Preview", "description": "最新旗舰预览模型"},
+                    {"id": "qwen3.6-plus", "name": "通义千问 3.6 Plus", "description": "新一代均衡模型"},
+                    {"id": "qwen3.6-flash", "name": "通义千问 3.6 Flash", "description": "新一代高速模型"},
                     {"id": "qwen-max", "name": "通义千问 Max", "description": "通义千问超大规模语言模型，支持复杂任务", "maxTokens": 32000},
                     {"id": "qwen-plus", "name": "通义千问 Plus", "description": "通义千问大规模语言模型，均衡性能与速度", "maxTokens": 32000},
                     {"id": "qwen-turbo", "name": "通义千问 Turbo", "description": "通义千问轻量模型，快速响应", "maxTokens": 32000},

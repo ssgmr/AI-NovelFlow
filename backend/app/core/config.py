@@ -17,10 +17,10 @@ class Settings(BaseSettings):
     
     # LLM Configuration (多厂商支持) - 默认值，会被数据库配置覆盖
     LLM_PROVIDER: str = "deepseek"
-    LLM_MODEL: str = "deepseek-chat"
+    LLM_MODEL: str = "deepseek-v4-flash"
     LLM_API_URL: str = "https://api.deepseek.com"
     LLM_API_KEY: str = ""
-    LLM_MAX_TOKENS: Optional[int] = None  # 最大token数
+    LLM_MAX_TOKENS: Optional[int] = 393216  # 最大token数
     LLM_TEMPERATURE: Optional[str] = None  # 温度参数
     
     # Proxy Configuration (代理配置)

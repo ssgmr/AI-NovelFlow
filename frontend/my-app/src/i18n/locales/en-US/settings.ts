@@ -47,6 +47,9 @@ export default {
     // Model names (for those that need translation)
     modelNames: {
       // Alibaba
+      'qwen36MaxPreview': 'Qwen 3.6 Max Preview',
+      'qwen36Plus': 'Qwen 3.6 Plus',
+      'qwen36Flash': 'Qwen 3.6 Flash',
       'qwenMax': 'Qwen Max',
       'qwenPlus': 'Qwen Plus',
       'qwenTurbo': 'Qwen Turbo',
@@ -61,12 +64,21 @@ export default {
       'deepseekDesc': 'General chat model',
       'deepseekCoderDesc': 'Code specialized model',
       'deepseekReasonerDesc': 'Reasoning model',
+      'deepseekV4FlashDesc': 'Next-generation fast model',
+      'deepseekV4ProDesc': 'Next-generation high-performance model',
       // OpenAI
+      'gpt55Desc': 'Flagship reasoning and coding model',
+      'gpt54Desc': 'Cost-effective professional model',
+      'gpt54MiniDesc': 'Lightweight high-performance model',
+      'gpt54NanoDesc': 'Ultra-low-latency model',
       'gpt4oDesc': 'Multimodal flagship model',
       'gpt4oMiniDesc': 'Lightweight fast model',
       'gpt4TurboDesc': 'High performance model',
       'gpt35TurboDesc': 'Economical model',
       // Gemini
+      'gemini25ProDesc': 'Stable pro model',
+      'gemini25FlashDesc': 'Stable fast model',
+      'gemini25FlashLiteDesc': 'Stable lightweight model',
       'gemini25FlashPreviewDesc': 'Fast preview version',
       'gemini25ProPreviewDesc': 'Pro preview version',
       'gemini20FlashDesc': 'Fast model',
@@ -87,6 +99,9 @@ export default {
       'qwenTurboDesc': 'Tongyi Qianwen lightweight model, fast response',
       'qwenCoderPlusDesc': 'Code specialized model',
       'qwen25Desc': '72B parameter instruction model',
+      'qwen36MaxPreviewDesc': 'Latest flagship preview model',
+      'qwen36PlusDesc': 'Next-generation balanced model',
+      'qwen36FlashDesc': 'Next-generation high-speed model',
       'deepseekV3AliDesc': 'DeepSeek V3 model (via Bailian)',
       'deepseekR1AliDesc': 'DeepSeek R1 reasoning model (via Bailian)',
       // Custom

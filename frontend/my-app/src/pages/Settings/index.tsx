@@ -17,10 +17,10 @@ export default function Settings() {
   // 表单数据
   const [formData, setFormData] = useState<SettingsFormData>({
     llmProvider: 'deepseek',
-    llmModel: 'deepseek-chat',
+    llmModel: 'deepseek-v4-flash',
     llmApiKey: '',
     llmApiUrl: 'https://api.deepseek.com',
-    llmMaxTokens: undefined,
+    llmMaxTokens: 393216,
     llmTemperature: undefined,
     proxy: { enabled: false, httpProxy: '', httpsProxy: '' },
     comfyUIHost: 'http://localhost:8188',
@@ -41,10 +41,10 @@ export default function Settings() {
           const config = result.data as any;
           setFormData({
             llmProvider: config.llmProvider || 'deepseek',
-            llmModel: config.llmModel || 'deepseek-chat',
+            llmModel: config.llmModel || 'deepseek-v4-flash',
             llmApiKey: '', // API Key 不从前端获取
             llmApiUrl: config.llmApiUrl || 'https://api.deepseek.com',
-            llmMaxTokens: config.llmMaxTokens,
+            llmMaxTokens: config.llmMaxTokens || 393216,
             llmTemperature: config.llmTemperature,
             proxy: config.proxyEnabled !== undefined ? {
               enabled: config.proxyEnabled,

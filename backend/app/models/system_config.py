@@ -13,10 +13,10 @@ class SystemConfig(Base):
     
     # LLM 配置
     llm_provider = Column(String, default="deepseek")
-    llm_model = Column(String, default="deepseek-chat")
+    llm_model = Column(String, default="deepseek-v4-flash")
     llm_api_url = Column(String, default="https://api.deepseek.com")
     llm_api_key = Column(Text, nullable=True)  # 加密存储
-    llm_max_tokens = Column(Integer, nullable=True)  # 最大token数
+    llm_max_tokens = Column(Integer, default=393216, nullable=True)  # 最大token数
     llm_temperature = Column(String, nullable=True)  # 温度参数（字符串类型，支持范围0.0-2.0）
     
     # 代理配置

@@ -56,7 +56,7 @@ export default function Welcome() {
         <div className="space-y-4">
           <StatusItem name={`${state.providerName} (${state.modelName})`} status={state.status?.llm}
             successMsg={t('systemSettings.connectionSuccess')} failMsg={t('systemSettings.connectionFailed')}
-            noConfigMsg={t('systemSettings.enterApiKey')} hasConfig={!!state.llmApiKey} />
+            noConfigMsg={t('systemSettings.enterApiKey')} hasConfig={true} />
           <StatusItem name="ComfyUI" status={state.status?.comfyui}
             successMsg={t('systemSettings.connectionSuccess')} failMsg={t('systemSettings.connectionFailed')}
             noConfigMsg={t('systemSettings.comfyUIHost')} hasConfig={!!state.comfyUIHost} />

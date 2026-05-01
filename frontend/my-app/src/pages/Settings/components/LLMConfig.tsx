@@ -29,6 +29,9 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
     ? customModels
     : currentPreset?.models || [];
 
+  const getModelMaxTokens = (modelId: string) =>
+    availableModels.find(model => model.id === modelId)?.maxTokens;
+
   // 自动获取自定义 API 的模型列表
   const fetchCustomModels = async () => {
     if (!formData.llmApiUrl) {
@@ -58,7 +61,7 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
           setCustomModels(models);
           
           if (models.length > 0 && !models.find(m => m.id === formData.llmModel)) {
-            onFormDataChange({ ...formData, llmModel: models[0].id });
+            onFormDataChange({ ...formData, llmModel: models[0].id, llmMaxTokens: models[0].maxTokens || formData.llmMaxTokens });
           }
           
           return;
@@ -82,7 +85,7 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
           setCustomModels(models);
           
           if (models.length > 0 && !models.find(m => m.id === formData.llmModel)) {
-            onFormDataChange({ ...formData, llmModel: models[0].id });
+            onFormDataChange({ ...formData, llmModel: models[0].id, llmMaxTokens: models[0].maxTokens || formData.llmMaxTokens });
           }
           return;
         }
@@ -106,6 +109,7 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
       llmProvider: provider,
       llmModel: preset?.models[0]?.id || '',
       llmApiUrl: preset?.defaultApiUrl || '',
+      llmMaxTokens: preset?.models[0]?.maxTokens || formData.llmMaxTokens,
     });
     if (provider !== 'custom' && provider !== 'ollama') {
       setCustomModels([]);
@@ -216,7 +220,15 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
         ) : (
           <select
             value={formData.llmModel}
-            onChange={(e) => { onUserModified(); onFormDataChange({ ...formData, llmModel: e.target.value }); }}
+            onChange={(e) => {
+              onUserModified();
+              const llmModel = e.target.value;
+              onFormDataChange({
+                ...formData,
+                llmModel,
+                llmMaxTokens: getModelMaxTokens(llmModel) || formData.llmMaxTokens,
+              });
+            }}
             className="input-field"
           >
             {availableModels.map((model) => {
@@ -252,7 +264,7 @@ export default function LLMConfig({ formData, onFormDataChange, onUserModified }
           className="input-field"
           placeholder="4000"
           min="1"
-          max="128000"
+          max="2000000"
         />
         <p className="mt-1 text-xs text-gray-500">
           {t('systemSettings.maxTokensDesc')}

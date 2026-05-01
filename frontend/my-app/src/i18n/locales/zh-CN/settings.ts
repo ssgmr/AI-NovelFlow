@@ -47,6 +47,9 @@ export default {
     // Model names (for those that need translation)
     modelNames: {
       // Alibaba
+      'qwen36MaxPreview': '通义千问 3.6 Max Preview',
+      'qwen36Plus': '通义千问 3.6 Plus',
+      'qwen36Flash': '通义千问 3.6 Flash',
       'qwenMax': '通义千问 Max',
       'qwenPlus': '通义千问 Plus',
       'qwenTurbo': '通义千问 Turbo',
@@ -61,12 +64,21 @@ export default {
       'deepseekDesc': '通用对话模型',
       'deepseekCoderDesc': '代码专用模型',
       'deepseekReasonerDesc': '推理模型',
+      'deepseekV4FlashDesc': '新一代快速模型',
+      'deepseekV4ProDesc': '新一代高性能模型',
       // OpenAI
+      'gpt55Desc': '旗舰推理与编码模型',
+      'gpt54Desc': '高性价比专业模型',
+      'gpt54MiniDesc': '轻量高性能模型',
+      'gpt54NanoDesc': '超低延迟模型',
       'gpt4oDesc': '多模态旗舰模型',
       'gpt4oMiniDesc': '轻量快速模型',
       'gpt4TurboDesc': '高性能模型',
       'gpt35TurboDesc': '经济实用模型',
       // Gemini
+      'gemini25ProDesc': '稳定专业版',
+      'gemini25FlashDesc': '稳定快速版',
+      'gemini25FlashLiteDesc': '稳定轻量版',
       'gemini25FlashPreviewDesc': '快速预览版',
       'gemini25ProPreviewDesc': '专业预览版',
       'gemini20FlashDesc': '快速模型',
@@ -87,6 +99,9 @@ export default {
       'qwenTurboDesc': '通义千问轻量模型，快速响应',
       'qwenCoderPlusDesc': '代码专用模型',
       'qwen25Desc': '72B 参数指令模型',
+      'qwen36MaxPreviewDesc': '最新旗舰预览模型',
+      'qwen36PlusDesc': '新一代均衡模型',
+      'qwen36FlashDesc': '新一代高速模型',
       'deepseekV3AliDesc': 'DeepSeek V3 模型（通过百炼）',
       'deepseekR1AliDesc': 'DeepSeek R1 推理模型（通过百炼）',
       // Custom

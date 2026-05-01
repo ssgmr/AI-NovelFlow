@@ -82,12 +82,22 @@ class LLMService:
         )
         return LLMClient(config)
 
+    def _normalize_max_tokens(self, max_tokens: int) -> int:
+        model_limits = {
+            "deepseek-v4-flash": 393216,
+            "deepseek-v4-pro": 393216,
+        }
+        limit = model_limits.get(self.model)
+        if limit is not None:
+            return min(max_tokens, limit)
+        return max_tokens
+
     async def chat_completion(
         self,
         system_prompt: str,
         user_content: str,
         temperature: float = DEFAULT_TEMPERATURE,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: Optional[int] = None,
         response_format: Optional[str] = None,
         task_type: str = None,
         novel_id: str = None,
@@ -108,7 +118,10 @@ class LLMService:
         """
         # 使用配置的参数，如果提供了则覆盖默认值
         final_temperature = float(self.temperature) if self.temperature else temperature
-        final_max_tokens = self.max_tokens if self.max_tokens is not None else max_tokens
+        final_max_tokens = max_tokens if max_tokens is not None else self.max_tokens
+        if final_max_tokens is None:
+            final_max_tokens = DEFAULT_MAX_TOKENS
+        final_max_tokens = self._normalize_max_tokens(final_max_tokens)
         print(f"[chat_completion] url: {self.api_url}, model: {self.model}, temperature: {final_temperature}, max_tokens: {final_max_tokens} \n system_prompt: {system_prompt}\n user_content: {user_content}")
 
         client = self._get_client()
