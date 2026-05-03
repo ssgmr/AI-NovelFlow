@@ -278,6 +278,7 @@ export function useWorkflowSlice(): WorkflowSlice {
     markTabComplete: state.markTabComplete,
     resetTabProgress: state.resetTabProgress,
     saveWorkflowState: state.saveWorkflowState,
+    loadWorkflowState: state.loadWorkflowState,
   }));
 }
 

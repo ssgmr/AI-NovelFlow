@@ -8,7 +8,7 @@
  * - BottomNavigator (底部导航)
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from '../../../stores/i18nStore';
@@ -106,6 +106,7 @@ export function ChapterGenerateLayout({
   const rightPanelCollapsed = useChapterGenerateStore((state) => state.rightPanelCollapsed);
   const setCurrentTab = useChapterGenerateStore((state) => state.setCurrentTab);
   const markTabComplete = useChapterGenerateStore((state) => state.markTabComplete);
+  const loadWorkflowState = useChapterGenerateStore((state) => state.loadWorkflowState);
   const setCurrentShot = useChapterGenerateStore((state) => state.setCurrentShot);
   const storeShots = useChapterGenerateStore((state) => state.shots);
   const storeGeneratingShots = useChapterGenerateStore((state) => state.generatingShots);
@@ -135,6 +136,12 @@ export function ChapterGenerateLayout({
   // 获取分镜列表（统一使用 store.shots）
   const shots = storeShots;
   const currentShot = shots[currentShotIndex - 1];
+
+  useEffect(() => {
+    if (id && cid) {
+      loadWorkflowState(id, cid);
+    }
+  }, [id, cid, loadWorkflowState]);
 
   // 渲染左侧栏内容（根据当前 Tab 变化）
   const renderLeftPanel = () => {

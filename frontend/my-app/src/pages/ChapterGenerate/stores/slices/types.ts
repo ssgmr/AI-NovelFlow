@@ -399,6 +399,7 @@ export interface ChapterGenerateStore
   markTabComplete: (tabIndex: number) => void;
   resetTabProgress: () => void;
   saveWorkflowState: () => void;
+  loadWorkflowState: (novelId?: string, chapterId?: string) => void;
 
   // ========== SidePanel Actions ==========
   setLeftPanelWidth: (width: number) => void;

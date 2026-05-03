@@ -8,6 +8,23 @@
 
 import { StateCreator } from 'zustand';
 
+const WORKFLOW_STORAGE_PREFIX = 'chapterGenerate_workflow';
+
+const getWorkflowStorageKey = (novelId?: string, chapterId?: string) => {
+  if (novelId && chapterId) {
+    return `${WORKFLOW_STORAGE_PREFIX}_${novelId}_${chapterId}`;
+  }
+
+  if (typeof window !== 'undefined') {
+    const match = window.location.pathname.match(/\/novels\/([^/]+)\/chapters\/([^/]+)\/generate/);
+    if (match) {
+      return `${WORKFLOW_STORAGE_PREFIX}_${match[1]}_${match[2]}`;
+    }
+  }
+
+  return WORKFLOW_STORAGE_PREFIX;
+};
+
 // ========== Types ==========
 
 export interface WorkflowSliceState {
@@ -30,6 +47,9 @@ export interface WorkflowSliceActions {
 
   /** 保存状态到 localStorage */
   saveWorkflowState: () => void;
+
+  /** 按章节加载状态 */
+  loadWorkflowState: (novelId?: string, chapterId?: string) => void;
 }
 
 export type WorkflowSlice = WorkflowSliceState & WorkflowSliceActions;
@@ -39,7 +59,7 @@ export type WorkflowSlice = WorkflowSliceState & WorkflowSliceActions;
 const getInitialState = (): WorkflowSliceState => {
   // 尝试从 localStorage 恢复状态
   try {
-    const saved = localStorage.getItem('chapterGenerate_workflow');
+    const saved = localStorage.getItem(getWorkflowStorageKey());
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
@@ -95,12 +115,30 @@ export const createWorkflowSlice: StateCreator<
       try {
         const { currentTab, tabProgress } = _get();
         localStorage.setItem(
-          'chapterGenerate_workflow',
+          getWorkflowStorageKey(),
           JSON.stringify({ currentTab, tabProgress })
         );
       } catch (e) {
         console.warn('Failed to save workflow state to localStorage:', e);
       }
+    },
+
+    loadWorkflowState: (novelId?: string, chapterId?: string) => {
+      try {
+        const saved = localStorage.getItem(getWorkflowStorageKey(novelId, chapterId));
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          _set({
+            currentTab: parsed.currentTab ?? 0,
+            tabProgress: parsed.tabProgress ?? {},
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('Failed to load workflow state from localStorage:', e);
+      }
+
+      _set({ currentTab: 0, tabProgress: {} });
     },
   };
 };
