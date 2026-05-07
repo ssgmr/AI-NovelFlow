@@ -612,6 +612,7 @@ class FileStorageService:
             import asyncio
             import tempfile
             import os
+            import json
             
             if not video_paths or len(video_paths) == 0:
                 return {"success": False, "message": "没有视频文件"}
@@ -631,26 +632,101 @@ class FileStorageService:
                 return {"success": False, "message": "没有有效的视频文件"}
             
             print(f"[FileStorage] Merging {len(final_video_list)} videos: {final_video_list}")
-            
+
+            async def _get_video_info(video_path: str) -> Dict[str, Any]:
+                loop = asyncio.get_event_loop()
+
+                def _run_ffprobe():
+                    return subprocess.run(
+                        [
+                            'ffprobe',
+                            '-v', 'error',
+                            '-select_streams', 'v:0',
+                            '-show_entries', 'stream=width,height,r_frame_rate,pix_fmt,codec_name',
+                            '-of', 'json',
+                            video_path,
+                        ],
+                        capture_output=True,
+                        text=True,
+                    )
+
+                result = await loop.run_in_executor(None, _run_ffprobe)
+                if result.returncode != 0:
+                    raise RuntimeError(f"ffprobe failed for {video_path}: {result.stderr}")
+
+                data = json.loads(result.stdout or '{}')
+                streams = data.get('streams', [])
+                if not streams:
+                    raise RuntimeError(f"No video stream found in {video_path}")
+
+                stream = streams[0]
+                return {
+                    'width': int(stream.get('width') or 0),
+                    'height': int(stream.get('height') or 0),
+                }
+
+            target_info = await _get_video_info(final_video_list[0])
+            target_width = target_info['width']
+            target_height = target_info['height']
+
+            if target_width <= 0 or target_height <= 0:
+                return {"success": False, "message": "无法读取目标视频分辨率"}
+
+            temp_normalized_dir = tempfile.mkdtemp(prefix='novelflow_merge_')
+            normalized_paths = []
+            concat_file = None
+
             # 创建临时文件列表
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-                concat_file = f.name
-                for video_path in final_video_list:
-                    # 使用 file 协议，需要处理路径中的特殊字符
-                    escaped_path = video_path.replace("'", "'\\''")
-                    f.write(f"file '{escaped_path}'\n")
-            
             try:
+                loop = asyncio.get_event_loop()
+
+                for index, video_path in enumerate(final_video_list):
+                    normalized_path = os.path.join(temp_normalized_dir, f'normalized_{index:03d}.mp4')
+                    normalize_cmd = [
+                        'ffmpeg',
+                        '-i', video_path,
+                        '-vf', f'scale={target_width}:{target_height}:force_original_aspect_ratio=decrease,pad={target_width}:{target_height}:(ow-iw)/2:(oh-ih)/2:black,fps=24,format=yuv420p',
+                        '-an',
+                        '-c:v', 'libx264',
+                        '-preset', 'medium',
+                        '-crf', '18',
+                        '-movflags', '+faststart',
+                        '-y',
+                        normalized_path,
+                    ]
+
+                    print(f"[FileStorage] Normalizing video: {' '.join(normalize_cmd)}")
+
+                    def _run_normalize(cmd=normalize_cmd):
+                        return subprocess.run(cmd, capture_output=True, text=True)
+
+                    normalize_result = await loop.run_in_executor(None, _run_normalize)
+                    if normalize_result.returncode != 0:
+                        print(f"[FileStorage] Normalize error: {normalize_result.stderr}")
+                        return {
+                            "success": False,
+                            "message": f"视频标准化失败: {normalize_result.stderr[:200]}"
+                        }
+
+                    normalized_paths.append(normalized_path)
+
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                    concat_file = f.name
+                    for video_path in normalized_paths:
+                        escaped_path = video_path.replace("'", "'\\''")
+                        f.write(f"file '{escaped_path}'\n")
+            
                 # 使用 ffmpeg 合并视频
                 # -f concat: 使用 concat 协议
                 # -safe 0: 允许不安全的文件路径
-                # -c copy: 直接复制流，不重新编码（速度快，质量无损）
+                # 所有片段已先标准化为统一编码参数，此处安全拼接
                 cmd = [
                     'ffmpeg',
                     '-f', 'concat',
                     '-safe', '0',
                     '-i', concat_file,
                     '-c', 'copy',
+                    '-movflags', '+faststart',
                     '-y',  # 覆盖输出文件
                     output_path
                 ]
@@ -669,9 +745,6 @@ class FileStorageService:
                     return result
                 
                 result = await loop.run_in_executor(None, _run_ffmpeg)
-                
-                # 清理临时文件
-                os.unlink(concat_file)
                 
                 if result.returncode != 0:
                     print(f"[FileStorage] FFmpeg error: {result.stderr}")
@@ -695,10 +768,11 @@ class FileStorageService:
                 }
                 
             except Exception as e:
-                # 清理临时文件
-                if os.path.exists(concat_file):
-                    os.unlink(concat_file)
                 raise e
+            finally:
+                if concat_file and os.path.exists(concat_file):
+                    os.unlink(concat_file)
+                shutil.rmtree(temp_normalized_dir, ignore_errors=True)
             
         except Exception as e:
             import traceback
