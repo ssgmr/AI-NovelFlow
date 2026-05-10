@@ -50,8 +50,9 @@ class LLMService:
         self.http_proxy = current_settings.HTTP_PROXY
         self.https_proxy = current_settings.HTTPS_PROXY
 
-        # 如果没有配置新的 LLM，且不是 Ollama（Ollama 可以没有 API Key），尝试兼容旧配置
-        if not self.api_key and self.provider != "ollama":
+        # 仅对历史 DeepSeek 配置做兼容回退。
+        # custom / ollama 可以不填 API Key，不能错误回退到 deepseek。
+        if not self.api_key and self.provider not in ("ollama", "custom"):
             self.api_key = current_settings.DEEPSEEK_API_KEY
             self.api_url = current_settings.DEEPSEEK_API_URL
             self.provider = "deepseek"
@@ -139,8 +140,8 @@ class LLMService:
 
     async def check_health(self) -> bool:
         """检查 LLM API 状态"""
-        # Ollama 通常不需要 API Key
-        if not self.api_key and self.provider != "ollama":
+        # Ollama / Custom 通常不强制需要 API Key
+        if not self.api_key and self.provider not in ("ollama", "custom"):
             return False
 
         try:

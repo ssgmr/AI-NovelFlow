@@ -141,11 +141,15 @@ async def update_config(config: SystemConfigUpdate, db: Session = Depends(get_db
             updates["llm_max_tokens"] = config.llm.maxTokens
             updates["llm_temperature"] = config.llm.temperature
             
-            if config.llm.apiKey:
-                # 加密存储 API Key
-                encrypted_key = encrypt_value(config.llm.apiKey)
-                db_config.llm_api_key = encrypted_key
-                updates["llm_api_key"] = config.llm.apiKey
+            # 允许显式清空已保存的 API Key，避免界面清空后后端仍使用旧值
+            if config.llm.apiKey is not None:
+                if config.llm.apiKey:
+                    encrypted_key = encrypt_value(config.llm.apiKey)
+                    db_config.llm_api_key = encrypted_key
+                    updates["llm_api_key"] = config.llm.apiKey
+                else:
+                    db_config.llm_api_key = None
+                    updates["llm_api_key"] = ""
         
         if config.proxy:
             db_config.proxy_enabled = config.proxy.enabled
